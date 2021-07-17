@@ -80,5 +80,5 @@ def FList(CList):
 ## Parent function which writes unique permutations of a given skeleton feature to the current directory
 def write_feature(base,name):
     features = FList(permute(base))
-    np.save('skel_features/' + name + '.npy',features)
+    np.save('feature_lib/' + name + '.npy',features)
 
