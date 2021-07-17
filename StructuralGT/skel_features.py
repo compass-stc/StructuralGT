@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
@@ -78,7 +79,10 @@ def FList(CList):
 
 ##### Write Permutation #####
 ## Parent function which writes unique permutations of a given skeleton feature to the current directory
-def write_feature(base,name):
+def write_feature(base,name,dir_name):
+    if os.path.isdir(dir_name)==False:
+        os.mkdir(dir_name)
+
     features = FList(permute(base))
-    np.save('feature_lib/' + name + '.npy',features)
+    np.save(dir_name  + '/' + name + '.npy',features)
 

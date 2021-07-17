@@ -56,28 +56,28 @@ def branchedPoints(skel):
     bases = (x_base, t_base, y_base)
 
     for name,base  in zip(names,bases):
-        sk.write_feature(base, name)
+        sk.write_feature(base, name, "branch_lib")
 
     br = 0
-    for FeatName in os.listdir("feature_lib"):
-        ArrList = np.load("feature_lib/" + FeatName)
+    for FeatName in os.listdir("branch_lib"):
+        ArrList = np.load("branch_lib/" + FeatName)
         for Array in ArrList:
             br = br + ndimage.binary_hit_or_miss(skel, Array)
 
     return br
 
 def endPoints(skel):
-    # finding all the locations of the endpoints
-    ep1 = ndimage.binary_hit_or_miss(skel, endpoint1)
-    ep2 = ndimage.binary_hit_or_miss(skel, endpoint2)
-    ep3 = ndimage.binary_hit_or_miss(skel, endpoint3)
-    ep4 = ndimage.binary_hit_or_miss(skel, endpoint4)
-    ep5 = ndimage.binary_hit_or_miss(skel, endpoint5)
-    ep6 = ndimage.binary_hit_or_miss(skel, endpoint6)
-    ep7 = ndimage.binary_hit_or_miss(skel, endpoint7)
-    ep8 = ndimage.binary_hit_or_miss(skel, endpoint8)
-    ep9 = ndimage.binary_hit_or_miss(skel, endpoint9)
-    ep = ep1 + ep2 + ep3 + ep4 + ep5 + ep6 + ep7 + ep8 + ep9
+
+    end_base = np.array([[0,0,0],
+                        [ 0,0,1]])
+
+    sk.write_feature(end_base, "end", "end_lib")
+
+    ep = 0
+    ArrList = np.load("end_lib/end.npy")
+    for Array in ArrList:
+        ep = ep + ndimage.binary_hit_or_miss(skel, Array)
+
     return ep
 
 def pruning(skeleton, size, Bps):
