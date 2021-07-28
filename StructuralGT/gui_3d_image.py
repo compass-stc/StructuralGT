@@ -27,7 +27,6 @@ from tkinter import *
 from tkinter import filedialog
 
 import numpy as np
-import settings, settings_3d
 import cv2
 import os
 from PIL import Image, ImageTk

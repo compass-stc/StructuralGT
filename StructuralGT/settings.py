@@ -40,7 +40,7 @@ import numpy as np
 import sknw
 import datetime
 
-
+global progressbar
 
 def progress(currentValue):
 

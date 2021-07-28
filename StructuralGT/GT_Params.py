@@ -35,6 +35,7 @@ from networkx.algorithms.distance_measures import diameter, periphery
 from networkx.algorithms.wiener import wiener_index
 from StructuralGT import settings
 
+
 def run_GT_calcs(G, Do_kdist, Do_dia, Do_BCdist, Do_CCdist, Do_ECdist, Do_GD, Do_Eff, Do_clust, \
                  Do_ANC, Do_Ast, Do_WI, multigraph):
 

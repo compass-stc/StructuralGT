@@ -26,7 +26,6 @@ from __main__ import *
 from tkinter import *
 from tkinter import filedialog
 
-import settings
 import cv2
 import os
 from PIL import Image, ImageTk
@@ -228,10 +227,11 @@ def Confirm_nocrop_button():
 
 def Confirm_nocrop_button_ex():
 
-    # send to settings.py without cropping the image
+   # send to settings.py without cropping the image
+    print('make1')
     src, saveloc, filename = Confirm_nocrop_button()
     settings.make_settings(root, src, saveloc, filename)
-
+    print('make')
 
 def newimwindow():
 
@@ -327,7 +327,7 @@ def make_gui(window):
 
     # all of the buttons and calling their respective function calls
     button0 = Button(frame3, text="Proceed with crop", bg="Green", command=Confirm_button_ex)
-    button1 = Button(frame3, text="Proceed without crop", fg="Black", command=Confirm_nocrop_button_ex)
+    button1 = Button(frame3, text="Proceed without crop", fg="Black", command=lambda: Confirm_nocrop_button_ex())
     button2 = Button(frame3, text="Exit", bg="Red", command=frame3.quit)
     button3 = Button(frame2, text="Select file...", bg="gray", command=getfile)
     button4 = Button(frame2, text="Choose Save Location...", bg="gray", command=choosesave)

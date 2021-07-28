@@ -29,7 +29,7 @@ from skimage.morphology import skeletonize
 from skimage.morphology import disk, remove_small_objects
 from skimage.morphology import binary_dilation as dilate
 
-import skel_features as sk
+from StructuralGT import skel_features as sk
 import os
 
 # Return a sparse 3D array with 1s at the locations of branch points. Branch point features defined by 3x3x3 array
