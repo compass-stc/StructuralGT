@@ -30,7 +30,7 @@ from skimage.morphology import disk, remove_small_objects
 from skimage.morphology import binary_dilation as dilate
 
 from StructuralGT import skel_features as sk
-from StructuralGT import base.Q_img
+from StructuralGT import base
 import os
 import shutil
 import gsd.hoomd
@@ -129,7 +129,7 @@ def make_skel(params, aspect, merge, prune, clean, r_size):
     img_bin = []
     i=0
     for name in sorted(os.listdir(params['directory']+'/Binarized')):
-        if Q_img(name):
+        if base.Q_img(name):
             img_slice = cv.imread(params['directory']+'/Binarized/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
             img_bin.append(img_slice)
             i=i+1
@@ -138,25 +138,27 @@ def make_skel(params, aspect, merge, prune, clean, r_size):
 
     skeleton = skeletonize_3d(np.asarray(img_bin)/255).astype(int)
 
-    s = gsd.hoomd.Snapshot()
-    skel_coords = np.asarray(np.where(skeleton!=0))
-    for feature in (skel_coords, branch_coords, end_coords)
-        for i in (0,1,2):
-            feature[i] = feature[i]*aspect[i]
-        
-    skel_coords = skel_coords.T
     branch_coords = branchedPoints(skeleton)
     end_coords = endPoints(skeleton)
+    skel_coords = np.asarray(np.where(skeleton!=0)) #Outputs array with shape (3,N)
+    
+
+    for feature in (skel_coords, branch_coords, end_coords):
+        for i in (0,1,2):
+            feature[i] = feature[i]*aspect[i]
+    feature = feature.T
+    sd_coords = np.setdiff1d(skel_coords,branch_coords).reshape(-1, skel.shape[1])    
+    print(skel_coords)
+    print(end_coords)
+    s = gsd.hoomd.snapshot()
     with gsd.hoomd.open(name=params['save_name']+'_raw.gsd', mode='wb') as f:
-        s.particles.N = np.shape(coords)[0]
-        s.particles.position = coords
+        s.particles.N = np.shape(skel_coords)[0] + np.shape(branch_coords)[0] + np.shape(end_coords)[0]
+        s.particles.position = skel_coords
         f.append(s)
 
-    with gsd.hoomd.open(name=params['save_name']+'_cleaned.gsd', mode='wb') as f:
-        pass
+#    with gsd.hoomd.open(name=params['save_name']+'_cleaned.gsd', mode='wb') as f:
+#        pass
 
-    d_x = np.where(Bp == 1)
-    Ep_coord_z, Ep_coord_y, Ep_coord_x = np.where(Ep == 1)
 
     # calling the three functions for merging nodes, pruning edges, and removing disconnected segments
     if(merge == 1):
