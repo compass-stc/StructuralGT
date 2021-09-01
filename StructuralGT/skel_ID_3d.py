@@ -157,7 +157,7 @@ def merge_nodes(skeleton):
 
 # Instead of returning skeletons and feature points coordinates, this returns skeletons but writes the features (and skeleton) to gsd
 # Note that 'coord' suffix indicates the variable is a list of coordinates. Otherwise, data representing skeletons/features is a sparse array
-def make_skel(params, aspect, merge, prune, clean, r_size):
+def make_skel(params, merge, prune, clean, r_size, aspect=(1,1,1)):
     
     #Change from master: img_bin is now a stack of 2D .tiffs
     img_bin = []
@@ -172,6 +172,7 @@ def make_skel(params, aspect, merge, prune, clean, r_size):
                 pass
         else:
             pass
+    print(img_bin)
     skeleton = skeletonize_3d(np.asarray(img_bin)/255).astype(int)
 
     # calling the three functions for merging nodes, pruning edges, and removing disconnected segments
@@ -213,4 +214,4 @@ def make_skel(params, aspect, merge, prune, clean, r_size):
 
    #clean_skel = skeleton
     if Q_gsd==False:
-        return skel_coords, branch_coords, end_coords
+        return skeleton, skel_coords, branch_coords, end_coords

@@ -7,7 +7,7 @@ import sknw
 
 
 ##Function which savs list of coordinates as a gsd, with node points (as defined by hit or miss) optionally labelled
-def create_frame(skel, aspect=(1,1,1), branch=None, end=None): 
+def create_frame(skel, name, aspect=(1,1,1), branch=None, end=None): 
     s = gsd.hoomd.Snapshot() 
     coords_list = [] 
     for coords in (skel, branch, end): 
@@ -35,11 +35,14 @@ try:
 except:
     FileExistsError
 
-params = dict(directory ='ANF2_50')
-np.save('preskel.npy',[0])
-skel, branch, end = skel_ID_3d.make_skel(params, (1,1,1), 0,0,0,0)
-np.save('skelcomplete.npy',[0])
-create_frame(skel, branch=branch, end=end)
+params = dict(directory ='AhmetsANFs/hi-res-ANF-200')
+params['save_name'] = "hires200"
+skeleton, skel_coord, branch_coord, end_coord = skel_ID_3d.make_skel(params, 0,0,0,0)
+np.save('skeleton.npy', skeleton)
+np.save('skel_coord.npy', skel_coord)
+np.save('branch_coord.npy', branch_coord)
+np.save('end_coord.npy', end_coord)
+create_frame(skel_coord, params['save_name'], branch=branch_coord, end=end_coord)
 #np.save('framewritten.npy',[0])
 #canvas = np.zeros((max(skel.T[0])+1,max(skel.T[1])+1,max(skel.T[2])+1))
 #np.save('canvasinitialised.npy',[0])
