@@ -128,7 +128,8 @@ def lengthtoedge(m,orth,img_bin):
     # returns the length between l1 and l2, which is the width of the fiber associated with an edge, at its midpoint
     return np.linalg.norm(l1-l2)
 
-#By default, weight is proportional to edge thickness. For analysis of electrical networks, volume may be a more appropriate weight.
+#By default, weight is proportional to edge thickness.
+#For analysis of electrical networks, volume may be a more appropriate weight. Note that in this case the weight is the inverse resistance (i.e. conductance)
 def assignweightsbywidth(ge, img_bin, weight_type=None):
     # Inputs:
     # ge: a list of pts that trace along a graph edge
@@ -152,7 +153,10 @@ def assignweightsbywidth(ge, img_bin, weight_type=None):
         wt = pix_width/10
     if(weight_type=='Resistance'):
         length = len(ge)
-        wt = length*pix_width**2
+        if pix_width == 0 or length == 0:
+            wt = 0
+        else:
+            wt = pix_width**2/length
 
     # returns the width in pixels; the weight which
     return pix_width, wt
