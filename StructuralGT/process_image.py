@@ -98,9 +98,10 @@ def binarize(source, options):
     scharr = options['scharr']
     sobel = options['sobel']
     lowpass = options['lowpass']
-    asize = options['asize']
-    bsize = options['bsize']
-    wsize = options['wsize']
+    asize = int(options['asize'])
+    bsize = int(options['bsize'])
+    print(bsize)
+    wsize = int(options['wsize'])
     thresh = options['thresh']
 
     global img
