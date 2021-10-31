@@ -1,7 +1,35 @@
 import numpy as np
 import sknw
+import igraph as ig
 import networkx as nx
+import graph_tool.all as gt
 import gsd.hoomd
+import pandas as pd
+import os
+import time
+import shutil
+import cv2 as cv
+import json
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import csv
+
+from skimage.morphology import skeletonize, skeletonize_3d
+from StructuralGT import process_image
+import GetWeights_3d
+
+#Function returns true for names of images
+def Q_img(name):
+    if (name.endswith('.tiff') or 
+        name.endswith('.tif') or
+        name.endswith('.jpg') or
+        name.endswith('.jpeg') or
+        name.endswith('.png') or
+        name.endswith('.gif')):
+        return True
+    else:
+        return False
+
 def canvas_to_G(name):
 
     canvas = np.load(name)
@@ -12,13 +40,50 @@ def shift(points):
     points = points - shift
     return points
 
+def gsd_to_canvas(gsd_name):
+    frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
+    positions = frame.particles.position.astype(int)
+    dims = np.asarray(list(max(positions.T[i])+1 for i in (0,1,2)))
+    
+    canvas = np.zeros(dims)
+    canvas[positions.T[0], positions.T[1], positions.T[2]] = 1
+    return canvas
+
+def canvas_to_gsd(canvas, gsd_name):
+    positions = np.asarray(np.where(np.asarray(canvas)!=0)).T
+    s = gsd.hoomd.Snapshot()
+    s.particles.N = len(positions)
+    s.particles.types = ['A']
+    s.particles.typeid = ['0']*s.particles.N
+    s.particles.position = positions
+
+    with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
+        f.append(s)
+    
+
+def stack_to_G(stack_directory):
+    img_bin = []
+    i=0
+    for name in sorted(os.listdir(stack_directory)):
+        if Q_img(name):
+            img_slice = cv.imread(stack_directory+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
+            img_bin.append(img_slice)
+            i=i+1
+        else:
+            pass
+
+    img_bin = np.asarray(img_bin)
+    skeleton = skeletonize_3d(img_bin)
+    G = sknw.build_sknw(skeleton)
+
+    return G
+
 #Functions returns list of position from a given gsd file. Optionally, it may return a list of positions that only fall within a given set of dimensions, effectively cropping the domain. TODO replace cropping with array masking method
 def gsd_to_pos(gsd_name, crop=False):
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
     positions = frame.particles.position.astype(int)
     
     if crop != False:
-        print('crop')
         canvas = np.zeros(list((max(positions.T[i])+1) for i in (0,1,2)))
         canvas[tuple(list(positions.T))] = 1
         canvas = canvas[crop[0]:crop[1],
@@ -31,6 +96,7 @@ def gsd_to_pos(gsd_name, crop=False):
 
 #Function takes gsd rendering of a skeleton and returns the list of nodes and edges, as calculated by sknw. Optionally, it may crop. sub=True will reduce the returned graph to the largest connected induced subgraph, resetting node numbers to consecutive integers, starting from 0.
 def gsd_to_G(gsd_name, crop=False, sub=False):
+    start = time.time()
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
     positions = frame.particles.position.astype(int)
 
@@ -43,11 +109,10 @@ def gsd_to_G(gsd_name, crop=False, sub=False):
     canvas[tuple(list(positions.T))] = 1
     canvas = canvas.astype(int)
     G = sknw.build_sknw(canvas)
-
     if sub:
-        G_sub  = G.subgraph(max(nx.connected_components(G), key=len).copy())
-#        G = nx.relabel.convert_node_labels_to_integers(G_sub)
-    
+        G = sub_G(G)
+    end = time.time()
+    print('Ran gsd_to_G in ', end-start, 'for a graph with ', len(G.nodes()), 'nodes.')
     return G
     
 #Function reads, crops and rewrites gsd file. TODO write branch and endpoint data to new gsd file (currently this info is lost).
@@ -59,8 +124,9 @@ def gsd_crop(gsd_name, save_name, crop):
     p=positions.T
     positions = p.T[a(a(a(a(a(p[0]>crop[0],p[0]<crop[1]),p[1]>crop[2]),p[1]<crop[3]),p[2]>crop[4]),p[2]<crop[5])]
     positions_T = positions.T
-    positions_T[0] = positions_T[0]/2
+    positions_T[0] = positions_T[0]
     positions = positions_T.T
+    positions = shift(positions)
     s = gsd.hoomd.Snapshot()
     s.particles.N = len(positions)
     s.particles.types = ['A']
@@ -86,9 +152,10 @@ def G_analysis_lite(gsd_name):
     from networkx.algorithms.distance_measures import diameter, periphery
     from networkx.algorithms.wiener import wiener_index
 
-    import time
-    
+    start = time.time()
     G = gsd_to_G(gsd_name)
+    end = time.time()
+    print('Ran gsd_to_G() in', end-start)
 #   Currently neglected eigenvector centrality as it doesnt easily converge (must change max iterations)
 
     operations = [global_efficiency, average_clustering, degree_assortativity_coefficient, maximum_flow, diameter, periphery, wiener_index]
@@ -101,57 +168,53 @@ def G_analysis_lite(gsd_name):
             print(str(operation),'calculated as', ans, 'in', end-start)
         except TypeError:
             pass
-#Function returns true for names of images
-def Q_img(name):
-    if (name.endswith('.tiff') or 
-        name.endswith('.tif') or
-        name.endswith('.jpg') or
-        name.endswith('.jpeg') or
-        name.endswith('.png') or
-        name.endswith('.gif')):
-        return True
-    else:
-        return False
-
-
-#Function generates largest connected induced subgraph from graph defined by given name of edge and list .txt. files. Node and edge numbers are reset such that they are consecutive integers, starting from 0
-def sub_G(nodes_file_name, edges_file_name):
-    G = nx.Graph()
-    
-    edges = np.loadtxt(edges_file_name).astype(int)
-    nodes = np.loadtxt(nodes_file_name).astype(int)
-    
-    G.add_nodes_from(nodes)
-    G.add_edges_from(edges)
-
+#Function generates largest connected induced subgraph. Node and edge numbers are reset such that they are consecutive integers, starting from 0
+def sub_G(G):
     G_sub  = G.subgraph(max(nx.connected_components(G), key=len).copy())
-
     G = nx.relabel.convert_node_labels_to_integers(G_sub)
     
     return G
 
 #Function takes a gsd name, generates a graph with gsd_to_G() and resaves a new .gsd file which has some nodewise indices saved to the file
-def G_labelling(gsd_name):
+def G_labelling(gsd_name, graph=None, tool='networkx'):
     from networkx.algorithms.centrality import betweenness_centrality, closeness_centrality
-    G = gsd_to_G(gsd_name)
-    
-    operations = [nx.degree, nx.clustering, betweenness_centrality, closeness_centrality]
-    names = ['Degree', 'Clustering', 'Betweenness_Centrality', 'Closeness_Centrality']
 
-    f = gsd.hoomd.open(name='labelled'+gsd_name, mode='wb')
-
-    node_positions = np.asarray(list(G.nodes()[i]['o'] for i in np.arange(len(G.nodes()))))
     positions = gsd.hoomd.open(name=gsd_name, mode='rb')[0].particles.position
+    if graph is None:
+         start = time.time()
+         G = gsd_to_G(gsd_name)
+         end = time.time()
+         print('Ran gsd_to_G() in', end-start)    
+    else:
+         G = graph
 
-    node_positions = shift(node_positions)
-    positions = shift(positions)
+    if tool=='networkx':
+        operations = [nx.degree, nx.clustering, betweenness_centrality, closeness_centrality]
+        names = ['Degree', 'Clustering', 'Betweenness_Centrality', 'Closeness_Centrality']
+        node_positions = np.asarray(list(G.nodes()[i]['o'] for i in np.arange(len(G.nodes()))))
+    elif tool=='igraph':
+        G = ig.Graph.from_networkx(G)
+        operations = [G.degree, G.betweenness, G.closeness]
+        names = ['Degree', 'Betweenness_Centrality', 'Closeness_Centrality']
+        node_positions = np.asarray(G.vs['o'])
+    else:
+        print('invalid tool arguement')
+    
+    save_name = os.path.split(gsd_name)[0] + '/labelled_' + os.path.split(gsd_name)[1]
+    f = gsd.hoomd.open(name=save_name, mode='wb')
+
+    
+
+    node_positions = shift(node_positions).astype(int)
+    positions = shift(positions).astype(int)
     
     node_origin_shift =(np.full((np.shape(node_positions)[0],3),[np.max(positions.T[0])/2,np.max(positions.T[1])/2,np.max(positions.T[2])/2])) 
     position_origin_shift = (np.full((np.shape(positions)[0],3),[np.max(positions.T[0])/2,np.max(positions.T[1])/2,np.max(positions.T[2])/2]))
 
-    node_positions = node_positions - node_origin_shift
-    positions = positions - position_origin_shift
-
+    #node_positions = node_positions - node_origin_shift
+    #positions = positions - position_origin_shift
+    print(node_positions)
+    print(positions)
     s = gsd.hoomd.Snapshot()
     N = len(positions)
     s.particles.N = N
@@ -160,9 +223,17 @@ def G_labelling(gsd_name):
     s.particles.typeid = [0]*N
     L = list(max(positions.T[i])*2 for i in (0,1,2))
     s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
+    G = ig.Graph.from_networkx(G)
     for name,operation in zip(names,operations):
         s.log['particles/'+name] = [np.NaN]*N
-        index_list = operation(G)
+        start = time.time()
+        if tool=='networkx':
+            index_list = operation(G)
+        elif tool=='igraph':
+            index_list = operation()
+
+        end = time.time()
+        print('Ran ', operation, ' in ', end-start)
     
         for i,particle in enumerate(positions):
             for j,node in enumerate(node_positions):
@@ -172,5 +243,343 @@ def G_labelling(gsd_name):
 
     f.append(s)
     
+#GT_Params_noGUI is a modified copy of the original SGT .py file, with the GUI modules removed    
+def write_averaged(gsd_name):
+    import GT_Params_noGUI
+    
+    start = time.time()
+    G = gsd_to_G(gsd_name)
+    end = time.time()
+    print('Ran gsd_to_G() in ', end-start, 'for a graph with ', len(G.nodes()), 'nodes')
+    G = sub_G(G)
+    
+    start = time.time()
+    data,klist,Tlist,BCdist,CCdist,ECdist = GT_Params_noGUI.run_GT_calcs(G,1,1,1,1,1,1,1,1,0,1,1,0)
+    end = time.time()
+    print('Ran GT_Params in', end-start, 'for a graph with ', len(G.nodes()), 'nodes')
+    datas = pd.DataFrame(data)
+    datas.to_csv(gsd_name + 'Averaged_indices.csv')
+
+def debubble(gsd_name):
+    from skimage.morphology import binary_closing, ball, skeletonize_3d
+    start = time.time()
+    #First rewrite the gsd from position to image space
+    frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
+    positions = frame.particles.position.astype(int)
+    shift = -1+(np.full((np.shape(positions)[0],3),[np.min(positions.T[0]),np.min(positions.T[1]),np.min(positions.T[2])]))
+    positions = positions - shift
+    canvas=np.zeros(list(max(positions.T[i])+3 for i in (0,1,2)))
+    canvas[tuple(list(positions.T))] = 1
+    #Canvas and positions are all positive
+    ball_sizes = [4,2,6] 
+    #Fill in all gaps. Consider successive selem passes.
+    canvas = binary_closing(canvas, selem=ball(ball_sizes[0]))
+    canvas = skeletonize_3d(canvas)/255
+    canvas = binary_closing(canvas, selem=ball(ball_sizes[1]))
+    canvas = skeletonize_3d(canvas)/255
+    canvas = binary_closing(canvas, selem=ball(ball_sizes[2]))
+    
+    
+    reskel =skeletonize_3d(canvas)/255
+    
+    name = os.path.split(gsd_name)[0] + '/debubbled_' + os.path.split(gsd_name)[1]
+    with gsd.hoomd.open(name=name, mode='wb') as f:
+        s = gsd.hoomd.Snapshot()
+        s.particles.N = int(sum(sum(sum(reskel))))
+        s.particles.position = np.asarray(np.where(reskel!=0)).T
+        s.particles.types = ['A']
+        s.particles.typeid = ['0']*s.particles.N
+        #L = list(max(positions.T[i])*2 for i in (0,1,2))
+        #s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
+        f.append(s)
+    end = time.time()
+    print('Ran debubble in ', end-start, 'for an image with shape ', reskel.shape)
+
+def igraph_ANC(directory, I):
+    start = time.time()
+    vclist = []
+
+    for node_i in I.vs:
+        for node_j in I.vs:
+            if node_i.index == node_j.index: continue
+            if I.are_connected(node_i, node_j): continue
+            cut = I.vertex_connectivity(source=node_i.index, target = node_j.index)
+            vclist.append(cut)
+
+    ANC = np.mean(np.asarray(vclist))
+    end = time.time()
+    np.savetxt(directory+'/ANC.csv',ANC)
+    print('ANC calculated as ', ANC, ' in ', end-start) 
+    
+    return ANC
+
+def igraph_avg_indices(I):
+    avg_indices = dict()
+    
+    operations = [I.diameter, I.density, I.transitivity_undirected, I.assortativity_degree]
+    names = ['Diameter', 'Density', 'Clustering', 'Assortativity by degree']
+
+    for operation,name in zip(operations,names):
+        start = time.time()
+        avg_indices[name] = operation()
+        end = time.time()
+        print('Calculated ', name, ' in ', end-start)
+
+    return avg_indices
+
+#Saves graph average indices and node indices to 2 separate files
+def igraph_calcs(directory, G):
+    G = sub_G(G)
+    I=ig.Graph.from_networkx(G)
+    operations = [I.betweenness, I.closeness, I.degree, I.vertex_connectivity] 
+    names = ['Betweeness', 'Closeness', 'Degree']
+
+    for operation,name in zip(operations,names):
+        start = time.time()
+        np.savetxt(directory+'/'+name+'.csv', operation())
+        end=time.time()
+        print('Saved ', operation, ' in ', end-start, ' for a graph with ', len(G.nodes()), ' nodes')
+    
+    avg_indices = igraph_avg_indices(I)
+    
+    with open(directory+'/graphwise.csv', 'w') as f:
+        for key in avg_indices:
+            f.write("%s,%s\n"%(key,avg_indices[key]))
     
 
+
+
+def benchmark(gsd_name,skel_name):
+    start = time.time()
+#Generate NetworkX type graph object
+    G = gsd_to_G(gsd_name)
+    G=sub_G(G)
+    end = time.time()
+    print("gsd_to_G() in",end-start)
+
+#Benchmark igraph
+    I=ig.Graph.from_networkx(G)
+    start = time.time()
+    print('Nodes are ', I.vcount())
+    print('Closeness = ', I.closeness())
+    print('Degrees = ', I.degree())
+    print('Betweenness = ', I.betweenness())
+    end = time.time()
+    print("igraph Clo/Deg/Bet calculated in ", end-start)
+
+#Write to .gml so that is can be read by graph-tool.
+#Vertex position attribute has to be mapped as three separate atttributes (x,y,z) as gml vertex attributes cannot be arrays
+#Other edge and vertex attributes should be deleted
+    start = time.time()
+    nodes = G.nodes()
+    positions = np.asarray(list(G.nodes()[i]['o'] for i in nodes))
+    for i,position in enumerate(positions):
+        del G.nodes[i]['pts']
+        del G.nodes[i]['o']
+        G.nodes[i]['x'] = position[0]
+        G.nodes[i]['y'] = position[1]
+        G.nodes[i]['z'] = position[2]
+
+    for i,j in G.edges():
+        del G.edges()[i,j]['pts']
+        del G.edges()[i,j]['weight']
+
+    nx.write_graphml(G, skel_name)
+
+    G = gt.load_graph(skel_name)
+    end = time.time()
+    print("Converted to graph-tool object in ", end-start)
+
+    start = time.time()
+    print('Nodes are ', G.vertices())
+    print('Closeness = ', gt.closeness(G))
+    print('Degrees = ', G.degree_property_map('total'))
+    print('Betweenness = ', gt.betweenness(G))
+    end = time.time()
+    print("graph-tool Clo/Deg/Bet calculated in ", end-start)
+
+#Binarizes stack of experimental images using a set of image processing parameters in options_json.
+def ExpProcess(directory, options_json=None):
+    
+    if options_json is None:
+        options_json = directory + '/img_options.json'
+    
+    with open(options_json) as f:
+        options_dict = json.load(f)
+        
+    #Reset write directory
+    try:
+        shutil.rmtree(directory+'/'+'Binarized')
+    except FileNotFoundError:
+        pass
+    os.mkdir(directory+'/'+'Binarized')
+    
+    #Generate
+    i=0    
+    for name in sorted(os.listdir(directory)):
+        if name.endswith('.tif')==False:
+            pass
+        else:
+            img_exp = cv.imread(directory+'/'+name,cv.IMREAD_GRAYSCALE)
+            if img_exp is None:
+                raise TypeError('img_exp is None')
+            _, img_bin, _ = process_image.binarize(img_exp, options_dict)
+            plt.imsave(directory+'/'+'Binarized'+'/'+'slice'+str(i)+'.tiff', img_bin, cmap=cm.gray)
+            i+=1
+
+#Unusual case of writing binary stack to gsd without skeletonizing. Effective for creating direct 3d reconstruction.
+#Takes directory where stack is located, and a gsd write filename
+#NOTE THIS CROPPING IMPLEMENTATION USES FRACTIONAL VALUES
+def stack_to_gsd(stack_directory, gsd_name, crop=False, debubble=False):
+    start = time.time()
+    img_bin=[]
+
+    #Initilise i such that it starts at the lowest number belonging to the images in the stack_directory
+    #First require boolean mask to filter out non image files
+    olist = np.asarray(sorted(os.listdir(stack_directory)))
+    mask = list(Q_img(olist[i]) for i in range(len(olist)))
+    name = sorted(olist[mask])[0] #First name
+    i = int(os.path.splitext(name)[0][5:]) #Strip file type and 'slice' then convert to int
+    #Generate 3d array from stack
+    for name in sorted(os.listdir(stack_directory)):
+        if Q_img(name):
+            img_slice = cv.imread(stack_directory+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
+            img_bin.append(img_slice)
+            i=i+1
+        else:
+            pass
+
+    positions = np.asarray(np.where(np.asarray(img_bin) != 0)).T
+    dims = np.asarray(list(max(positions.T[i]) for i in (0,1,2)))
+    if crop != False:
+        from numpy import logical_and as a
+        crop_abs = (dims[0]*crop[0], dims[0]*crop[1], dims[1]*crop[2], dims[1]*crop[3], dims[2]*crop[4], dims[2]*crop[5])
+        p=positions.T
+        positions = p.T[a(a(a(a(a(p[0]>crop_abs[0],p[0]<crop_abs[1]),p[1]>crop_abs[2]),p[1]<crop_abs[3]),p[2]>crop_abs[4]),p[2]<crop_abs[5])]
+
+    with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
+        s = gsd.hoomd.Snapshot()
+        s.particles.N = len(positions)
+        s.particles.position = positions
+        s.particles.types = ['A']
+        s.particles.typeid = ['0']*s.particles.N
+        f.append(s)
+    end = time.time()
+    print('Ran stack_to_gsd() in ', end-start, 'for gsd with ', len(positions), 'particles')
+
+def add_weights(G, stack_directory):
+    start = time.time()
+    img_bin = []
+    i=0
+    for name in sorted(os.listdir(stack_directory)):
+        if Q_img(name):
+            img_slice = cv.imread(stack_directory+'/' +str(name),cv.IMREAD_GRAYSCALE)
+            if img_slice is not None:
+                img_bin.append(img_slice)
+                i=i+1
+            else:
+                pass
+        else:
+            pass
+    
+    img_bin = np.asarray(img_bin)
+    end = time.time()
+    print('Loaded img in ', end-start)
+    start = time.time()
+    for (s, e) in G.edges():
+        ge = G[s][e]['pts']
+        pix_width, wt = GetWeights_3d.assignweightsbywidth(ge, img_bin)
+        G[s][e]['pixel width'] = pix_width
+        G[s][e]['weight'] = wt
+    end = time.time()
+    print('Added weights to a graph  with ', len(G.nodes()), 'nodes in ', end-start)
+    return G
+
+def stack_analysis(stack_directory, ANC=False):
+     ExpProcess(stack_directory)
+     
+     recon_name = stack_directory+'/recon.gsd'
+     skel_name = stack_directory+'/skel.gsd'
+
+     start = time.time()
+     stack_to_gsd(stack_directory+'/Binarized', recon_name)
+     canvas = gsd_to_canvas(recon_name)
+     skeleton = skeletonize_3d(canvas)
+     canvas_to_gsd(skeleton,skel_name) 
+     debubble(skel_name)
+
+     debubble_name = os.path.split(skel_name)[0] + '/debubbled_' + os.path.split(skel_name)[1]
+
+     G = gsd_to_G(debubble_name) 
+     
+     igraph_calcs(stack_directory,G)
+     if ANC:
+         igraph_ANC(stack_directory, ig.Graph.from_networkx(G)) 
+
+##The following function is a special case of the above G_labelling which takes a weighted graph and returns the weighted Laplacian.
+##This operation is important for solving the Kirchhoff equation for electrical networks whose edge is weighted by resistance
+##Currently, only igraph is implemented
+def weighted_Laplacian(G):
+    
+    L=np.asarray(G.laplacian(weights='weight'))
+    np.save('weighted_laplacian.npy', L)
+    return L
+
+#The 'plane' arguement defines the /axis/ which along which the boundary arguements refer to
+def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2, graph=None, I_dim=1):#, R_dim=1):
+    if graph is None:
+        start = time.time()
+        G = gsd_to_G(gsd_name)
+        end = time.time()
+        print('Ran gsd_to_G() in', end-start)    
+    else:
+        G = graph
+    
+    G = add_weights(G, stack_directory)
+    G = ig.Graph.from_networkx(G)  
+    weight_array = np.asarray(G.es['weight']).astype(float)
+    weight_array = weight_array[~np.isnan(weight_array)]
+    weight_avg =np.mean(weight_array)
+   
+
+#Add source and sink nodes:
+    source_id = max(G.vs)['_nx_name'] + 1
+    sink_id = source_id + 1
+    G.add_vertices(2)
+#Add coords for plotting
+    dims = np.asarray(list(max(np.asarray(G.vs['o']).T[i]) for i in (0,1,2)))
+    axes = np.array([0,1,2])
+    i,j = axes[axes!=plane]
+    plane_centre1 = np.array([0,0,0])
+    delta = np.array([0,0,0])
+    delta[plane] = 10 #Arbitrary. Standardize?
+    plane_centre1[i] = dims[i]/2
+    plane_centre1[j] = dims[j]/2
+    plane_centre2 = np.copy(plane_centre1)
+    plane_centre2[plane] = dims[plane]
+    source_coord = plane_centre1 - delta 
+    sink_coord = plane_centre2 + delta
+    G.vs[source_id]['o'] = source_coord
+    G.vs[sink_id]['o'] = sink_coord
+
+#Connect nodes on a given boundary to the external current nodes
+    for node in G.vs:
+        if node['o'][plane] > boundary1[0] and node['o'][plane] < boundary1[1]:
+            G.add_edges([(node['_nx_name'], source_id)])
+            G.es[G.get_eid(node['_nx_name'],source_id)]['weight'] = weight_avg
+            print(node)
+        if node['o'][plane] > boundary2[0] and node['o'][plane] < boundary2[1]:
+            G.add_edges([(node['_nx_name'], sink_id)])
+            G.es[G.get_eid(node['_nx_name'],sink_id)]['weight'] = weight_avg
+            print(node)
+        
+    L = weighted_Laplacian(G)
+    I = np.zeros(sink_id+1)
+    print(I.shape,'I')
+    print(L.shape, 'L')
+    I[source_id] = I_dim
+    I[sink_id] = -I_dim
+    np.save('L.npy',L)
+    np.save('I.npy',I)
+    #V =np.linalg
+    #return V,L
