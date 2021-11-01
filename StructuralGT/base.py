@@ -483,7 +483,7 @@ def stack_to_gsd(stack_directory, gsd_name, crop=False, debubble=False):
     end = time.time()
     print('Ran stack_to_gsd() in ', end-start, 'for gsd with ', len(positions), 'particles')
 
-def add_weights(G, stack_directory):
+def add_weights(G, stack_directory, weight_type=None):
     start = time.time()
     img_bin = []
     i=0
@@ -504,7 +504,7 @@ def add_weights(G, stack_directory):
     start = time.time()
     for (s, e) in G.edges():
         ge = G[s][e]['pts']
-        pix_width, wt = GetWeights_3d.assignweightsbywidth(ge, img_bin)
+        pix_width, wt = GetWeights_3d.assignweights(ge, img_bin, weight_type=weight_type)
         G[s][e]['pixel width'] = pix_width
         G[s][e]['weight'] = wt
     end = time.time()
@@ -549,7 +549,66 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     else:
         G = graph
     
-    G = add_weights(G, stack_directory)
+    G = add_weights(G, stack_directory, weight_type='Resistance')
+    G = ig.Graph.from_networkx(G)  
+    weight_array = np.asarray(G.es['weight']).astype(float)
+    weight_array = weight_array[~np.isnan(weight_array)]
+    weight_avg =np.mean(weight_array)
+   
+
+#Add source and sink nodes:
+    source_id = max(G.vs)['_nx_name'] + 1
+    sink_id = source_id + 1
+    G.add_vertices(2)
+#Add coords for plotting
+    dims = np.asarray(list(max(np.asarray(G.vs['o']).T[i]) for i in (0,1,2)))
+    axes = np.array([0,1,2])
+    i,j = axes[axes!=plane]
+    plane_centre1 = np.array([0,0,0])
+    delta = np.array([0,0,0])
+    delta[plane] = 10 #Arbitrary. Standardize?
+    plane_centre1[i] = dims[i]/2
+    plane_centre1[j] = dims[j]/2
+    plane_centre2 = np.copy(plane_centre1)
+    plane_centre2[plane] = dims[plane]
+    source_coord = plane_centre1 - delta 
+    sink_coord = plane_centre2 + delta
+    G.vs[source_id]['o'] = source_coord
+    G.vs[sink_id]['o'] = sink_coord
+
+#Connect nodes on a given boundary to the external current nodes
+    for node in G.vs:
+        if node['o'][plane] > boundary1[0] and node['o'][plane] < boundary1[1]:
+            G.add_edges([(node['_nx_name'], source_id)])
+            G.es[G.get_eid(node['_nx_name'],source_id)]['weight'] = weight_avg
+            print(node)
+        if node['o'][plane] > boundary2[0] and node['o'][plane] < boundary2[1]:
+            G.add_edges([(node['_nx_name'], sink_id)])
+            G.es[G.get_eid(node['_nx_name'],sink_id)]['weight'] = weight_avg
+            print(node)
+        
+    L = weighted_Laplacian(G)
+    I = np.zeros(sink_id+1)
+    print(I.shape,'I')
+    print(L.shape, 'L')
+    I[source_id] = I_dim
+    I[sink_id] = -I_dim
+    np.save('L.npy',L)
+    np.save('I.npy',I)
+    #V =np.linalg
+    #return V,L
+
+#The 'plane' arguement defines the /axis/ which along which the boundary arguements refer to
+def flow_distribution(stack_directory, gsd_name, plane, boundary1, boundary2, graph=None, VC_dim=1):#, R_dim=1):
+    if graph is None:
+        start = time.time()
+        G = gsd_to_G(gsd_name)
+        end = time.time()
+        print('Ran gsd_to_G() in', end-start)    
+    else:
+        G = graph
+    
+    G = add_weights(G, stack_directory, weight_type='Area')
     G = ig.Graph.from_networkx(G)  
     weight_array = np.asarray(G.es['weight']).astype(float)
     weight_array = weight_array[~np.isnan(weight_array)]

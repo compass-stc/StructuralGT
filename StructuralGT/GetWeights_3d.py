@@ -130,7 +130,8 @@ def lengthtoedge(m,orth,img_bin):
 
 #By default, weight is proportional to edge thickness.
 #For analysis of electrical networks, volume may be a more appropriate weight. Note that in this case the weight is the inverse resistance (i.e. conductance)
-def assignweightsbywidth(ge, img_bin, weight_type=None):
+#For analysis of mass transport systems, (i.e. where flow is proportional to some gradient driving force multiplied by cross sectional area), area is a more appropriate weight
+def assignweights(ge, img_bin, weight_type=None):
     # Inputs:
     # ge: a list of pts that trace along a graph edge
     # img_bin: the binary image that the graph is derived from
@@ -151,12 +152,18 @@ def assignweightsbywidth(ge, img_bin, weight_type=None):
         pix_width = int(lengthtoedge(m, orth, img_bin)) 
     if(weight_type==None):
         wt = pix_width/10
-    if(weight_type=='Resistance'):
-        length = len(ge)
-        if pix_width == 0 or length == 0:
-            wt = 0
-        else:
-            wt = pix_width**2/length
-
+        elif(weight_type=='Resistance'):
+            length = len(ge)
+            if pix_width == 0 or length == 0:
+                wt = 0
+            else:
+                wt = pix_width**2/length
+        elif(weight_type=='Area'):
+            length = len(ge)
+            if pix_width == 0 or length == 0:
+                wt = 0
+            else:
+                wt = pix_width**2
+    
     # returns the width in pixels; the weight which
     return pix_width, wt
