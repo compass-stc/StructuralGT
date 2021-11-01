@@ -60,6 +60,22 @@ def canvas_to_gsd(canvas, gsd_name):
     with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
         f.append(s)
     
+def stack_to_canvas(stack_directory):
+    img_bin = []
+    i=0
+    for name in sorted(os.listdir(stack_directory)):
+        if Q_img(name):
+            img_slice = cv.imread(stack_directory+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
+            img_bin.append(img_slice)
+            i=i+1
+        else:
+            pass
+
+    img_bin = np.asarray(img_bin)
+
+    return img_bin
+
+
 
 def stack_to_G(stack_directory):
     img_bin = []
@@ -498,12 +514,10 @@ def add_weights(G, stack_directory):
 def stack_analysis(stack_directory, ANC=False):
      ExpProcess(stack_directory)
      
-     recon_name = stack_directory+'/recon.gsd'
      skel_name = stack_directory+'/skel.gsd'
 
      start = time.time()
-     stack_to_gsd(stack_directory+'/Binarized', recon_name)
-     canvas = gsd_to_canvas(recon_name)
+     canvas = stack_to_canvas(stack_directory+'/Binarized')
      skeleton = skeletonize_3d(canvas)
      canvas_to_gsd(skeleton,skel_name) 
      debubble(skel_name)
