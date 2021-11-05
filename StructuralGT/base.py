@@ -60,7 +60,21 @@ def canvas_to_gsd(canvas, gsd_name):
     with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
         f.append(s)
     
-def stack_to_canvas(stack_directory):
+def G_to_gsd(G, gsd_name):
+    positions = np.asarray(list(G.vs[i]['o'] for i in range(G.vcount())))
+    for i in range(G.ecount()):
+        positions = np.append(positions,G.es[i]['pts'], axis=0)
+
+    s = gsd.hoomd.Snapshot()
+    s.particles.N = len(positions)
+    s.particles.types = ['A']
+    s.particles.typeid = ['0']*s.particles.N
+    s.particles.position = positions
+
+    with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
+        f.append(s)
+    
+def stack_to_canvas(stack_directory, crop=False):
     img_bin = []
     i=0
     for name in sorted(os.listdir(stack_directory)):
@@ -72,6 +86,9 @@ def stack_to_canvas(stack_directory):
             pass
 
     img_bin = np.asarray(img_bin)
+    print('Uncropped img_bin has shape ', img_bin.shape)
+    if crop != False:
+        img_bin = img_bin[crop[0]:crop[1], crop[2]:crop[3], crop[4]:crop[5]]
 
     return img_bin
 
@@ -115,15 +132,18 @@ def gsd_to_G(gsd_name, crop=False, sub=False):
     start = time.time()
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
     positions = frame.particles.position.astype(int)
-
+    print(positions)
     if crop != False:
         from numpy import logical_and as a
         p=positions.T
         positions = p.T[a(a(a(a(a(p[0]>crop[0],p[0]<crop[1]),p[1]>crop[2]),p[1]<crop[3]),p[2]>crop[4]),p[2]<crop[5])]
+        positions = shift(positions)
 
+    print(positions)
     canvas = np.zeros(list((max(positions.T[i])+1) for i in (0,1,2)))
     canvas[tuple(list(positions.T))] = 1
     canvas = canvas.astype(int)
+    print('gsd_to_G canvas has shape ', canvas.shape)
     G = sknw.build_sknw(canvas)
     if sub:
         G = sub_G(G)
@@ -483,22 +503,9 @@ def stack_to_gsd(stack_directory, gsd_name, crop=False, debubble=False):
     end = time.time()
     print('Ran stack_to_gsd() in ', end-start, 'for gsd with ', len(positions), 'particles')
 
-def add_weights(G, stack_directory, weight_type=None):
+def add_weights(G, stack_directory, crop=None, weight_type=None):
     start = time.time()
-    img_bin = []
-    i=0
-    for name in sorted(os.listdir(stack_directory)):
-        if Q_img(name):
-            img_slice = cv.imread(stack_directory+'/' +str(name),cv.IMREAD_GRAYSCALE)
-            if img_slice is not None:
-                img_bin.append(img_slice)
-                i=i+1
-            else:
-                pass
-        else:
-            pass
-    
-    img_bin = np.asarray(img_bin)
+    img_bin = stack_to_canvas(stack_directory, crop)
     end = time.time()
     print('Loaded img in ', end-start)
     start = time.time()
@@ -509,15 +516,16 @@ def add_weights(G, stack_directory, weight_type=None):
         G[s][e]['weight'] = wt
     end = time.time()
     print('Added weights to a graph  with ', len(G.nodes()), 'nodes in ', end-start)
+    
     return G
 
-def stack_analysis(stack_directory, ANC=False):
+def stack_analysis(stack_directory, suffix, ANC=False, crop=False):
      ExpProcess(stack_directory)
      
-     skel_name = stack_directory+'/skel.gsd'
+     skel_name = stack_directory+'/skel_'+suffix+'.gsd'
 
      start = time.time()
-     canvas = stack_to_canvas(stack_directory+'/Binarized')
+     canvas = stack_to_canvas(stack_directory+'/Binarized', crop)
      skeleton = skeletonize_3d(canvas)
      canvas_to_gsd(skeleton,skel_name) 
      debubble(skel_name)
@@ -540,7 +548,73 @@ def weighted_Laplacian(G):
     return L
 
 #The 'plane' arguement defines the /axis/ which along which the boundary arguements refer to
-def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2, graph=None, I_dim=1):#, R_dim=1):
+def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2, graph=None, crop=None, I_dim=1):#, R_dim=1):
+    if graph is None:
+        start = time.time()
+        G = gsd_to_G(gsd_name, crop)
+        end = time.time()
+        print('Ran gsd_to_G() in', end-start)    
+    else:
+        G = graph
+    
+    G = add_weights(G, stack_directory, crop, weight_type='Resistance')
+    G = ig.Graph.from_networkx(G)  
+    weight_array = np.asarray(G.es['weight']).astype(float)
+    weight_array = weight_array[~np.isnan(weight_array)]
+    weight_avg =np.mean(weight_array)
+  
+
+#Add source and sink nodes:
+    source_id = max(G.vs)['_nx_name'] + 1
+    sink_id = source_id + 1
+    G.add_vertices(2)
+#Add coords for plotting
+    dims = np.asarray(list(max(np.asarray(G.vs['o']).T[i]) for i in (0,1,2)))
+    mins = np.asarray(list(min(np.asarray(G.vs['o']).T[i]) for i in (0,1,2)))
+
+    print('Graph has dimensions', dims, ' and mins ', mins)
+    axes = np.array([0,1,2])
+    i,j = axes[axes!=plane]
+    plane_centre1 = np.array([0,0,0])
+    delta = np.array([0,0,0])
+    delta[plane] = 10 #Arbitrary. Standardize?
+    plane_centre1[i] = dims[i]/2
+    plane_centre1[j] = dims[j]/2
+    plane_centre2 = np.copy(plane_centre1)
+    plane_centre2[plane] = dims[plane]
+    source_coord = plane_centre1 - delta 
+    sink_coord = plane_centre2 + delta
+    G.vs[source_id]['o'] = source_coord
+    G.vs[sink_id]['o'] = sink_coord
+
+#Write skeleton connected to external node
+    connected_name = os.path.split(gsd_name)[0] + '/connected_' + os.path.split(gsd_name)[1] 
+    G_to_gsd(G, connected_name)
+
+#Connect nodes on a given boundary to the external current nodes
+    for node in G.vs:
+        if node['o'][plane] > boundary1[0] and node['o'][plane] < boundary1[1]:
+            G.add_edges([(node['_nx_name'], source_id)])
+            G.es[G.get_eid(node['_nx_name'],source_id)]['weight'] = weight_avg
+            print(node)
+        if node['o'][plane] > boundary2[0] and node['o'][plane] < boundary2[1]:
+            G.add_edges([(node['_nx_name'], sink_id)])
+            G.es[G.get_eid(node['_nx_name'],sink_id)]['weight'] = weight_avg
+            print(node)
+
+    L = weighted_Laplacian(G)
+    I = np.zeros(sink_id+1)
+    print(I.shape,'I')
+    print(L.shape, 'L')
+    I[source_id] = I_dim
+    I[sink_id] = -I_dim
+    np.save('L.npy',L)
+    np.save('I.npy',I)
+    #V =np.linalg
+    #return V,L
+
+#The 'plane' arguement defines the /axis/ which along which the boundary arguements refer to
+def flow_distribution(stack_directory, gsd_name, plane, boundary1, boundary2, graph=None, VC_dim=1):#, R_dim=1):
     if graph is None:
         start = time.time()
         G = gsd_to_G(gsd_name)
@@ -593,66 +667,7 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     print(L.shape, 'L')
     I[source_id] = I_dim
     I[sink_id] = -I_dim
-    np.save('L.npy',L)
-    np.save('I.npy',I)
-    #V =np.linalg
-    #return V,L
-
-#The 'plane' arguement defines the /axis/ which along which the boundary arguements refer to
-def flow_distribution(stack_directory, gsd_name, plane, boundary1, boundary2, graph=None, VC_dim=1):#, R_dim=1):
-    if graph is None:
-        start = time.time()
-        G = gsd_to_G(gsd_name)
-        end = time.time()
-        print('Ran gsd_to_G() in', end-start)    
-    else:
-        G = graph
-    
-    G = add_weights(G, stack_directory, weight_type='Area')
-    G = ig.Graph.from_networkx(G)  
-    weight_array = np.asarray(G.es['weight']).astype(float)
-    weight_array = weight_array[~np.isnan(weight_array)]
-    weight_avg =np.mean(weight_array)
-   
-
-#Add source and sink nodes:
-    source_id = max(G.vs)['_nx_name'] + 1
-    sink_id = source_id + 1
-    G.add_vertices(2)
-#Add coords for plotting
-    dims = np.asarray(list(max(np.asarray(G.vs['o']).T[i]) for i in (0,1,2)))
-    axes = np.array([0,1,2])
-    i,j = axes[axes!=plane]
-    plane_centre1 = np.array([0,0,0])
-    delta = np.array([0,0,0])
-    delta[plane] = 10 #Arbitrary. Standardize?
-    plane_centre1[i] = dims[i]/2
-    plane_centre1[j] = dims[j]/2
-    plane_centre2 = np.copy(plane_centre1)
-    plane_centre2[plane] = dims[plane]
-    source_coord = plane_centre1 - delta 
-    sink_coord = plane_centre2 + delta
-    G.vs[source_id]['o'] = source_coord
-    G.vs[sink_id]['o'] = sink_coord
-
-#Connect nodes on a given boundary to the external current nodes
-    for node in G.vs:
-        if node['o'][plane] > boundary1[0] and node['o'][plane] < boundary1[1]:
-            G.add_edges([(node['_nx_name'], source_id)])
-            G.es[G.get_eid(node['_nx_name'],source_id)]['weight'] = weight_avg
-            print(node)
-        if node['o'][plane] > boundary2[0] and node['o'][plane] < boundary2[1]:
-            G.add_edges([(node['_nx_name'], sink_id)])
-            G.es[G.get_eid(node['_nx_name'],sink_id)]['weight'] = weight_avg
-            print(node)
-        
-    L = weighted_Laplacian(G)
-    I = np.zeros(sink_id+1)
-    print(I.shape,'I')
-    print(L.shape, 'L')
-    I[source_id] = I_dim
-    I[sink_id] = -I_dim
-    np.save('L.npy',L)
-    np.save('I.npy',I)
+    np.save(gsd_name[:-4]+'L.npy',L)
+    np.save(gsd_name[:-4]+'I.npy',I)
     #V =np.linalg
     #return V,L
