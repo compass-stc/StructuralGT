@@ -582,7 +582,6 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     sink_id = source_id + 1
     G.add_vertices(2)
 #Add coords for plotting
-    print('making dims:')
     positions = []
     for i in range(G.vcount()):
         if G.vs[i]['o'] is None:
@@ -618,12 +617,10 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
             G.add_edges([(node['_nx_name'], source_id)])
             G.es[G.get_eid(node['_nx_name'],source_id)]['weight'] = weight_avg
             G.es[G.get_eid(node['_nx_name'],source_id)]['pts'] = connector(source_coord,node['o'])
-            print('connected')
         if node['o'][plane] > boundary2[0] and node['o'][plane] < boundary2[1]:
             G.add_edges([(node['_nx_name'], sink_id)])
             G.es[G.get_eid(node['_nx_name'],sink_id)]['weight'] = weight_avg 
             G.es[G.get_eid(node['_nx_name'],sink_id)]['pts'] = connector(sink_coord,node['o'])
-            print('connected')
 
 #Write skeleton connected to external node
     print(G.is_connected(), ' connected')
@@ -641,28 +638,38 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     np.save('I.npy',I)
     VC =np.linalg.solve(L,I)
     np.save('VC.npy',VC)
-    return G
+    return VC,G
 
-#Labelling function which takes an attribute calculating function and its relevant parameters (usually gsd, img_bin and optionally, crop)
+#Labelling function which takes an attribute calculating function and its relevant parameters (usually gsd, img_bin and, optionally, crop)
 #The labelling function calls the attribute calculating function so that the graph and its nodes' attributes are returned
 #The labelling funciton appends the attribute to the graph and rewrites the gsd
-def Node_labelling(gsd_name, attribute, attribute_name):
+#Note that all attribute calculating functions must return the attribute tensor and the graph which is to be labelled
+#Note that the gsd_name specified in Node_labelling is the name under which to save the labelled graph; the gsd_name given in *args is the file in which the unlabelled graph should be extracted from
+def Node_labelling(AttrCalcFunc, attribute_name, gsd_name, *args, **kwargs):
 
     positions = gsd.hoomd.open(name=gsd_name, mode='rb')[0].particles.position
     
-
     start = time.time()
-    G = gsd_to_G(gsd_name)
+    attribute,G = AttrCalcFunc(*args, **kwargs)
+    print(attribute)
     end = time.time()
     print('Ran gsd_to_G() in', end-start)    
-    G = sub_G(G)
-    G = ig.Graph.from_networkx(G) 
+    #G = sub_G(G)
+    #G = ig.Graph.from_networkx(G) 
     save_name = os.path.split(gsd_name)[0] + '/'+attribute_name + os.path.split(gsd_name)[1]
     f = gsd.hoomd.open(name=save_name, mode='wb')
     node_positions = np.asarray(list(G.vs()[i]['o'] for i in range(G.vcount())))
     node_positions = shift(node_positions).astype(int)
+    positions = node_positions
+    print('initial node_positions are ', node_positions)
+    for edge in G.es():
+        print(edge['pts'])
+        positions=np.vstack((positions,edge['pts']))
+    positions = np.unique(positions, axis=0)
+    node_positions = np.unique(node_positions, axis=0)
     positions = shift(positions).astype(int)
-    
+    print('final positions are ', positions)
+    print('node positions are ', node_positions)
     #node_origin_shift =(np.full((np.shape(node_positions)[0],3),[np.max(positions.T[0])/2,np.max(positions.T[1])/2,np.max(positions.T[2])/2])) 
     #position_origin_shift = (np.full((np.shape(positions)[0],3),[np.max(positions.T[0])/2,np.max(positions.T[1])/2,np.max(positions.T[2])/2]))
     #node_positions = node_positions - node_origin_shift
@@ -674,7 +681,7 @@ def Node_labelling(gsd_name, attribute, attribute_name):
     s.particles.position = positions
     s.particles.types = ['Edge', 'Node']
     s.particles.typeid = [0]*N
-    L = list(max(positions.T[i])*2 for i in (0,1,2))
+    L = list(max(positions.T[i]) for i in (0,1,2))
     s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
     s.log['particles/'+attribute_name] = [np.NaN]*N
     start = time.time()
