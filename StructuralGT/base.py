@@ -30,6 +30,18 @@ def Q_img(name):
     else:
         return False
 
+#Function returns lattice points joining 2 other points
+def connector(point1, point2):
+    vec = point2 - point1
+    edge = np.array([point1])
+    for i in np.linspace(0,1):
+        edge = np.append(edge, np.array([point1 + np.multiply(i,vec)]), axis=0)
+    
+    edge = edge.astype(int)
+    edge = np.unique(edge, axis=0)
+
+    return edge
+
 def canvas_to_G(name):
 
     canvas = np.load(name)
@@ -557,6 +569,7 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     else:
         G = graph
     
+    G = sub_G(G)
     G = add_weights(G, stack_directory, crop, weight_type='Resistance')
     G = ig.Graph.from_networkx(G)  
     weight_array = np.asarray(G.es['weight']).astype(float)
@@ -569,38 +582,52 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     sink_id = source_id + 1
     G.add_vertices(2)
 #Add coords for plotting
-    dims = np.asarray(list(max(np.asarray(G.vs['o']).T[i]) for i in (0,1,2)))
-    mins = np.asarray(list(min(np.asarray(G.vs['o']).T[i]) for i in (0,1,2)))
-
-    print('Graph has dimensions', dims, ' and mins ', mins)
+    print('making dims:')
+    positions = []
+    for i in range(G.vcount()):
+        if G.vs[i]['o'] is None:
+            pass
+        else:
+            positions.append(G.vs[i]['o'].ravel())
+    positions = np.concatenate(np.asarray(positions)).reshape((len(positions),3))
+    dims = list(max(positions.T[i]) for i in (0,1,2))
+    #dims = list(max(np.stack(list(G.vs[i]['o'] for i in range(G.vcount()))).T[j]) for j in (0,1,2)) 
+    #mins = list(min(np.asarray(list(G.vs[i]['o'] for i in range(G.vcount())), dtype=object).T[j]) for j in (0,1,2))
+    #print(np.asarray(list(G.vs[i]['o'] for i in range(G.vcount()))).T)
+    print('Graph has max ', dims)
     axes = np.array([0,1,2])
     i,j = axes[axes!=plane]
     plane_centre1 = np.array([0,0,0])
     delta = np.array([0,0,0])
-    delta[plane] = 10 #Arbitrary. Standardize?
+    delta[plane] = 100 #Arbitrary. Standardize?
     plane_centre1[i] = dims[i]/2
     plane_centre1[j] = dims[j]/2
     plane_centre2 = np.copy(plane_centre1)
     plane_centre2[plane] = dims[plane]
     source_coord = plane_centre1 - delta 
     sink_coord = plane_centre2 + delta
+    print('source coord is ', source_coord)
+    print('sink coord is ', sink_coord)
     G.vs[source_id]['o'] = source_coord
     G.vs[sink_id]['o'] = sink_coord
-
-#Write skeleton connected to external node
-    connected_name = os.path.split(gsd_name)[0] + '/connected_' + os.path.split(gsd_name)[1] 
-    G_to_gsd(G, connected_name)
 
 #Connect nodes on a given boundary to the external current nodes
     for node in G.vs:
         if node['o'][plane] > boundary1[0] and node['o'][plane] < boundary1[1]:
             G.add_edges([(node['_nx_name'], source_id)])
             G.es[G.get_eid(node['_nx_name'],source_id)]['weight'] = weight_avg
-            print(node)
+            G.es[G.get_eid(node['_nx_name'],source_id)]['pts'] = connector(source_coord,node['o'])
+            print('connected')
         if node['o'][plane] > boundary2[0] and node['o'][plane] < boundary2[1]:
             G.add_edges([(node['_nx_name'], sink_id)])
-            G.es[G.get_eid(node['_nx_name'],sink_id)]['weight'] = weight_avg
-            print(node)
+            G.es[G.get_eid(node['_nx_name'],sink_id)]['weight'] = weight_avg 
+            G.es[G.get_eid(node['_nx_name'],sink_id)]['pts'] = connector(sink_coord,node['o'])
+            print('connected')
+
+#Write skeleton connected to external node
+    print(G.is_connected(), ' connected') 
+    connected_name = os.path.split(gsd_name)[0] + '/connected_' + os.path.split(gsd_name)[1] 
+    G_to_gsd(G, connected_name)
 
     L = weighted_Laplacian(G)
     I = np.zeros(sink_id+1)
@@ -640,7 +667,7 @@ def flow_distribution(stack_directory, gsd_name, plane, boundary1, boundary2, gr
     i,j = axes[axes!=plane]
     plane_centre1 = np.array([0,0,0])
     delta = np.array([0,0,0])
-    delta[plane] = 10 #Arbitrary. Standardize?
+    delta[plane] = 100 #Arbitrary. Standardize?
     plane_centre1[i] = dims[i]/2
     plane_centre1[j] = dims[j]/2
     plane_centre2 = np.copy(plane_centre1)
