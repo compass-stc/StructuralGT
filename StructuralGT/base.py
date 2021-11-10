@@ -563,7 +563,7 @@ def weighted_Laplacian(G):
 def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2, graph=None, crop=None, I_dim=1):#, R_dim=1):
     if graph is None:
         start = time.time()
-        G = gsd_to_G(gsd_name, crop)
+        G = gsd_to_G(gsd_name, crop=crop)
         end = time.time()
         print('Ran gsd_to_G() in', end-start)    
     else:
@@ -598,7 +598,7 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     i,j = axes[axes!=plane]
     plane_centre1 = np.array([0,0,0])
     delta = np.array([0,0,0])
-    delta[plane] = 100 #Arbitrary. Standardize?
+    delta[plane] = 10 #Arbitrary. Standardize?
     plane_centre1[i] = dims[i]/2
     plane_centre1[j] = dims[j]/2
     plane_centre2 = np.copy(plane_centre1)
@@ -647,34 +647,31 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
 #Note that the gsd_name specified in Node_labelling is the name under which to save the labelled graph; the gsd_name given in *args is the file in which the unlabelled graph should be extracted from
 def Node_labelling(AttrCalcFunc, attribute_name, gsd_name, *args, **kwargs):
 
-    positions = gsd.hoomd.open(name=gsd_name, mode='rb')[0].particles.position
-    
-    start = time.time()
-    attribute,G = AttrCalcFunc(*args, **kwargs)
-    print(attribute)
-    end = time.time()
-    print('Ran gsd_to_G() in', end-start)    
-    #G = sub_G(G)
-    #G = ig.Graph.from_networkx(G) 
-    save_name = os.path.split(gsd_name)[0] + '/'+attribute_name + os.path.split(gsd_name)[1]
-    f = gsd.hoomd.open(name=save_name, mode='wb')
-    node_positions = np.asarray(list(G.vs()[i]['o'] for i in range(G.vcount())))
-    node_positions = shift(node_positions).astype(int)
-    positions = node_positions
-    print('initial node_positions are ', node_positions)
-    for edge in G.es():
-        print(edge['pts'])
-        positions=np.vstack((positions,edge['pts']))
-    positions = np.unique(positions, axis=0)
-    node_positions = np.unique(node_positions, axis=0)
-    positions = shift(positions).astype(int)
-    print('final positions are ', positions)
-    print('node positions are ', node_positions)
+    #positions = gsd.hoomd.open(name=gsd_name, mode='rb')[0].particles.position
     #node_origin_shift =(np.full((np.shape(node_positions)[0],3),[np.max(positions.T[0])/2,np.max(positions.T[1])/2,np.max(positions.T[2])/2])) 
     #position_origin_shift = (np.full((np.shape(positions)[0],3),[np.max(positions.T[0])/2,np.max(positions.T[1])/2,np.max(positions.T[2])/2]))
     #node_positions = node_positions - node_origin_shift
     #positions = positions - position_origin_shift
 
+
+    start = time.time()
+    attribute,G = AttrCalcFunc(*args, **kwargs)
+    print(attribute)
+    end = time.time()
+    #G = sub_G(G)
+    #G = ig.Graph.from_networkx(G) 
+    save_name = os.path.split(gsd_name)[0] + '/'+attribute_name + os.path.split(gsd_name)[1]
+    f = gsd.hoomd.open(name=save_name, mode='wb')
+    node_positions = np.asarray(list(G.vs()[i]['o'] for i in range(G.vcount())))
+    #node_positions = shift(node_positions).astype(int)
+    positions = node_positions
+    for edge in G.es():
+        positions=np.vstack((positions,edge['pts']))
+    positions = np.unique(positions, axis=0)
+    #positions = shift(positions).astype(int)
+    print('final positions are ', positions)
+    print('node positions are ', node_positions)
+    
     s = gsd.hoomd.Snapshot()
     N = len(positions)
     s.particles.N = N
@@ -690,11 +687,38 @@ def Node_labelling(AttrCalcFunc, attribute_name, gsd_name, *args, **kwargs):
     print('ig node_positions has len ', len(node_positions))
     print('attribute has len ', len(attribute))
     print('log has len ', len(s.log['particles/'+attribute_name]))
+    j=0
+    print(attribute[2])
     for i,particle in enumerate(positions):
-        for j,node in enumerate(node_positions):
-            if sum(node == particle) == 3:
-                s.log['particles/'+attribute_name][i] = attribute[j]
-                s.particles.typeid[i] = 1
+        node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[0]
+        if len(node_id) == 0: 
+            continue
+        else:
+            print(node_id)
+            print(particle, attribute[node_id])
+            s.log['particles/'+attribute_name][i] = attribute[node_id[0]]
+            s.particles.typeid[i] = 1
+            j+=1
+    
+
+
+    #    for j,node in enumerate(node_positions):
+    #        if sum(node == particle) == 3:
+    #            s.log['particles/'+attribute_name][i] = attribute[j]
+    #            s.particles.typeid[i] = 1
+    
+
+    #a,b,c=np.intersect1d(positions, node_positions, return_indices=True)
+    #print(a)
+    #print(b)
+    #print(c)
+
+    #print('node indices has len ', len(node_indices))
+    #for i,index in enumerate(node_indices):
+    #    s.log['particles/'+attribute_name][index] = attribute[i]
+    #    s.particles.typeid[index] = 1
+    
+
 
     f.append(s)
  
