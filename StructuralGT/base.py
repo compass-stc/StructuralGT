@@ -52,6 +52,13 @@ def shift(points):
     points = points - shift
     return points
 
+#Shifts points with negative entries such that all positions become positive
+def nshift(points):
+    shift=(np.full((np.shape(points)[0],3),[np.min(points.T[0]),np.min(points.T[1]),np.min(points.T[2])]))
+    points = points - shift
+    print(shift)
+    return points
+
 def gsd_to_canvas(gsd_name):
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
     positions = frame.particles.position.astype(int)
@@ -145,6 +152,8 @@ def gsd_to_G(gsd_name, crop=False, sub=False):
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
     positions = frame.particles.position.astype(int)
     print(positions)
+    if sum((positions<0).ravel()) != 0:
+        positions = nshift(positions)
     if crop != False:
         from numpy import logical_and as a
         p=positions.T
@@ -561,6 +570,13 @@ def weighted_Laplacian(G):
 
 #The 'plane' arguement defines the /axis/ which along which the boundary arguements refer to
 def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2, graph=None, crop=None, I_dim=1):#, R_dim=1):
+    print('stack_directory ', stack_directory)
+    print('gsd_name ', gsd_name)
+    print('plane', plane)
+    print('boundary1 ', boundary1)
+    print('boundarry2 ', boundary2)
+    print('crop', crop)
+    
     if graph is None:
         start = time.time()
         G = gsd_to_G(gsd_name, crop=crop)
@@ -638,6 +654,7 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     np.save('I.npy',I)
     VC =np.linalg.solve(L,I)
     np.save('VC.npy',VC)
+    print(VC)
     return VC,G
 
 #Labelling function which takes an attribute calculating function and its relevant parameters (usually gsd, img_bin and, optionally, crop)
@@ -645,22 +662,16 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
 #The labelling funciton appends the attribute to the graph and rewrites the gsd
 #Note that all attribute calculating functions must return the attribute tensor and the graph which is to be labelled
 #Note that the gsd_name specified in Node_labelling is the name under which to save the labelled graph; the gsd_name given in *args is the file in which the unlabelled graph should be extracted from
-def Node_labelling(AttrCalcFunc, attribute_name, gsd_name, *args, **kwargs):
+def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
 
     #positions = gsd.hoomd.open(name=gsd_name, mode='rb')[0].particles.position
-    #node_origin_shift =(np.full((np.shape(node_positions)[0],3),[np.max(positions.T[0])/2,np.max(positions.T[1])/2,np.max(positions.T[2])/2])) 
-    #position_origin_shift = (np.full((np.shape(positions)[0],3),[np.max(positions.T[0])/2,np.max(positions.T[1])/2,np.max(positions.T[2])/2]))
-    #node_positions = node_positions - node_origin_shift
-    #positions = positions - position_origin_shift
-
-
     start = time.time()
     attribute,G = AttrCalcFunc(*args, **kwargs)
     print(attribute)
     end = time.time()
     #G = sub_G(G)
     #G = ig.Graph.from_networkx(G) 
-    save_name = os.path.split(gsd_name)[0] + '/'+attribute_name + os.path.split(gsd_name)[1]
+    save_name = os.path.split(prefix)[0] + '/'+attribute_name + os.path.split(prefix)[1]
     f = gsd.hoomd.open(name=save_name, mode='wb')
     node_positions = np.asarray(list(G.vs()[i]['o'] for i in range(G.vcount())))
     #node_positions = shift(node_positions).astype(int)
@@ -669,6 +680,14 @@ def Node_labelling(AttrCalcFunc, attribute_name, gsd_name, *args, **kwargs):
         positions=np.vstack((positions,edge['pts']))
     positions = np.unique(positions, axis=0)
     #positions = shift(positions).astype(int)
+    
+    node_origin_shift =(np.full((np.shape(node_positions)[0],3),[np.max(positions.T[0])/2,np.max(positions.T[1])/2,np.max(positions.T[2])/2])) 
+    position_origin_shift = (np.full((np.shape(positions)[0],3),[np.max(positions.T[0])/2,np.max(positions.T[1])/2,np.max(positions.T[2])/2]))
+    node_positions = node_positions - node_origin_shift
+    positions = positions - position_origin_shift
+
+
+    
     print('final positions are ', positions)
     print('node positions are ', node_positions)
     
@@ -678,7 +697,7 @@ def Node_labelling(AttrCalcFunc, attribute_name, gsd_name, *args, **kwargs):
     s.particles.position = positions
     s.particles.types = ['Edge', 'Node']
     s.particles.typeid = [0]*N
-    L = list(max(positions.T[i]) for i in (0,1,2))
+    L = list(max(positions.T[i])*2 for i in (0,1,2))
     s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
     s.log['particles/'+attribute_name] = [np.NaN]*N
     start = time.time()
@@ -694,8 +713,6 @@ def Node_labelling(AttrCalcFunc, attribute_name, gsd_name, *args, **kwargs):
         if len(node_id) == 0: 
             continue
         else:
-            print(node_id)
-            print(particle, attribute[node_id])
             s.log['particles/'+attribute_name][i] = attribute[node_id[0]]
             s.particles.typeid[i] = 1
             j+=1
