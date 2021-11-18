@@ -293,7 +293,15 @@ def make_skel(img_bin, merge, prune, clean, r_size, _3d=False):
         print(np.where(Bp==1))
         Bp_coord_z, Bp_coord_y, Bp_coord_x = np.arange(len(img_bin)), np.where(Bp == 1)[0], np.where(Bp == 1)[1]
         Ep_coord_z, Ep_coord_y, Ep_coord_x = np.arange(len(img_bin)), np.where(Ep == 1)[0], np.where(Ep == 1)[1]
-
+    else:
+        img_bin = (img_bin/255).astype(np.bool)
+        skeleton = skeletonize(img_bin)
+        skel_int = 1*skeleton
+        Bp = branchedPoints(skel_int)
+        Ep = endPoints(skel_int)
+        Bp_coord_y, Bp_coord_x = np.where(Bp == 1)
+        Ep_coord_y, Ep_coord_x = np.where(Ep == 1)
+    
     # calling the three functions for merging nodes, pruning edges, and removing disconnected segments
     if(merge == 1):
         skeleton = merge_nodes(skeleton)

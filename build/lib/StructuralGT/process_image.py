@@ -80,12 +80,30 @@ def thresh_it(image, Threshtype, fg_color, asize, thresh):
         else:
             img_bin = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
             ret = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[0]
+    else:
+        raise ValueError('Threshtype must be 0,1 or 2')
 
     return img_bin, ret
 
 
-def binarize(source, Threshtype=0, gamma=1, md_filter=0, g_blur=0, autolvl=0, fg_color=0, \
-             laplacian=0, scharr=0, sobel=0, lowpass=0, asize=1, bsize=1, wsize=1, thresh=127):
+def binarize(source, options):
+    
+    Threshtype = int(options['Thresh_method'])
+    gamma = options['gamma']
+    md_filter = options['md_filter']
+    g_blur = options['g_blur']
+    autolvl = options['autolvl']
+    fg_color = options['fg_color']
+    laplacian = options['laplacian']
+    scharr = options['scharr']
+    sobel = options['sobel']
+    lowpass = options['lowpass']
+    asize = int(options['asize'])
+    bsize = int(options['bsize'])
+    print(bsize)
+    wsize = int(options['wsize'])
+    thresh = options['thresh']
+
     global img
     global img_bin
 
@@ -189,6 +207,5 @@ def binarize(source, Threshtype=0, gamma=1, md_filter=0, g_blur=0, autolvl=0, fg
         #img_back = cv2.magnitude(img_back[:, :, 0], img_back[:, :, 1])
         #cv2.normalize(img_back, img_back, 0, 255, cv2.NORM_MINMAX)
         #img = cv2.convertScaleAbs(img_back)
-
     img_bin, ret = thresh_it(img, Threshtype, fg_color, asize, thresh)
     return img, img_bin, ret

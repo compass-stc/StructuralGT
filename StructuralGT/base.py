@@ -660,8 +660,8 @@ def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
     save_name = os.path.split(prefix)[0] + '/'+attribute_name + os.path.split(prefix)[1]
     f = gsd.hoomd.open(name=save_name, mode='wb')
     node_positions = np.asarray(list(G.vs()[i]['o'] for i in range(G.vcount())))
-    #i = gsd.hoomd.open(name=save_name, mode='wb')
-    node_positions = shift(node_positions).astype(int)
+    #f = gsd.hoomd.open(name=save_name, mode='wb')
+    #node_positions = shift(node_positions).astype(int)
     positions = node_positions
     for edge in G.es():
         positions=np.vstack((positions,edge['pts']))

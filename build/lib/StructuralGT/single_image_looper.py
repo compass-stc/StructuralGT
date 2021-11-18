@@ -198,11 +198,11 @@ def Confirm_button():
     return src, saveloc, filename
 
 
-def Confirm_button_ex():
+def Confirm_button_ex(options):
 
     # sending the cropped image
     src, saveloc, filename = Confirm_button()
-    settings.adjust_settings(root, src, saveloc, filename)
+    settings.adjust_settings(root, src, saveloc, filename, options)
 
 
 def Confirm_nocrop_button():
@@ -227,11 +227,11 @@ def Confirm_nocrop_button():
     return src, saveloc, filename
 
 
-def Confirm_nocrop_button_ex():
+def Confirm_nocrop_button_ex(options):
 
     # send to settings.py without cropping the image
     src, saveloc, filename = Confirm_nocrop_button()
-    settings.adjust_settings(root, src, saveloc, filename)
+    settings.adjust_settings(root, src, saveloc, filename, options)
 
 
 def newimwindow():
@@ -273,7 +273,7 @@ def newimwindow():
 
 
 def make_gui():
-
+    options = dict(Thresh_method=0, gamma=1, md_filter=0, g_blur=0, autolvl=0, fg_color=0, laplacian=0, scharr=0, sobel=0, lowpass=0, asize=3, bsize=3, wsize=3, thresh=1)
     # Making a window and declaring a few variables
     global root
     root = Tk()
@@ -322,7 +322,7 @@ def make_gui():
 
     # all of the buttons and calling their respective function calls
     #button0 = Button(frame3, text="Proceed with crop", bg="Green", command=Confirm_button_ex)
-    button1 = Button(frame3, text="Proceed without crop", fg="Black", command=lambda: Confirm_nocrop_button_ex())
+    button1 = Button(frame3, text="Proceed without crop", fg="Black", command=lambda: Confirm_nocrop_button_ex(options))
     button2 = Button(frame3, text="Exit", bg="Red", command=lambda: frame3.quit())
     button3 = Button(frame2, text="Select file...", bg="gray", command=lambda: getfile())
     button4 = Button(frame2, text="Choose Save Location...", bg="gray", command=lambda: choosesave())
