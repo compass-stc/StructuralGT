@@ -507,12 +507,11 @@ def stack_to_gsd(stack_directory, gsd_name, crop=False, debubble=False):
             pass
 
     positions = np.asarray(np.where(np.asarray(img_bin) != 0)).T
-    dims = np.asarray(list(max(positions.T[i]) for i in (0,1,2)))
     if crop != False:
-        from numpy import logical_and as a
-        crop_abs = (dims[0]*crop[0], dims[0]*crop[1], dims[1]*crop[2], dims[1]*crop[3], dims[2]*crop[4], dims[2]*crop[5])
-        p=positions.T
-        positions = p.T[a(a(a(a(a(p[0]>crop_abs[0],p[0]<crop_abs[1]),p[1]>crop_abs[2]),p[1]<crop_abs[3]),p[2]>crop_abs[4]),p[2]<crop_abs[5])]
+            from numpy import logical_and as a
+            p=positions.T
+            positions = p.T[a(a(a(a(a(p[0]>crop[0],p[0]<crop[1]),p[1]>crop[2]),p[1]<crop[3]),p[2]>crop[4]),p[2]<crop[5])]
+            positions = shift(positions)
 
     with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
         s = gsd.hoomd.Snapshot()
