@@ -23,6 +23,7 @@ Contact email: vecdrew@umich.edu
 
 #from __main__ import *
 import networkx as nx
+import igraph as ig
 import pandas as pd
 import numpy as np
 from statistics import mean
@@ -52,11 +53,11 @@ def run_GT_calcs(G, Do_kdist, Do_dia, Do_BCdist, Do_CCdist, Do_ECdist, \
         Do_ECdist = 0
         Do_clust = 0
 
-    nnum = int(nx.number_of_nodes(G))
-    enum = int(nx.number_of_edges(G))
+    nnum = int(G.vcount())
+    enum = int(G.vcount())
 
     if Do_ANC | Do_dia:
-        connected_graph = nx.is_connected(G)
+        connected_graph = G.is_connected()
 
 
     data_dict["x"].append("Number of nodes")
@@ -69,7 +70,7 @@ def run_GT_calcs(G, Do_kdist, Do_dia, Do_BCdist, Do_CCdist, Do_ECdist, \
 
     # creating degree histogram
     if(Do_kdist == 1):
-        klist1 = nx.degree(G)
+        klist1 = g.degree()
         ksum = 0
         klist = np.zeros(len(klist1))
         for j in range(len(klist1)):
@@ -83,7 +84,7 @@ def run_GT_calcs(G, Do_kdist, Do_dia, Do_BCdist, Do_CCdist, Do_ECdist, \
     # calculating network diameter
     if(Do_dia ==1):
         if connected_graph:
-            dia = int(diameter(G))
+            dia = g.diameter()
         else:
             dia = 'NaN'
         data_dict["x"].append("Network diameter")
@@ -92,55 +93,42 @@ def run_GT_calcs(G, Do_kdist, Do_dia, Do_BCdist, Do_CCdist, Do_ECdist, \
 
     # calculating graph density
     if(Do_GD == 1):
-        GD = nx.density(G)
+        GD = g.density()
         GD = round(GD, 5)
         data_dict["x"].append("Graph density")
         data_dict["y"].append(GD)
 
 
+    # not available on igraph
     # calculating global efficiency
-    if (Do_Eff == 1):
-        Eff = global_efficiency(G)
-        Eff = round(Eff, 5)
-        data_dict["x"].append("Global efficiency")
-        data_dict["y"].append(Eff)
-
-
-    if (Do_WI == 1):
-        WI = wiener_index(G)
-        WI = round(WI, 1)
-        data_dict["x"].append("Wiener Index")
-        data_dict["y"].append(WI)
+    #if (Do_Eff == 1):
+    #    Eff = global_efficiency(G)
+       #   Eff = round(Eff, 5)
+       #         # data_dict["x"].append("Global efficiency")
+       #         # data_dict["y"].append(Eff)
+       #  
+    #Extensive index; not available on igraph
+    #if (Do_WI == 1):
+    #    WI = wiener_index(G)
+    #    WI = round(WI, 1)
+    #   data_dict["x"].append("Wiener Index")
+    #   data_dict["y"].append(WI)
 
 
 
     # calculating clustering coefficients
+    # Local coefficient calculations have been removed
     if(Do_clust == 1):
-        sleep(5)
-        Tlist1 = clustering(G)
-        Tlist = np.zeros(len(Tlist1))
-        for j in range(len(Tlist1)):
-            Tlist[j] = Tlist1[j]
-        clust = average_clustering(G)
+        clust = G.transistivity_undirected()
         clust = round(clust, 5)
         data_dict["x"].append("Average clustering coefficient")
         data_dict["y"].append(clust)
 
-    # calculating average nodal connectivity
-
-    if (Do_ANC == 1):
-        if connected_graph:
-            ANC = average_node_connectivity(G)
-            ANC = round(ANC, 5)
-        else:
-            ANC = 'NaN'
-        data_dict["x"].append("Average nodal connectivity")
-        data_dict["y"].append(ANC)
-
+    # ANC removed because it is its own function in base.py
 
     # calculating assortativity coefficient
     if (Do_Ast == 1):
-        Ast = degree_assortativity_coefficient(G)
+        Ast = G.assortativity_degree()
         Ast = round(Ast, 5)
         data_dict["x"].append("Assortativity coefficient")
         data_dict["y"].append(Ast)
@@ -148,13 +136,8 @@ def run_GT_calcs(G, Do_kdist, Do_dia, Do_BCdist, Do_CCdist, Do_ECdist, \
 
     # calculating betweenness centrality histogram
     if (Do_BCdist == 1):
-        BCdist1 = betweenness_centrality(G)
-        Bsum = 0
-        BCdist = np.zeros(len(BCdist1))
-        for j in range(len(BCdist1)):
-            Bsum += BCdist1[j]
-            BCdist[j] = BCdist1[j]
-        Bcent = Bsum / len(BCdist1)
+        BCdist = G.betweenness()
+        Bcent = np.mean(BCdist)
         Bcent = round(Bcent, 5)
         data_dict["x"].append("Average betweenness centrality")
         data_dict["y"].append(Bcent)
@@ -162,13 +145,8 @@ def run_GT_calcs(G, Do_kdist, Do_dia, Do_BCdist, Do_CCdist, Do_ECdist, \
 
     # calculating closeness centrality
     if(Do_CCdist == 1):
-        CCdist1 = closeness_centrality(G)
-        Csum = 0
-        CCdist = np.zeros(len(CCdist1))
-        for j in range(len(CCdist1)):
-            Csum += CCdist1[j]
-            CCdist[j] = CCdist1[j]
-        Ccent = Csum / len(CCdist1)
+        CCdist = G.closeness()        
+        Ccent = np.mean(CCdist)
         Ccent = round(Ccent, 5)
         data_dict["x"].append("Average closeness centrality")
         data_dict["y"].append(Ccent)
@@ -176,16 +154,8 @@ def run_GT_calcs(G, Do_kdist, Do_dia, Do_BCdist, Do_CCdist, Do_ECdist, \
 
     # calculating eigenvector centrality
     if(Do_ECdist == 1):
-        try:
-            ECdist1 = eigenvector_centrality(G, max_iter=100)
-        except:
-            ECdist1 = eigenvector_centrality(G, max_iter=10000)
-        Esum = 0
-        ECdist = np.zeros(len(ECdist1))
-        for j in range(len(ECdist1)):
-            Esum += ECdist1[j]
-            ECdist[j] = ECdist1[j]
-        Ecent = Esum / len(ECdist1)
+        ECdist = G.eigenvector_centrality()
+        Ecent = np.mean(ECdist)
         Ecent = round(Ecent, 5)
         data_dict["x"].append("Average eigenvector centrality")
         data_dict["y"].append(Ecent)
@@ -195,7 +165,7 @@ def run_GT_calcs(G, Do_kdist, Do_dia, Do_BCdist, Do_CCdist, Do_ECdist, \
 
     data = pd.DataFrame(data_dict)
 
-    return data, klist, Tlist, BCdist, CCdist, ECdist
+    return data,# klist, Tlist, BCdist, CCdist, ECdist
 
 def run_weighted_GT_calcs(G, Do_kdist, Do_BCdist, Do_CCdist, Do_ECdist, Do_ANC, Do_Ast, Do_WI, multigraph):
 
