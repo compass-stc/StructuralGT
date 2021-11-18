@@ -169,7 +169,7 @@ def gsd_to_G(gsd_name, crop=False, sub=False):
     if sub:
         G = sub_G(G)
     end = time.time()
-    print('Ran gsd_to_G in ', end-start, 'for a graph with ', len(G.nodes()), 'nodes.')
+    print('Ran gsd_to_G in ', end-start, 'for a graph with ', G.vcount(), 'nodes.')
     return G
     
 #Function reads, crops and rewrites gsd file. TODO write branch and endpoint data to new gsd file (currently this info is lost).
@@ -194,11 +194,12 @@ def gsd_crop(gsd_name, save_name, crop):
         f.append(s)
     
 #Compute heavy calculations
-def G_analysis(G):
-    from networkx.algorithms.connectivity.connectivity import average_node_connectivity as anc
-    #Obtain the largest connected induced subgraph of G
-    G_sub  = G.subgraph(max(nx.connected_components(G), key=len).copy()) 
-    return anc(G_sub)
+#NOT RELEVANT FOR IGRAPH BRANCH
+#def G_analysis(G):
+#    from networkx.algorithms.connectivity.connectivity import average_node_connectivity as anc
+#    #Obtain the largest connected induced subgraph of G
+#    G_sub  = G.subgraph(max(nx.connected_components(G), key=len).copy()) 
+#    return anc(G_sub)
 
 #Performs and times compute light averaged GT calcs
 def G_analysis_lite(gsd_name):
@@ -227,14 +228,17 @@ def G_analysis_lite(gsd_name):
             pass
 #Function generates largest connected induced subgraph. Node and edge numbers are reset such that they are consecutive integers, starting from 0
 def sub_G(G):
-    G_sub  = G.subgraph(max(nx.connected_components(G), key=len).copy())
-    G = nx.relabel.convert_node_labels_to_integers(G_sub)
+   components = G.clusters()
+   G = components.giant()
+   
+   
+   # G_sub  = G.subgraph(max(nx.connected_components(G), key=len).copy())
+   # G = nx.relabel.convert_node_labels_to_integers(G_sub)
     
-    return G
+   return G
 
 #Function takes a gsd name, generates a graph with gsd_to_G() and resaves a new .gsd file which has some nodewise indices saved to the file
 def G_labelling(gsd_name, graph=None, tool='networkx'):
-    from networkx.algorithms.centrality import betweenness_centrality, closeness_centrality
 
     positions = gsd.hoomd.open(name=gsd_name, mode='rb')[0].particles.position
     if graph is None:
@@ -245,23 +249,11 @@ def G_labelling(gsd_name, graph=None, tool='networkx'):
     else:
          G = graph
 
-    if tool=='networkx':
-        operations = [nx.degree, nx.clustering, betweenness_centrality, closeness_centrality]
-        names = ['Degree', 'Clustering', 'Betweenness_Centrality', 'Closeness_Centrality']
-        node_positions = np.asarray(list(G.nodes()[i]['o'] for i in np.arange(len(G.nodes()))))
-    elif tool=='igraph':
-        G = ig.Graph.from_networkx(G)
-        operations = [G.degree, G.betweenness, G.closeness]
-        names = ['Degree', 'Betweenness_Centrality', 'Closeness_Centrality']
-        node_positions = np.asarray(G.vs['o'])
-    else:
-        print('invalid tool arguement')
+    operations = [G.degree, G.betweenness, G.closeness]
+    names = ['Degree', 'Betweenness_Centrality', 'Closeness_Centrality']
+    node_positions = np.asarray(G.vs['o'])
     
-    save_name = os.path.split(gsd_name)[0] + '/labelled_' + os.path.split(gsd_name)[1]
-    f = gsd.hoomd.open(name=save_name, mode='wb')
-
-    
-
+    save_name = os.path.join(os.path.split(gsd_name)[0],'labelled_'+os.path.split(gsd_name)[1]) #REFERENCE CONCATENATOR
     node_positions = shift(node_positions).astype(int)
     positions = shift(positions).astype(int)
     
@@ -270,8 +262,6 @@ def G_labelling(gsd_name, graph=None, tool='networkx'):
 
     #node_positions = node_positions - node_origin_shift
     #positions = positions - position_origin_shift
-    print(node_positions)
-    print(positions)
     s = gsd.hoomd.Snapshot()
     N = len(positions)
     s.particles.N = N
@@ -280,25 +270,25 @@ def G_labelling(gsd_name, graph=None, tool='networkx'):
     s.particles.typeid = [0]*N
     L = list(max(positions.T[i])*2 for i in (0,1,2))
     s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
-    G = ig.Graph.from_networkx(G)
     for name,operation in zip(names,operations):
         s.log['particles/'+name] = [np.NaN]*N
         start = time.time()
-        if tool=='networkx':
-            index_list = operation(G)
-        elif tool=='igraph':
-            index_list = operation()
+        index_list = operation()
 
         end = time.time()
         print('Ran ', operation, ' in ', end-start)
     
+        j=0
         for i,particle in enumerate(positions):
-            for j,node in enumerate(node_positions):
-                if sum(node == particle) == 3:
-                    s.log['particles/'+name][i] = index_list[j]
-                    s.particles.typeid[i] = 1
-
-    f.append(s)
+            node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[0]
+            if len(node_id) == 0: 
+                continue
+            else:
+                s.log['particles/'+name][i] = index_list[node_id[0]]
+                s.particles.typeid[i] = 1
+                j+=1
+    with gsd.hoomd.open(name=save_name, mode='wb') as f:
+        f.append(s)
     
 #GT_Params_noGUI is a modified copy of the original SGT .py file, with the GUI modules removed    
 def write_averaged(gsd_name):
@@ -307,13 +297,13 @@ def write_averaged(gsd_name):
     start = time.time()
     G = gsd_to_G(gsd_name)
     end = time.time()
-    print('Ran gsd_to_G() in ', end-start, 'for a graph with ', len(G.nodes()), 'nodes')
+    print('Ran gsd_to_G() in ', end-start, 'for a graph with ', G.vcount(), 'nodes')
     G = sub_G(G)
     
     start = time.time()
-    data,klist,Tlist,BCdist,CCdist,ECdist = GT_Params_noGUI.run_GT_calcs(G,1,1,1,1,1,1,1,1,0,1,1,0)
+    data = GT_Params_noGUI.run_GT_calcs(G,1,1,1,1,1,1,1,1,0,1,1,0)
     end = time.time()
-    print('Ran GT_Params in', end-start, 'for a graph with ', len(G.nodes()), 'nodes')
+    print('Ran GT_Params in', end-start, 'for a graph with ', G.vcount(), 'nodes')
     datas = pd.DataFrame(data)
     datas.to_csv(gsd_name + 'Averaged_indices.csv')
 
@@ -370,6 +360,7 @@ def igraph_ANC(directory, I):
     
     return ANC
 
+#Redundant if the GT_Params_noGUI is from the igraph branch 
 def igraph_avg_indices(I):
     avg_indices = dict()
     
@@ -395,7 +386,7 @@ def igraph_calcs(directory, G):
         start = time.time()
         np.savetxt(directory+'/'+name+'.csv', operation())
         end=time.time()
-        print('Saved ', operation, ' in ', end-start, ' for a graph with ', len(G.nodes()), ' nodes')
+        print('Saved ', operation, ' in ', end-start, ' for a graph with ', G.vcount(), ' nodes')
     
     avg_indices = igraph_avg_indices(I)
     
@@ -530,13 +521,13 @@ def add_weights(G, stack_directory, crop=None, weight_type=None):
     end = time.time()
     print('Loaded img in ', end-start)
     start = time.time()
-    for (s, e) in G.edges():
-        ge = G[s][e]['pts']
+    for i,edge in enumerate(G.es()):
+        ge = edge['pts']
         pix_width, wt = GetWeights_3d.assignweights(ge, img_bin, weight_type=weight_type)
-        G[s][e]['pixel width'] = pix_width
-        G[s][e]['weight'] = wt
+        edge['pixel width'] = pix_width
+        edge['weight'] = wt
     end = time.time()
-    print('Added weights to a graph  with ', len(G.nodes()), 'nodes in ', end-start)
+    print('Added weights to a graph  with ', G.vcount(), 'nodes in ', end-start)
     
     return G
 
@@ -569,14 +560,8 @@ def weighted_Laplacian(G):
     return L
 
 #The 'plane' arguement defines the /axis/ which along which the boundary arguements refer to
-def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2, graph=None, crop=None, I_dim=1):#, R_dim=1):
-    print('stack_directory ', stack_directory)
-    print('gsd_name ', gsd_name)
-    print('plane', plane)
-    print('boundary1 ', boundary1)
-    print('boundarry2 ', boundary2)
-    print('crop', crop)
-    
+#Weighted=False enables the unusual case of all edges having the same resistance and can be used to establish the relative effects of geometry and topology
+def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2, graph=None, crop=None, weighted=True, I_dim=1):#, R_dim=1):
     if graph is None:
         start = time.time()
         G = gsd_to_G(gsd_name, crop=crop)
@@ -586,15 +571,16 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
         G = graph
     
     G = sub_G(G)
-    G = add_weights(G, stack_directory, crop, weight_type='Resistance')
-    G = ig.Graph.from_networkx(G)  
+    if weighted:
+        G = add_weights(G, stack_directory, crop, weight_type='Resistance')
+    
     weight_array = np.asarray(G.es['weight']).astype(float)
     weight_array = weight_array[~np.isnan(weight_array)]
     weight_avg =np.mean(weight_array)
   
 
 #Add source and sink nodes:
-    source_id = max(G.vs)['_nx_name'] + 1
+    source_id = max(G.vs).index + 1
     sink_id = source_id + 1
     G.add_vertices(2)
 #Add coords for plotting
@@ -630,13 +616,13 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     print('Before connecting external nodes, G has vcount ', G.vcount())
     for node in G.vs:
         if node['o'][plane] > boundary1[0] and node['o'][plane] < boundary1[1]:
-            G.add_edges([(node['_nx_name'], source_id)])
-            G.es[G.get_eid(node['_nx_name'],source_id)]['weight'] = weight_avg
-            G.es[G.get_eid(node['_nx_name'],source_id)]['pts'] = connector(source_coord,node['o'])
+            G.add_edges([(node.index, source_id)])
+            G.es[G.get_eid(node.index,source_id)]['weight'] = weight_avg
+            G.es[G.get_eid(node.index,source_id)]['pts'] = connector(source_coord,node['o'])
         if node['o'][plane] > boundary2[0] and node['o'][plane] < boundary2[1]:
-            G.add_edges([(node['_nx_name'], sink_id)])
-            G.es[G.get_eid(node['_nx_name'],sink_id)]['weight'] = weight_avg 
-            G.es[G.get_eid(node['_nx_name'],sink_id)]['pts'] = connector(sink_coord,node['o'])
+            G.add_edges([(node.index, sink_id)])
+            G.es[G.get_eid(node.index,sink_id)]['weight'] = weight_avg 
+            G.es[G.get_eid(node.index,sink_id)]['pts'] = connector(sink_coord,node['o'])
 
 #Write skeleton connected to external node
     print(G.is_connected(), ' connected')
@@ -674,7 +660,8 @@ def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
     save_name = os.path.split(prefix)[0] + '/'+attribute_name + os.path.split(prefix)[1]
     f = gsd.hoomd.open(name=save_name, mode='wb')
     node_positions = np.asarray(list(G.vs()[i]['o'] for i in range(G.vcount())))
-    #node_positions = shift(node_positions).astype(int)
+    #i = gsd.hoomd.open(name=save_name, mode='wb')
+    node_positions = shift(node_positions).astype(int)
     positions = node_positions
     for edge in G.es():
         positions=np.vstack((positions,edge['pts']))
