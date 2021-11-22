@@ -193,13 +193,6 @@ def gsd_crop(gsd_name, save_name, crop):
     with gsd.hoomd.open(name=save_name, mode='wb') as f:
         f.append(s)
     
-#Compute heavy calculations
-#NOT RELEVANT FOR IGRAPH BRANCH
-#def G_analysis(G):
-#    from networkx.algorithms.connectivity.connectivity import average_node_connectivity as anc
-#    #Obtain the largest connected induced subgraph of G
-#    G_sub  = G.subgraph(max(nx.connected_components(G), key=len).copy()) 
-#    return anc(G_sub)
 
 #Performs and times compute light averaged GT calcs
 def G_analysis_lite(gsd_name):
@@ -238,7 +231,7 @@ def sub_G(G):
    return G
 
 #Function takes a gsd name, generates a graph with gsd_to_G() and resaves a new .gsd file which has some nodewise indices saved to the file
-def G_labelling(gsd_name, graph=None, tool='networkx'):
+def G_labelling(gsd_name, graph=None):
 
     positions = gsd.hoomd.open(name=gsd_name, mode='rb')[0].particles.position
     if graph is None:
@@ -465,7 +458,7 @@ def ExpProcess(directory, options_json=None):
     #Generate
     i=0    
     for name in sorted(os.listdir(directory)):
-        if name.endswith('.tif')==False:
+        if Q_img(name)==False:
             pass
         else:
             img_exp = cv.imread(directory+'/'+name,cv.IMREAD_GRAYSCALE)
@@ -475,10 +468,9 @@ def ExpProcess(directory, options_json=None):
             plt.imsave(directory+'/'+'Binarized'+'/'+'slice'+str(i)+'.tiff', img_bin, cmap=cm.gray)
             i+=1
 
-#Unusual case of writing binary stack to gsd without skeletonizing. Effective for creating direct 3d reconstruction.
+#Skeletonize=False enables unusual case of writing binary stack to gsd without skeletonizing. Effective for creating direct 3d reconstruction.
 #Takes directory where stack is located, and a gsd write filename
-#NOTE THIS CROPPING IMPLEMENTATION USES FRACTIONAL VALUES
-def stack_to_gsd(stack_directory, gsd_name, crop=False, debubble=False):
+def stack_to_gsd(stack_directory, gsd_name, crop=False, skeletonize=True):
     start = time.time()
     img_bin=[]
 
@@ -496,14 +488,16 @@ def stack_to_gsd(stack_directory, gsd_name, crop=False, debubble=False):
             i=i+1
         else:
             pass
+    if skeletonize:
+        img_bin = skeletonize_3d(np.asarray(img_bin))
+    else:
+        img_bin = np.asarray(img_bin)
 
-    positions = np.asarray(np.where(np.asarray(img_bin) != 0)).T
-    dims = np.asarray(list(max(positions.T[i]) for i in (0,1,2)))
+    positions = np.asarray(np.where(img_bin != 0)).T
     if crop != False:
         from numpy import logical_and as a
-        crop_abs = (dims[0]*crop[0], dims[0]*crop[1], dims[1]*crop[2], dims[1]*crop[3], dims[2]*crop[4], dims[2]*crop[5])
         p=positions.T
-        positions = p.T[a(a(a(a(a(p[0]>crop_abs[0],p[0]<crop_abs[1]),p[1]>crop_abs[2]),p[1]<crop_abs[3]),p[2]>crop_abs[4]),p[2]<crop_abs[5])]
+        positions = p.T[a(a(a(a(a(p[0]>crop[0],p[0]<crop[1]),p[1]>crop[2]),p[1]<crop[3]),p[2]>crop[4]),p[2]<crop[5])]
 
     with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
         s = gsd.hoomd.Snapshot()
@@ -573,10 +567,12 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     G = sub_G(G)
     if weighted:
         G = add_weights(G, stack_directory, crop, weight_type='Resistance')
-    
-    weight_array = np.asarray(G.es['weight']).astype(float)
-    weight_array = weight_array[~np.isnan(weight_array)]
-    weight_avg =np.mean(weight_array)
+        weight_array = np.asarray(G.es['weight']).astype(float)
+        weight_array = weight_array[~np.isnan(weight_array)]
+        weight_avg =np.mean(weight_array)
+    else:
+        G.es['weight'] = np.ones(G.ecount())
+        weight_avg = 1
   
 
 #Add source and sink nodes:
@@ -636,10 +632,10 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     print(L.shape, 'L')
     I[source_id] = I_dim
     I[sink_id] = -I_dim
-    np.save('L.npy',L)
-    np.save('I.npy',I)
+    np.save(stack_directory+'/L.npy',L)
+    np.save(stack_directory+'/I.npy',I)
     VC =np.linalg.solve(L,I)
-    np.save('VC.npy',VC)
+    np.save(stack_directory+'/VC.npy',VC)
     print(VC)
     return VC,G
 
