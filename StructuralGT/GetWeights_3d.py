@@ -82,6 +82,7 @@ def lengthtoedge(m,orth,img_bin):
     # img_bin: the binary image that the graph is derived from
     
     _2d = len(m) == 2
+    print(_2d)
     if _2d:
         w,h = img_bin.shape         # finds dimensions of img_bin for boundary check
     else:
