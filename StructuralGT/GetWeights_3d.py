@@ -82,7 +82,6 @@ def lengthtoedge(m,orth,img_bin):
     # img_bin: the binary image that the graph is derived from
     
     _2d = len(m) == 2
-    print(_2d)
     if _2d:
         w,h = img_bin.shape         # finds dimensions of img_bin for boundary check
     else:
@@ -131,8 +130,9 @@ def lengthtoedge(m,orth,img_bin):
 
 #By default, weight is proportional to edge thickness.
 #For analysis of electrical networks, volume may be a more appropriate weight. Note that in this case the weight is the inverse resistance (i.e. conductance)
-#For analysis of mass transport systems, (i.e. where flow is proportional to some gradient driving force multiplied by cross sectional area), area is a more appropriate weight
-def assignweights(ge, img_bin, weight_type=None):
+#For analysis of mass transport systems, (i.e. where flow is proportional to cross sectional area), area is a more appropriate weight
+#...However, if the mass transport system has flow also proportional to a nodal driving force, the electrical network model is most appropriate.
+def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
     # Inputs:
     # ge: a list of pts that trace along a graph edge
     # img_bin: the binary image that the graph is derived from
@@ -156,13 +156,13 @@ def assignweights(ge, img_bin, weight_type=None):
     elif(weight_type=='Resistance'):
         length = len(ge)
         if pix_width == 0 or length == 0:
-            wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal
+            wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal, rendering flow problems underdetermined
         else:
-            wt = pix_width**2/length
+            wt = (((length*rho_dim)/pix_width**2)**-1 + R_j)**-1
     elif(weight_type=='Area'):
         length = len(ge)
         if pix_width == 0 or length == 0:
-            wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal            
+            wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal, rendering flow problems underdetermined
         else:
             wt = pix_width**2
     
