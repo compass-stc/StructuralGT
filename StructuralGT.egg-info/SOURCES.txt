@@ -2,9 +2,12 @@ README.md
 setup.py
 StructuralGT/GT_Params.py
 StructuralGT/GT_Params_multi.py
+StructuralGT/GT_Params_noGUI.py
 StructuralGT/GetWeights.py
+StructuralGT/GetWeights_3d.py
 StructuralGT/__init__.py
 StructuralGT/__main__.py
+StructuralGT/base.py
 StructuralGT/gui_3d_image.py
 StructuralGT/gui_multi_image.py
 StructuralGT/gui_single_image.py
@@ -16,6 +19,7 @@ StructuralGT/settings_3d.py
 StructuralGT/single_image_looper.py
 StructuralGT/skel_ID.py
 StructuralGT/skel_ID_3d.py
+StructuralGT/skel_features.py
 StructuralGT.egg-info/PKG-INFO
 StructuralGT.egg-info/SOURCES.txt
 StructuralGT.egg-info/dependency_links.txt

@@ -39,8 +39,7 @@ from StructuralGT import GetWeights, GT_Params, process_image, skel_ID, single_i
 import numpy as np
 import sknw
 import datetime
-
-
+import json
 
 def progress(currentValue):
 
@@ -64,17 +63,27 @@ def norm_value(value, data_list):
 
     return norm_value
 
-def save_data(src, Thresh_method, gamma, md_filter, g_blur, autolvl, fg_color, asize, bsize, wsize, thresh, laplacian, \
-              scharr, sobel, lowpass, merge_nodes, prune, clean, Exp_EL, Do_gexf, r_size, weighted, display_nodeID, \
+def save_data(src, options, merge_nodes, prune, clean, Exp_EL, Do_gexf, r_size, weighted, display_nodeID, \
               no_self_loops, multigraph, Do_kdist, Do_dia, Do_BCdist, Do_CCdist, Do_ECdist, Do_GD, Do_Eff, Do_clust, \
               Do_ANC, Do_Ast, heatmap,_3d=False):
-
-    # Updating the label alert
-    update_label("Processing image...")
+    Threshtype = int(options['Thresh_method'])
+    Thresh_method = Threshtype
+    gamma = options['gamma']
+    md_filter = options['md_filter']
+    g_blur = options['g_blur']
+    autolvl = options['autolvl']
+    fg_color = options['fg_color']
+    laplacian = options['laplacian']
+    scharr = options['scharr']
+    sobel = options['sobel']
+    lowpass = options['lowpass']
+    asize = options['asize']
+    bsize = options['bsize']
+    wsize = options['wsize']
+    thresh = options['thresh']
 
     # processing the image itself to create a binary image img_bin and updating progress
-    img, img_bin, ret = process_image.binarize(src, Thresh_method, gamma, md_filter, g_blur, autolvl, fg_color, \
-                                               laplacian, scharr, sobel, lowpass, asize, bsize, wsize, thresh)
+    img, img_bin, ret = process_image.binarize(src, options)
     progress(10)
     update_label("Extracting graph...")
 
@@ -184,10 +193,10 @@ def save_data(src, Thresh_method, gamma, md_filter, g_blur, autolvl, fg_color, a
         plt.title("Processed Image")
         f1.add_subplot(2, 2, 3)
         plt.plot(histo)
-        if (Thresh_method == 0):
-            Th = np.array([[thresh, thresh], [0, max(histo)]], dtype='object')
+        if (options['Thresh_method'] == 0):
+            Th = np.array([[options['thresh'], options['thresh']], [0, max(histo)]], dtype='object')
             plt.plot(Th[0], Th[1], ls='--', color='black')
-        elif (Thresh_method == 2):
+        elif (options['Thresh_method'] == 2):
             Th = np.array([[ret, ret], [0, max(histo)]], dtype='object')
             plt.plot(Th[0], Th[1], ls='--', color='black')
         plt.yticks([])
@@ -821,7 +830,7 @@ def save_data(src, Thresh_method, gamma, md_filter, g_blur, autolvl, fg_color, a
     update_label("Done")
 
 
-def get_checks():
+def get_checks(options):
 
     # global variables for all of the check boxes
     global gamma, md_filter, g_blur, autolvl, fg_color, laplacian, scharr, sobel, lowpass, Thresh_method, asize, \
@@ -830,22 +839,23 @@ def get_checks():
         Do_Ast, Do_WI, heatmap
 
     # checkboxes for image detection settings
-    thresh = var10.get()
-    md_filter = var11.get()
-    g_blur = var12.get()
-    autolvl = var13.get()
-    fg_color = var14.get()
-    laplacian = var16.get()
-    scharr = var17.get()
-    sobel = var18.get()
-    gamma = var19.get()
-    lowpass = var1f.get()
+    options['thresh'] = var10.get()
+    options['md_filter'] = var11.get()
+    options['g_blur'] = var12.get()
+    options['autolvl'] = var13.get()
+    options['fg_color'] = var14.get()
+    options['laplacian'] = var16.get()
+    options['scharr'] = var17.get()
+    options['sobel'] = var18.get()
+    options['gamma'] = var19.get()
+    options['lowpass'] = var1f.get()
 
     # image threshold method
-    Thresh_method = var15.get()
+    options['Thresh_method'] = var15.get()
 
     # local kernel size for adaptive threshold
-    asize = adaptsize.get()
+    options['asize'] = adaptsize.get()
+    asize = options['asize']
 
     # error parsing to round off the value to the nearest odd integer
     # if a non-number was entered, the default value is used
@@ -868,9 +878,11 @@ def get_checks():
         asize = 3
         adaptsize.delete(0, END)
         adaptsize.insert('end', asize)
+    options['asize'] = asize
 
     # blurring kernel size if using adaptive gaussian blur
-    bsize = blursize.get()
+    options['bsize'] = blursize.get()
+    bsize = options['bsize']
 
     # error parsing to round off the value to the nearest odd integer
     # if a non-number was entered, the default value is used
@@ -893,6 +905,7 @@ def get_checks():
         bsize = 3
         blursize.delete(0, END)
         blursize.insert('end', bsize)
+    options['bsize']
 
     # checkboxes for graph extraction settings, which is mainly for skeleton image building
     merge_nodes = var21.get()
@@ -926,7 +939,8 @@ def get_checks():
         removesize.delete(0, END)
         removesize.insert('end', r_size)
 
-    wsize = windowsize.get()
+    options['wsize'] = windowsize.get()
+    wsize = options['wsize']
     try:
         wsize = int(wsize)
     except TypeError:
@@ -941,6 +955,7 @@ def get_checks():
         wsize = 2
         windowsize.delete(0, END)
         windowsize.insert('end', wsize)
+    options['wsize'] = wsize
 
     # NetworkX Calculation Settings checkboxes
     Do_ANC = var31.get()
@@ -958,13 +973,12 @@ def get_checks():
 
 
     # returning all the values
-    return gamma, md_filter, g_blur, autolvl, fg_color, Thresh_method, asize, bsize, wsize, thresh, laplacian, scharr, \
-           sobel, lowpass, merge_nodes, prune, clean, Exp_EL, Do_gexf, r_size, weighted, display_nodeID, \
+    return options, merge_nodes, prune, clean, Exp_EL, Do_gexf, r_size, weighted, display_nodeID, \
            no_self_loops, multigraph, Do_clust, Do_ANC, Do_GD, Do_Eff, Do_kdist, Do_BCdist, Do_CCdist, Do_ECdist, \
            Do_dia, Do_Ast, Do_WI, heatmap
 
 
-def get_Settings(filename):
+def get_Settings(filename, options):
 
     # similar to the start of the csv file, this is just getting all the relevant settings to display in the pdf
     global run_info
@@ -972,30 +986,30 @@ def get_Settings(filename):
     run_info = run_info + oldfilename
     now = datetime.datetime.now()
     run_info = run_info + " || " + now.strftime("%Y-%m-%d %H:%M:%S") + "\n"
-    if Thresh_method == 0:
-        run_info = run_info + " || Global Threshold (" + str(thresh) + ")"
-    elif Thresh_method == 1:
-        run_info = run_info + " || Adaptive Threshold, " + str(asize) + " bit kernel"
-    elif Thresh_method == 2:
+    if options['Thresh_method'] == 0:
+        run_info = run_info + " || Global Threshold (" + str(options['thresh']) + ")"
+    elif options['Thresh_method'] == 1:
+        run_info = run_info + " || Adaptive Threshold, " + str(options['asize']) + " bit kernel"
+    elif options['Thresh_method'] == 2:
         run_info = run_info + " || OTSU Threshold"
-    if gamma != 1:
-        run_info = run_info + "|| gamma = " + str(gamma)
-    if md_filter:
+    if options['gamma'] != 1:
+        run_info = run_info + "|| gamma = " + str(options['gamma'])
+    if options['md_filter']:
         run_info = run_info + " || Median Filter"
-    if g_blur:
-        run_info = run_info + " || Gaussian Blur, " + str(bsize) + " bit kernel"
-    if autolvl:
+    if options['g_blur']:
+        run_info = run_info + " || Gaussian Blur, " + str(options['bsize']) + " bit kernel"
+    if options['autolvl']:
         run_info = run_info + " || Autolevel"
-    if fg_color:
+    if options['fg_color']:
         run_info = run_info + " || Dark Foreground"
-    if laplacian:
+    if options['laplacian']:
         run_info = run_info + " || Laplacian Gradient"
-    if scharr:
+    if options['scharr']:
         run_info = run_info + " || Scharr Gradient"
-    if sobel:
+    if options['sobel']:
         run_info = run_info + " || Sobel Gradient"
-    if lowpass:
-        run_info = run_info + " || Low-pass filter" + str(wsize)
+    if options['lowpass']:
+        run_info = run_info + " || Low-pass filter" + str(options['wsize'])
     run_info = run_info + "\n"
     if merge_nodes:
         run_info = run_info + " || Merge Nodes"
@@ -1011,15 +1025,15 @@ def get_Settings(filename):
     return run_info
 
 
-def Preview_button():
+def Preview_button(options):
 
     # run get_checks() to get all the entered information
     # this function only actually needs image detection settings
-    get_checks()
+    options = get_checks(options)[0]
+     
 
     # calling process_image.py to process the actual image
-    img, img_bin, ret = process_image.binarize(src, Thresh_method, gamma, md_filter, g_blur, autolvl, fg_color, \
-                                               laplacian, scharr, sobel, lowpass, asize, bsize, wsize, thresh)
+    img, img_bin, ret = process_image.binarize(src,options)
 
     # getting the raw image from src and the new filtered image and the binary image (img_bin)
     raw_img = src
@@ -1050,10 +1064,10 @@ def Preview_button():
     # bottom left is histogram of the processed image
     f.add_subplot(2, 2, 3)
     plt.plot(histo, color='blue')
-    if(Thresh_method == 0):
-        Th = np.array([[thresh, thresh],[0,max(histo)]], dtype='object')
+    if(options['Thresh_method'] == 0):
+        Th = np.array([[options['thresh'], options['thresh']],[0,max(histo)]], dtype='object')
         plt.plot(Th[0],Th[1], ls='--', color='black')
-    elif(Thresh_method == 2):
+    elif(options['Thresh_method'] == 2):
         Th = np.array([[ret, ret], [0, max(histo)]], dtype='object')
         plt.plot(Th[0], Th[1], ls='--', color='black')
     plt.yticks([])
@@ -1072,7 +1086,7 @@ def Preview_button():
     plt.show(block=True)
 
 
-def Proceed_button(_3d=False):
+def Proceed_button(options,_3d=False):
 
     # starting the image analysis, first by finding the values of all the check boxes
     # also getting the start time for the actual time intensive part of the program
@@ -1082,13 +1096,12 @@ def Proceed_button(_3d=False):
     button4["state"] = "disabled"
     start = time.time()
     progress(1)
-    get_checks()
-    get_Settings(oldfilename)
+    options = get_checks(options)[0]
+    get_Settings(oldfilename, options)
     progress(5)
 
     # save_data calls everything else and saves the results
-    save_data(src, Thresh_method, gamma, md_filter, g_blur, autolvl, fg_color, asize, bsize, wsize, thresh, \
-              laplacian, scharr, sobel, lowpass, merge_nodes, prune, clean, Exp_EL, Do_gexf, r_size, weighted, \
+    save_data(src, options, merge_nodes, prune, clean, Exp_EL, Do_gexf, r_size, weighted, \
               display_nodeID, no_self_loops, multigraph, Do_kdist, Do_dia, Do_BCdist, Do_CCdist, Do_ECdist, Do_GD, \
               Do_Eff, Do_clust, Do_ANC, Do_Ast, heatmap, _3d)
 
@@ -1103,10 +1116,15 @@ def Proceed_button(_3d=False):
     print(elapse + " minutes")
     button1["state"] = "active"
     button3["state"] = "active"
-    button4['state'] = "active"
+    button4["state"] = "active"
 
-
-def adjust_settings(root, source, saveloc, filename):
+def Export_Img_Options_button(options,saveloc):
+    img_options = options
+    #img_options = dict(Thresh_method=Thresh_method, gamma=gamma, md_filter=md_filter, g_blur=g_blur, autolvl=autolvl, fg_color=fg_color, asize=asize, bsize=bsize, wsize=wsize, thresh=thresh, laplacian=laplacian, scharr=scharr, sobel=sobel, lowpass=lowpass)
+    with open(os.path.join(saveloc,'img_options.json'), 'w') as f:
+        json.dump(img_options, f)
+        
+def adjust_settings(root, source, saveloc, filename, options):
 
     # adjusting the settings for a new image
     root.destroy()
@@ -1127,7 +1145,7 @@ def adjust_settings(root, source, saveloc, filename):
     update_label("Ready to Proceed")
 
 
-def make_settings(root, source, saveloc, filename, _3d=False):
+def make_settings(root, source, saveloc, filename, options, _3d=False):
 
     # close previous window, open a new one
     root.destroy()
@@ -1329,16 +1347,19 @@ def make_settings(root, source, saveloc, filename, _3d=False):
     # preview and proceed buttons call their respective functions
     # preview just runs image detection
     # proceed does full data analysis and graph extraction
-    global button1, button2, button3, button4
-    button1 = Button(frame1, text="Advanced Preview...", command=lambda: Preview_button())
-    button2 = Button(frame4, text="Proceed", command=lambda: Proceed_button())
+    global button1, button2, button3, button4, button5
+    options=get_checks(options)[0]
+    button1 = Button(frame1, text="Advanced Preview...", command=lambda: Preview_button(options))
+    button2 = Button(frame4, text="Proceed", command=lambda: Proceed_button(options))
     button3 = Button(frame4, text="New Image", command=lambda: single_image_looper.make_gui())
-    button4 = Button(frame4, text='Select All...', command=lambda:select_all())
-
+    button4 = Button(frame4, text="Select All...", command=lambda:select_all())
+    button5 = Button(frame4, text="Export Img Proc Options", command=lambda:Export_Img_Options_button(options,saveloc))
+    
     button1.grid(row=9, column=1)
     button2.grid(row=8, column=2)
     button3.grid(row=10, column=2)
     button4.grid(row=0,column=0)
+    button5.grid(row=9, column=2)
 
     global label_count
     label_count = StringVar()
@@ -1346,18 +1367,16 @@ def make_settings(root, source, saveloc, filename, _3d=False):
     label_counter = Label(frame4, textvariable=label_count)
     label_counter.grid(row=9, column=0)
 
-    get_checks()
-    img, img_bin, ret = process_image.binarize(src, Thresh_method, gamma, md_filter, g_blur, autolvl, fg_color, \
-                                               laplacian, scharr, sobel, lowpass, asize, bsize, wsize, thresh)
+    img, img_bin, ret = process_image.binarize(src, options)
     img1 = Image.fromarray(img_bin)
     img2 = ImageTk.PhotoImage(image=img1)
     panel = Label(frame2, image=img2)
     panel.pack()
 
     def update(e):
-        get_checks()
-        img, img_bin, ret = process_image.binarize(src, Thresh_method, gamma, md_filter, g_blur, autolvl, fg_color, \
-                                                   laplacian, scharr, sobel, lowpass, asize, bsize, wsize, thresh)
+        options = dict(Thresh_method=0, gamma=1, md_filter=0, g_blur=0, autolvl=0, fg_color=0, laplacian=0, scharr=0, sobel=0, lowpass=0, asize=3, bsize=3, wsize=3, thresh=1)
+        options = get_checks(options)[0]
+        img, img_bin, ret = process_image.binarize(src, options) 
         img1 = Image.fromarray(img_bin)
         img2 = ImageTk.PhotoImage(image=img1)
         panel.configure(image=img2)
