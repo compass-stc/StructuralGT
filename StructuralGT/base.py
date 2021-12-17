@@ -569,7 +569,6 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
    
 
 
-
     with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
         s = gsd.hoomd.Snapshot()
         s.particles.N = len(positions)
