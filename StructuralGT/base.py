@@ -117,7 +117,6 @@ def stack_to_canvas(stack_directory, crop=None):
     for name in sorted(os.listdir(stack_directory)):
         print(name)
         if Q_img(name):
-            print(i)
             img_slice = cv.imread(stack_directory+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
             img_bin.append(img_slice)
             i=i+1
@@ -186,9 +185,7 @@ def gsd_to_G(gsd_name, crop=None, sub=False, _2d=False):
         positions = shift(positions)
     if _2d:
         positions = dim_red(positions)
-    print('final pos for ', gsd_name, ' is ', positions)
     canvas = np.zeros(list((max(positions.T[i])+1) for i in list(range(min(positions.shape)))))
-    print(canvas.shape)
     canvas[tuple(list(positions.T))] = 1
     canvas = canvas.astype(int)
     print('gsd_to_G canvas has shape ', canvas.shape)
@@ -233,7 +230,6 @@ def G_analysis_lite(gsd_name):
     start = time.time()
     G = gsd_to_G(gsd_name)
     end = time.time()
-    print('Ran gsd_to_G() in', end-start)
 #   Currently neglected eigenvector centrality as it doesnt easily converge (must change max iterations)
 
     operations = [global_efficiency, average_clustering, degree_assortativity_coefficient, maximum_flow, diameter, periphery, wiener_index]
@@ -247,15 +243,16 @@ def G_analysis_lite(gsd_name):
         except TypeError:
             pass
 #Function generates largest connected induced subgraph. Node and edge numbers are reset such that they are consecutive integers, starting from 0
-def sub_G(G):
-   components = G.clusters()
-   G = components.giant()
-   
+def sub_G(G): 
+    print('pre sub has ', G.vcount(), ' nodes')
+    components = G.clusters()
+    G = components.giant() 
+    print('post sub has ', G.vcount(), ' nodes')
    
    # G_sub  = G.subgraph(max(nx.connected_components(G), key=len).copy())
    # G = nx.relabel.convert_node_labels_to_integers(G_sub)
     
-   return G
+    return G
 
 #Function takes a gsd name, generates a graph with gsd_to_G() and resaves a new .gsd file which has some nodewise indices saved to the file
 def G_labelling(gsd_name, graph=None, _2d=False):
@@ -265,7 +262,6 @@ def G_labelling(gsd_name, graph=None, _2d=False):
          start = time.time()
          G = gsd_to_G(gsd_name)
          end = time.time()
-         print('Ran gsd_to_G() in', end-start)    
     else:
          G = graph
 
@@ -317,7 +313,6 @@ def write_averaged(gsd_name):
     start = time.time()
     G = gsd_to_G(gsd_name)
     end = time.time()
-    print('Ran gsd_to_G() in ', end-start, 'for a graph with ', G.vcount(), 'nodes')
     G = sub_G(G)
     
     start = time.time()
@@ -428,7 +423,6 @@ def benchmark(gsd_name,skel_name):
     G = gsd_to_G(gsd_name)
     G=sub_G(G)
     end = time.time()
-    print("gsd_to_G() in",end-start)
 
 #Benchmark igraph
     I=ig.Graph.from_networkx(G)
@@ -502,7 +496,7 @@ def ExpProcess(directory, options_json=None):
 
 #Skeletonize=False enables unusual case of writing binary stack to gsd without skeletonizing. Effective for creating direct 3d reconstruction.
 #Takes directory where stack is located, and a gsd write filename
-#Note when rotate=None, the crop acts upon a origin cornered image but when rotate!=None, the image is origin centred and so the crop may contain -ve elements
+#Note when rotate=None, the crop acts upon an origin cornered image but when rotate != None, the image is origin centred and so the crop may contain -ve elements
 def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=None):
     start = time.time()
     img_bin=[]
@@ -518,15 +512,19 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
         if Q_img(name):
             img_slice = cv.imread(stack_directory+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
             if rotate:
+                #if rotating, /must/ crop to square first
+
                 image_center = tuple(np.array(img_slice.shape[1::-1]) / 2)
                 rot_mat = cv.getRotationMatrix2D(image_center, rotate, 1.0)
-                img_slice = cv.warpAffine(img_slice, rot_mat, img_slice.shape[1::-1], flags=cv.INTER_LINEAR) 
+                img_slice = cv.warpAffine(img_slice, rot_mat, img_slice.shape[1::-1], flags=cv.INTER_LINEAR)
+
             img_bin.append(img_slice)
             i=i+1
         else:
             pass
     
     positions = np.asarray(np.where(np.asarray(img_bin) != 0)).T
+    positions = shift(positions)
     if rotate and crop:
         positions = oshift(positions)        
         from numpy import logical_and as a
@@ -534,7 +532,6 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
         positions = p.T[a(a(a(a(a(p[0]>=crop[0],p[0]<=crop[1]),p[1]>=crop[2]),p[1]<=crop[3]),p[2]>=crop[4]),p[2]<=crop[5])]
         positions = shift(positions)
 
-    print(img_bin)
     #For rotating rectangular networks, the steps include
       #Centre on origin
       #Apply rotation
@@ -561,12 +558,18 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
     canvas[positions.T[0], positions.T[1], positions.T[2]] = 1
     img_bin = canvas
 
+    #Roll axes such that z=0 for all positions when the graph is 2D
+    img_bin = np.swapaxes(img_bin, 0, 2)
+    #img_bin = np.swapaxes(img_bin, 0, 1) 
     if skeleton:
         img_bin = skeletonize_3d(np.asarray(img_bin))
     else:
         img_bin = np.asarray(img_bin)
     positions = np.asarray(np.where(img_bin != 0)).T
    
+
+
+
     with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
         s = gsd.hoomd.Snapshot()
         s.particles.N = len(positions)
@@ -578,12 +581,22 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
     print('Ran stack_to_gsd() in ', end-start, 'for gsd with ', len(positions), 'particles')
 
 def add_weights(G, stack_directory, crop=None, weight_type=None, R_j=0, rho_dim=1):
+    #Before adding weights, important to chck that the image and skeleton are appropriately oriented.
+    #The shape of the image should ~= the maximum positions of the graph
+    #Currently this check assumes that there is a 'slice0.tiff' in the stack_directory
+    #TODO find a better way to check this
+
+    img_shape = cv.imread(stack_directory+'/slice0.tiff',cv.IMREAD_GRAYSCALE).shape
+    graph_shape = list(max(list(G.vs[i]['o'][j] for i in range(G.vcount()))) for j in (0,1))
+    print('graph_shape is ', graph_shape, ' and img_shape is ', img_shape)
+    
     start = time.time()
     img_bin = stack_to_canvas(stack_directory, crop)
     end = time.time()
     print('Loaded img in ', end-start)
     start = time.time()
     print('img_bin has shape ', img_bin.shape)
+    plt.imsave('weight_image.tiff', img_bin, cmap=cm.gray)
     for i,edge in enumerate(G.es()):
         ge = edge['pts']
         pix_width, wt = GetWeights_3d.assignweights(ge, img_bin, weight_type=weight_type, R_j=R_j, rho_dim=rho_dim)
@@ -629,14 +642,13 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
         start = time.time()
         G = gsd_to_G(gsd_name, crop=crop, _2d=_2d)
         end = time.time()
-        print('Ran gsd_to_G() in', end-start)    
     else:
         G = graph
-    print('pre sub has ', G.vcount(), ' nodes')
+
     G = sub_G(G)
     print('post sub has ', G.vcount(), ' nodes')
     if weighted:
-        G = add_weights(G, stack_directory, crop, weight_type='Resistance', R_j=R_j, rho_dim=rho_dim)
+        G = add_weights(G, stack_directory, crop=crop, weight_type='Resistance', R_j=R_j, rho_dim=rho_dim)
         weight_array = np.asarray(G.es['weight']).astype(float)
         weight_array = weight_array[~np.isnan(weight_array)]
         weight_avg =np.mean(weight_array)
@@ -658,7 +670,6 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
             positions.append(G.vs[i]['o'].ravel())
     
     positions = np.concatenate(np.asarray(positions)).reshape((len(positions),len(positions[0])))
-    print('read G pos ', positions)
     dim = len(positions[0])
     dims = list(max(positions.T[i]) for i in (range(dim)))
     #dims = list(max(np.stack(list(G.vs[i]['o'] for i in range(G.vcount()))).T[j]) for j in (0,1,2)) 
@@ -716,7 +727,7 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
 #The labelling function calls the attribute calculating function so that the graph and its nodes' attributes are returned
 #The labelling funciton appends the attribute to the graph and rewrites the gsd
 #Note that all attribute calculating functions must return the attribute tensor and the graph which is to be labelled
-#Note that the gsd_name specified in Node_labelling is the name under which to save the labelled graph; the gsd_name given in *args is the file in which the unlabelled graph should be extracted from
+#Note that the gsd_name specified in Node_labelling is the name under which to save the labelled graph; the gsd_name given in *args is the file in which the unlabelled graph should be extracted from. Note that they may be the same because the labelled name automatically gets an attribute name prefix on its title.
 def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
 
     #positions = gsd.hoomd.open(name=gsd_name, mode='rb')[0].particles.position
@@ -735,20 +746,12 @@ def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
     for edge in G.es():
         positions=np.vstack((positions,edge['pts']))
     positions = np.unique(positions, axis=0)
-    #positions = shift(positions).astype(int)
-    print(positions)
-    print(node_positions)
     if kwargs['_2d']: #TODO change so that _2d should only need to be specified if =True. I.e. user currently has to specify _2d=False.
         node_positions = np.hstack((node_positions,np.zeros((len(node_positions),1))))
         positions = np.hstack((positions,np.zeros((len(positions),1))))
 
     node_positions = oshift(node_positions)
     positions = oshift(positions)
-    
-
-    print('final positions are ', positions)
-    print('node positions are ', node_positions)
-    
     s = gsd.hoomd.Snapshot()
     N = len(positions)
     s.particles.N = N
@@ -760,12 +763,7 @@ def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
     s.log['particles/'+attribute_name] = [np.NaN]*N
     start = time.time()
 
-    print('positions has len ', len(positions))
-    print('ig node_positions has len ', len(node_positions))
-    print('attribute has len ', len(attribute))
-    print('log has len ', len(s.log['particles/'+attribute_name]))
     j=0
-    print(attribute[2])
     for i,particle in enumerate(positions):
         node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[0]
         if len(node_id) == 0: 
@@ -775,25 +773,9 @@ def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
             s.particles.typeid[i] = 1
             j+=1
     
-
-
-    #    for j,node in enumerate(node_positions):
-    #        if sum(node == particle) == 3:
-    #            s.log['particles/'+attribute_name][i] = attribute[j]
-    #            s.particles.typeid[i] = 1
-    
-
-    #a,b,c=np.intersect1d(positions, node_positions, return_indices=True)
-    #print(a)
-    #print(b)
-    #print(c)
-
-    #print('node indices has len ', len(node_indices))
-    #for i,index in enumerate(node_indices):
-    #    s.log['particles/'+attribute_name][index] = attribute[i]
-    #    s.particles.typeid[index] = 1
-    
-
-
     f.append(s)
- 
+
+
+#Function returns the principal moments of the given network's gyration tensor.
+#Components in the sum forming the components of the gyration tensor components are defined py shortest paths between pairs of nodes, not node pairs.
+def gyration_moments
