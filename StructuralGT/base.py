@@ -1,7 +1,6 @@
 import numpy as np
 import sknw
 import igraph as ig
-import networkx as nx
 import graph_tool.all as gt
 import gsd.hoomd
 import pandas as pd
@@ -115,7 +114,6 @@ def stack_to_canvas(stack_directory, crop=None):
     img_bin = []
     i=0
     for name in sorted(os.listdir(stack_directory)):
-        print(name)
         if Q_img(name):
             img_slice = cv.imread(stack_directory+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
             img_bin.append(img_slice)
@@ -465,22 +463,24 @@ def benchmark(gsd_name,skel_name):
     end = time.time()
     print("graph-tool Clo/Deg/Bet calculated in ", end-start)
 
-#Binarizes stack of experimental images using a set of image processing parameters in options_json.
-#Option to rotate image given
-def ExpProcess(directory, options_json=None):
+#Binarizes stack of experimental images using a set of image processing parameters in options_dict.
+def ExpProcess(directory, options_dict=None):
     
-    if options_json is None:
-        options_json = directory + '/img_options.json'
-    
-    with open(options_json) as f:
-        options_dict = json.load(f)
+    if options_dict is None:
+        options = directory + '/img_options.json'
+        with open(options) as f:
+            options_dict = json.load(f)
         
     #Reset write directory
-    try:
-        shutil.rmtree(directory+'/'+'Binarized')
-    except FileNotFoundError:
-        os.mkdir(directory+'/'+'Binarized')
+    #try:
+    #    shutil.rmtree(directory+'/Binarized')
+    #except FileNotFoundError:
+    #    os.mkdir(directory+'/Binarized')
     
+    #Check if directory exists
+    if not os.path.isdir(directory + '/Binarized'):
+        os.mkdir(directory+'/Binarized')
+
     #Generate
     i=0    
     for name in sorted(os.listdir(directory)):
@@ -507,22 +507,20 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
     mask = list(Q_img(olist[i]) for i in range(len(olist)))
     name = sorted(olist[mask])[0] #First name
     i = int(os.path.splitext(name)[0][5:]) #Strip file type and 'slice' then convert to int
-    #Generate 3d array from stack
+    #Generate 3d (or 2d) array from stack
     for name in sorted(os.listdir(stack_directory)):
         if Q_img(name):
             img_slice = cv.imread(stack_directory+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
             if rotate:
-                #if rotating, /must/ crop to square first
-
                 image_center = tuple(np.array(img_slice.shape[1::-1]) / 2)
                 rot_mat = cv.getRotationMatrix2D(image_center, rotate, 1.0)
                 img_slice = cv.warpAffine(img_slice, rot_mat, img_slice.shape[1::-1], flags=cv.INTER_LINEAR)
-
+                upper_directory = os.path.split(stack_directory)[0]
+                plt.imsave(upper_directory + '/rotated_image.tiff', img_slice, cmap=cm.gray)
             img_bin.append(img_slice)
             i=i+1
         else:
             pass
-    
     positions = np.asarray(np.where(np.asarray(img_bin) != 0)).T
     positions = shift(positions)
     if rotate and crop:
@@ -719,28 +717,26 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     VC = np.matmul(np.linalg.pinv(L, hermitian=True),I)
     #VC =np.linalg.solve(L,I)
     np.save(stack_directory+'/VC.npy',VC)
-    print(VC)
     return VC,G
 
 #Labelling function which takes an attribute calculating function and its relevant parameters (usually gsd, img_bin and, optionally, crop)
 #The labelling function calls the attribute calculating function so that the graph and its nodes' attributes are returned
 #The labelling funciton appends the attribute to the graph and rewrites the gsd
 #Note that all attribute calculating functions must return the attribute tensor and the graph which is to be labelled
-#Note that the gsd_name specified in Node_labelling is the name under which to save the labelled graph; the gsd_name given in *args is the file in which the unlabelled graph should be extracted from. Note that they may be the same because the labelled name automatically gets an attribute name prefix on its title.
+#The gsd_name given in *args is the file in which the unlabelled graph should be extracted from.
 def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
 
     #positions = gsd.hoomd.open(name=gsd_name, mode='rb')[0].particles.position
     start = time.time()
     attribute,G = AttrCalcFunc(*args, **kwargs)
-    print(attribute)
     end = time.time()
-    #G = sub_G(G)
-    #G = ig.Graph.from_networkx(G) 
     save_name = os.path.split(prefix)[0] + '/'+attribute_name + os.path.split(prefix)[1]
-    f = gsd.hoomd.open(name=save_name, mode='wb')
+    if os.path.exists(save_name):
+        mode = 'rb+'
+    else:
+        mode = 'wb'
+    f = gsd.hoomd.open(name=save_name, mode=mode)
     node_positions = np.asarray(list(G.vs()[i]['o'] for i in range(G.vcount())))
-    #f = gsd.hoomd.open(name=save_name, mode='wb')
-    #node_positions = shift(node_positions).astype(int)
     positions = node_positions
     for edge in G.es():
         positions=np.vstack((positions,edge['pts']))
@@ -749,8 +745,8 @@ def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
         node_positions = np.hstack((node_positions,np.zeros((len(node_positions),1))))
         positions = np.hstack((positions,np.zeros((len(positions),1))))
 
-    node_positions = oshift(node_positions)
-    positions = oshift(positions)
+    node_positions = shift(node_positions)
+    positions = shift(positions)
     s = gsd.hoomd.Snapshot()
     N = len(positions)
     s.particles.N = N
@@ -758,7 +754,8 @@ def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
     s.particles.types = ['Edge', 'Node']
     s.particles.typeid = [0]*N
     L = list(max(positions.T[i])*2 for i in (0,1,2))
-    s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
+    #s.configuration.box = [L[0]/2, L[1]/2, L[2]/2, 0, 0, 0]
+    s.configuration.box = [1,1,1,0,0,0]
     s.log['particles/'+attribute_name] = [np.NaN]*N
     start = time.time()
 
@@ -774,7 +771,103 @@ def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
     
     f.append(s)
 
+    return G
 
 #Function returns the principal moments of the given network's gyration tensor.
 #Components in the sum forming the components of the gyration tensor components are defined py shortest paths between pairs of nodes, not node pairs.
-def gyration_moments
+def gyration_moments(G):
+#Serial implementation
+    Ax=0
+    Ay=0
+    node_count = G.vcount()
+
+    for i in range(node_count):
+        for j in range(node_count):
+            if i >= j:    #Symetric matrix
+                continue
+            path = G.get_shortest_paths(i,to=j)
+            Ax_term = 0
+            Ay_term = 0
+            for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
+                weight = G.es[G.get_eid(hop_s,hop_t)]['weight']
+                Ax_term = Ax_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
+                Ay_term = Ay_term + ((weight*(int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))**2)
+            Ax = Ax + (Ax_term)
+            Ay = Ay + (Ay_term)
+
+    return Ax, Ay
+
+def parallel_gyration(G):
+        #Parallel implementation
+    from mpi4py import MPI
+    import numpy as np
+    import argparse
+    comm = MPI.COMM_WORLD
+    rank = comm.rank
+    size = comm.size
+    
+    if comm.rank == 0:
+        #Function distributes nodes amongst cores such that each core has approximately equal number of shortest paths
+        #This doesn't imply equal number of nodes
+        def path_partition(node_count, core_count):
+            path_count = int(node_count*(node_count-1)/2)
+            path_per_core = np.floor(path_count/core_count)
+            NRI = dict()
+
+            first_node = 0
+            for i in range(core_count):
+                paths = 0 #Current length of path list
+                nodes = [] #List of nodes corresponding to this path list
+                for n in range(first_node, node_count):
+                    if paths >= (path_per_core): #If path list for a given core is full, move to next core
+                        continue
+                    nodes = nodes + [n]
+                    paths = paths + (node_count - n) #General formula for number of paths included by a given node
+                    first_node = n + 1
+                NRI[str(i)] = nodes
+            return NRI
+        
+        node_count = G.vcount()
+
+        G_NRI = [G,path_partition(node_count,size)]
+        Ax_sum = np.array([0])
+        Ay_sum = np.array([0])
+    else:
+        G_NRI = None
+        Ax_sum = None
+        Ay_sum = None
+
+    #Save global variables that are broadcasted by the root rank
+    #G_NRI is list of [G,NRI]
+    G_NRI = comm.bcast(G_NRI, root=(0))
+    G = G_NRI[0]
+    NRI = G_NRI[1]
+
+    Ax=0
+    Ay=0
+
+    node_count = G.vcount()
+    node_range = NRI[str(rank)]
+    for i in node_range:
+        for j in range(node_count):
+            if i >= j:    #Symetric matrix
+                continue
+            path = G.get_shortest_paths(i,to=j)
+            Ax_term = 0
+            Ay_term = 0
+            for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
+                weight = G.es[G.get_eid(hop_s,hop_t)]['weight']
+                Ax_term = Ax_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
+                Ay_term = Ay_term + ((weight*(int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))**2)
+            Ax = Ax + (Ax_term)
+            Ay = Ay + (Ay_term)
+
+    Ax = np.array([Ax])
+    Ay = np.array([Ay])
+    comm.Reduce([Ax,MPI.DOUBLE],[Ax_sum,MPI.DOUBLE],root=0)
+    comm.Reduce([Ay,MPI.DOUBLE],[Ay_sum,MPI.DOUBLE],root=0)
+    #Collect Ai terms from all ranks and sum
+    if comm.rank == 0:
+        print(Ax_sum/Ay_sum)
+        return Ax_sum, Ay_sum
+
