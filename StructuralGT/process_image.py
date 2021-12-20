@@ -100,7 +100,6 @@ def binarize(source, options):
     lowpass = options['lowpass']
     asize = int(options['asize'])
     bsize = int(options['bsize'])
-    print(bsize)
     wsize = int(options['wsize'])
     thresh = options['thresh']
 
