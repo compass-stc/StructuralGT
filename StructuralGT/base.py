@@ -12,6 +12,7 @@ import json
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import csv
+import error
 
 from skimage.morphology import skeletonize, skeletonize_3d
 from StructuralGT import process_image
@@ -92,7 +93,6 @@ def G_to_gsd(G, gsd_name):
     dim = len(G.vs[0]['o'])
 
     positions = np.asarray(list(G.vs[i]['o'] for i in range(G.vcount())))
-    print(gsd_name, ' positions ', positions)
     for i in range(G.ecount()):
         positions = np.append(positions,G.es[i]['pts'], axis=0)
 
@@ -170,16 +170,13 @@ def gsd_to_G(gsd_name, crop=None, sub=False, _2d=False):
     start = time.time()
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
     positions = frame.particles.position.astype(int)
-    print('first pos ', positions)
     if sum((positions<0).ravel()) != 0:
         positions = shift(positions)
     
     if crop != None:
         from numpy import logical_and as a
         p=positions.T
-        print('pre crop pos ', positions)
         positions = p.T[a(a(a(a(a(p[0]>=crop[0],p[0]<=crop[1]),p[1]>=crop[2]),p[1]<=crop[3]),p[2]>=crop[4]),p[2]<=crop[5])]
-        print('pre shift pos ', positions)
         positions = shift(positions)
     if _2d:
         positions = dim_red(positions)
@@ -464,6 +461,8 @@ def benchmark(gsd_name,skel_name):
     print("graph-tool Clo/Deg/Bet calculated in ", end-start)
 
 #Binarizes stack of experimental images using a set of image processing parameters in options_dict.
+#Note this enforces that all images have the same shape as the first image encountered by the for loop.
+#(i.e. the first alphanumeric titled image file)
 def ExpProcess(directory, options_dict=None):
     
     if options_dict is None:
@@ -488,6 +487,8 @@ def ExpProcess(directory, options_dict=None):
             pass
         else:
             img_exp = cv.imread(directory+'/'+name,cv.IMREAD_GRAYSCALE)
+            if i == 0: shape = img_exp.shape
+            elif img_exp.shape != shape: continue
             if img_exp is None:
                 raise TypeError('img_exp is None')
             _, img_bin, _ = process_image.binarize(img_exp, options_dict)
@@ -500,11 +501,12 @@ def ExpProcess(directory, options_dict=None):
 def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=None):
     start = time.time()
     img_bin=[]
-
     #Initilise i such that it starts at the lowest number belonging to the images in the stack_directory
     #First require boolean mask to filter out non image files
     olist = np.asarray(sorted(os.listdir(stack_directory)))
     mask = list(Q_img(olist[i]) for i in range(len(olist)))
+    if len(mask) == 0:
+        raise error.ImageDirectoryError(stack_directory)
     name = sorted(olist[mask])[0] #First name
     i = int(os.path.splitext(name)[0][5:]) #Strip file type and 'slice' then convert to int
     #Generate 3d (or 2d) array from stack
@@ -537,9 +539,7 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
       #Corner on origin
     if 1==2:#rotate is not None:
         positions = oshift(positions)
-        print(positions)
         positions = np.matmul(positions,rotate).astype(int)
-        print(positions)
         from numpy import logical_and as a
         p = positions.T
         positions = p.T[a(a(a(a(a(p[0]>=crop[0],p[0]<=crop[1]),p[1]>=crop[2]),p[1]<=crop[3]),p[2]>=crop[4]),p[2]<=crop[5])]
