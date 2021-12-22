@@ -776,6 +776,11 @@ def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
 #Function returns the principal moments of the given network's gyration tensor.
 #Components in the sum forming the components of the gyration tensor are defined by shortest paths between pairs of nodes, not node pairs.
 #sampling arguement allows moments to be estimated from a subset of node pairs
+###NOTES ON TIMING###
+#Node subset/Node total    Time
+#~500/3000                 ~20 s
+#~1800/5500                ~10 min
+
 def gyration_moments(G, sampling=1):
 #Serial implementation
     Ax=0
