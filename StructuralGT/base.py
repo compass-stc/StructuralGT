@@ -774,15 +774,17 @@ def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
     return G
 
 #Function returns the principal moments of the given network's gyration tensor.
-#Components in the sum forming the components of the gyration tensor components are defined py shortest paths between pairs of nodes, not node pairs.
-def gyration_moments(G):
+#Components in the sum forming the components of the gyration tensor are defined by shortest paths between pairs of nodes, not node pairs.
+#sampling arguement allows moments to be estimated from a subset of node pairs
+def gyration_moments(G, sampling=1):
 #Serial implementation
     Ax=0
     Ay=0
-    node_count = G.vcount()
-
-    for i in range(node_count):
-        for j in range(node_count):
+    node_count = np.asarray(list(range(G.vcount())))
+    mask = np.random.rand(G.vcount()) > (1-sampling)
+    trimmed_node_count = node_count[mask]
+    for i in trimmed_node_count:
+        for j in trimmed_node_count:
             if i >= j:    #Symetric matrix
                 continue
             path = G.get_shortest_paths(i,to=j)
