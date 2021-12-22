@@ -158,7 +158,7 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
         if pix_width == 0 or length == 0:
             wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal, rendering flow problems underdetermined
         else:
-            wt = (((length*rho_dim)/pix_width**2)**-1 + R_j)**-1
+            wt = (((length*rho_dim)/pix_width**2) + R_j)**-1
     elif(weight_type=='Area'):
         length = len(ge)
         if pix_width == 0 or length == 0:
