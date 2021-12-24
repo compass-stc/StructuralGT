@@ -321,7 +321,7 @@ def debubble(g):
     start = time.time()
     sizes = [4,2,6]
     elems = [disk,ball]
-    elem = elems[g.dim == [2,3]]
+    elem = elems[g.dim-2]
     
     canvas = g.img_bin
    #Fill in all gaps. Consider successive selem passes.
@@ -334,7 +334,6 @@ def debubble(g):
 
     name = os.path.split(g.gsd_name)[0] + '/debubbled_' + os.path.split(g.gsd_name)[1]    
     positions = np.asarray(np.where(reskel!=0)).T
-    positions = np.append(positions.T,[np.zeros(len(positions))],axis=0).T
     positions = shift(positions)
     with gsd.hoomd.open(name=name, mode='wb') as f:
         s = gsd.hoomd.Snapshot()
@@ -554,7 +553,7 @@ def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
     #It also assumes an origin cornered graph
     #TODO find a better way to check this
 
-    img_shape = cv.imread(g.stack_directory + '/slice0.tiff',cv.IMREAD_GRAYSCALE).shape
+    img_shape = cv.imread(g.stack_dir + '/slice0.tiff',cv.IMREAD_GRAYSCALE).shape
     graph_shape = list(max(list(g.Gr.vs[i]['o'][j] for i in range(g.Gr.vcount()))) for j in (0,1))
     print('graph_shape is ', graph_shape, ' and img_shape is ', img_shape)
     
@@ -564,7 +563,6 @@ def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
     print('Loaded img in ', end-start)
     start = time.time()
     print('img_bin has shape ', g.img_bin.shape)
-    plt.imsave('weight_image.tiff', g.img_bin, cmap=cm.gray)
     for i,edge in enumerate(g.Gr.es()):
         ge = edge['pts']
         pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin, weight_type=weight_type, R_j=R_j, rho_dim=rho_dim)
@@ -683,11 +681,11 @@ def voltage_distribution(g, plane, boundary1, boundary2, crop=None, I_dim =1,  R
     print(L.shape, 'L')
     I[source_id] = I_dim
     I[sink_id] = -I_dim
-    np.save(g.stack_directory+'/L.npy',L)
-    np.save(g.stack_directory+'/I.npy',I)
+    np.save(g.stack_dir+'/L.npy',L)
+    np.save(g.stack_dir+'/I.npy',I)
     V = np.matmul(np.linalg.pinv(L, hermitian=True),I)
     #VC =np.linalg.solve(L,I)
-    np.save(g.stack_directory+'/V.npy',V)
+    np.save(g.stack_dir+'/V.npy',V)
     
     g.L = L
     g.V = V
