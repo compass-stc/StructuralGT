@@ -565,7 +565,7 @@ def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
     print('img_bin has shape ', g.img_bin.shape)
     for i,edge in enumerate(g.Gr.es()):
         ge = edge['pts']
-        pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin, weight_type=weight_type, R_j=R_j, rho_dim=rho_dim)
+        pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin.T, weight_type=weight_type, R_j=R_j, rho_dim=rho_dim)
         edge['pixel width'] = pix_width
         edge['weight'] = wt
     end = time.time()
@@ -612,6 +612,7 @@ def voltage_distribution(g, plane, boundary1, boundary2, crop=None, I_dim =1,  R
         g = add_weights(g, crop=crop, weight_type='Resistance', R_j=R_j, rho_dim=rho_dim)
         weight_array = np.asarray(g.Gr.es['weight']).astype(float)
         weight_array = weight_array[~np.isnan(weight_array)]
+        g.edge_weights = weight_array
         weight_avg =np.mean(weight_array)
     else:
         g.Gr.es['weight'] = np.ones(g.Gr.ecount())
