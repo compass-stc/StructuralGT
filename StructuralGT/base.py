@@ -316,37 +316,38 @@ def write_averaged(gsd_name):
     datas = pd.DataFrame(data)
     datas.to_csv(gsd_name + 'Averaged_indices.csv')
 
-def debubble(g):
-    from skimage.morphology import binary_closing, disk, ball, skeletonize_3d
+def debubble(g, elements):
+    if not isinstance(elements,list): raise error.StructuralElementError
+ 
     start = time.time()
-    sizes = [4,2,6]
-    elems = [disk,ball]
-    elem = elems[g.dim-2]
+    g.gsd_name = g.gsd_dir + '/debubbled_' + os.path.split(g.gsd_name)[1]
     
     canvas = g.img_bin
-   #Fill in all gaps. Consider successive selem passes.
-    canvas = binary_closing(canvas, selem=elem(sizes[0]))
-    canvas = skeletonize_3d(canvas)/255
-    canvas = binary_closing(canvas, selem=elem(sizes[1]))
-    canvas = skeletonize_3d(canvas)/255
-    canvas = binary_closing(canvas, selem=elem(sizes[2]))
-    reskel =skeletonize_3d(canvas)/255
+    for elem in elements:
+        canvas = skeletonize_3d(canvas)/255
+        canvas = binary_closing(canvas, selem=elem)
 
-    name = os.path.split(g.gsd_name)[0] + '/debubbled_' + os.path.split(g.gsd_name)[1]    
-    positions = np.asarray(np.where(reskel!=0)).T
-    positions = shift(positions)
-    with gsd.hoomd.open(name=name, mode='wb') as f:
+    g.skeleton = skeletonize_3d(canvas)/255
+
+    if g._2d:
+        g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 0, 1)
+        g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
+    else:
+        g.skeleton_3d = g.skeleton
+      
+    positions = np.asarray(np.where(g.skeleton_3d!=0)).T
+    positions = base.shift(positions)
+    with gsd.hoomd.open(name=g.gsd_name, mode='wb') as f:
         s = gsd.hoomd.Snapshot()
-        s.particles.N = int(sum(reskel.ravel()))
+        s.particles.N = int(sum(g.skeleton_3d.ravel()))
         s.particles.position = positions 
         s.particles.types = ['A']
         s.particles.typeid = ['0']*s.particles.N
-        #L = list(max(positions.T[i]) for i in (0,1,2))
-        #if dims == 2: L.append(0)
-        #s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
         f.append(s)
     end = time.time()
-    print('Ran debubble in ', end-start, 'for an image with shape ', reskel.shape)
+    print('Ran debubble in ', end-start, 'for an image with shape ', g.skeleton_3d.shape)
+    
+    return g
 
 def igraph_ANC(directory, I):
     start = time.time()
@@ -547,25 +548,10 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
     print('Ran stack_to_gsd() in ', end-start, 'for gsd with ', len(positions), 'particles')
 
 def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
-    #Before adding weights, important to chck that the image and skeleton are appropriately oriented.
-    #The shape of the image should ~= the maximum positions of the graph
-    #Currently this check assumes that there is a 'slice0.tiff' in the stack_directory
-    #It also assumes an origin cornered graph
-    #TODO find a better way to check this
-
-    img_shape = cv.imread(g.stack_dir + '/slice0.tiff',cv.IMREAD_GRAYSCALE).shape
-    graph_shape = list(max(list(g.Gr.vs[i]['o'][j] for i in range(g.Gr.vcount()))) for j in (0,1))
-    print('graph_shape is ', graph_shape, ' and img_shape is ', img_shape)
-    
-    start = time.time()
-    #img_bin = stack_to_canvas(stack_directory, crop)
-    end = time.time()
-    print('Loaded img in ', end-start)
-    start = time.time()
-    print('img_bin has shape ', g.img_bin.shape)
+    print('graph_shape is ', g.shape, ' and img_shape is ', g.img_bin_3d.shape)
     for i,edge in enumerate(g.Gr.es()):
         ge = edge['pts']
-        pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin.T, weight_type=weight_type, R_j=R_j, rho_dim=rho_dim)
+        pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin, weight_type=weight_type, R_j=R_j, rho_dim=rho_dim)
         edge['pixel width'] = pix_width
         edge['weight'] = wt
     end = time.time()
