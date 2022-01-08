@@ -155,8 +155,8 @@ class Network():
         
         if debubble is not None: self = base.debubble(self, debubble)
             
-        assert g.img_bin.shape == g.skeleton.shape
-        assert g.img_bin_3d.shape == g.skeleton_3d.shape
+        assert self.img_bin.shape == self.skeleton.shape
+        assert self.img_bin_3d.shape == self.skeleton_3d.shape
         
     def G_u(self):
         """Sets unweighted igraph object as an attribute
