@@ -554,7 +554,6 @@ def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
         edge['pixel width'] = pix_width
         edge['weight'] = wt
     end = time.time()
-    print('Added weights to a graph  with ', g.Gr.vcount(), 'nodes in ', end-start)
     
     return g.Gr
 
