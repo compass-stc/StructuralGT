@@ -3,12 +3,10 @@ import numpy as np
 import igraph as ig
 import os
 import cv2 as cv
-import base
-import process_image
 import json
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-import error
+from StructuralGT import error, process_image, base
 import time
 import functools
 import gsd.hoomd
@@ -155,8 +153,8 @@ class Network():
         
         if debubble is not None: self = base.debubble(self, debubble)
             
-        assert g.img_bin.shape == g.skeleton.shape
-        assert g.img_bin_3d.shape == g.skeleton_3d.shape
+        assert self.img_bin.shape == self.skeleton.shape
+        assert self.img_bin_3d.shape == self.skeleton_3d.shape
         
     def G_u(self):
         """Sets unweighted igraph object as an attribute

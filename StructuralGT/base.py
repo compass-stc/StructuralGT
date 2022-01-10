@@ -12,11 +12,9 @@ import json
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import csv
-import error
 
-from skimage.morphology import skeletonize, skeletonize_3d
-from StructuralGT import process_image
-import GetWeights_3d
+from skimage.morphology import skeletonize, skeletonize_3d, binary_closing
+from StructuralGT import process_image, GetWeights_3d, error
 
 #Function returns true for names of images
 def Q_img(name):
@@ -336,7 +334,7 @@ def debubble(g, elements):
         g.skeleton_3d = g.skeleton
       
     positions = np.asarray(np.where(g.skeleton_3d!=0)).T
-    positions = base.shift(positions)
+    positions = shift(positions)
     with gsd.hoomd.open(name=g.gsd_name, mode='wb') as f:
         s = gsd.hoomd.Snapshot()
         s.particles.N = int(sum(g.skeleton_3d.ravel()))
@@ -549,6 +547,7 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
 
 def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
     print('graph_shape is ', g.shape, ' and img_shape is ', g.img_bin_3d.shape)
+    start = time.time()
     for i,edge in enumerate(g.Gr.es()):
         ge = edge['pts']
         pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin, weight_type=weight_type, R_j=R_j, rho_dim=rho_dim)
