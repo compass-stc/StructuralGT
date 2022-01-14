@@ -77,7 +77,6 @@ class Network():
         Running this also sets the positions, shape attributes
         
         """
-        
         start = time.time()
         self.gsd_name = self.stack_dir + '/' + name
         self.gsd_dir = os.path.split(self.gsd_name)[0]
@@ -122,8 +121,6 @@ class Network():
         assert self.img_bin_3d.shape[1] > 1
         assert self.img_bin_3d.shape[2] > 1
               
-        #img_bin = np.asarray([img_slice])
-        #img_bin = np.swapaxes(img_bin, 0, 2)
         self.img_bin_3d = self.img_bin            #Always 3d, even for 2d images
         self.img_bin = np.squeeze(self.img_bin)   #3d for 3d images, 2d otherwise
         
@@ -190,7 +187,7 @@ class ResistiveNetwork(Network):
         print('post sub has ', self.Gr.vcount(), ' nodes')
         if R_j != 'infinity':
             print(self.Gr.vcount())
-            self.Gr_connected = base.add_weights(self, weight_type='Resistance', R_j=R_j, rho_dim=rho_dim)
+            self.Gr_connected = base.add_weights(self, weight_type='Conductance', R_j=R_j, rho_dim=rho_dim)
             print(self.Gr.vcount())
             weight_array = np.asarray(self.Gr_connected.es['weight']).astype(float)
             weight_array = weight_array[~np.isnan(weight_array)]

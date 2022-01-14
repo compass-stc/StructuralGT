@@ -1,7 +1,6 @@
 import numpy as np
 import sknw
 import igraph as ig
-import graph_tool.all as gt
 import gsd.hoomd
 import pandas as pd
 import os
@@ -401,7 +400,8 @@ def igraph_calcs(directory, G):
     
 
 
-
+"""
+REQUIRES GRAPH_TOOL - NOT IMPORTED BY DEFAULT
 def benchmark(gsd_name,skel_name):
     start = time.time()
 #Generate NetworkX type graph object
@@ -449,6 +449,8 @@ def benchmark(gsd_name,skel_name):
     print('Betweenness = ', gt.betweenness(G))
     end = time.time()
     print("graph-tool Clo/Deg/Bet calculated in ", end-start)
+"""
+
 
 #Binarizes stack of experimental images using a set of image processing parameters in options_dict.
 #Note this enforces that all images have the same shape as the first image encountered by the for loop.
@@ -546,7 +548,6 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
     print('Ran stack_to_gsd() in ', end-start, 'for gsd with ', len(positions), 'particles')
 
 def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
-    print('graph_shape is ', g.shape, ' and img_shape is ', g.img_bin_3d.shape)
     start = time.time()
     for i,edge in enumerate(g.Gr.es()):
         ge = edge['pts']
@@ -593,7 +594,7 @@ def voltage_distribution(g, plane, boundary1, boundary2, crop=None, I_dim =1,  R
     g.Gr = sub_G(g.Gr)
     print('post sub has ', g.Gr.vcount(), ' nodes')
     if R_j != 'infinity':
-        g = add_weights(g, crop=crop, weight_type='Resistance', R_j=R_j, rho_dim=rho_dim)
+        g = add_weights(g, crop=crop, weight_type='Conductance', R_j=R_j, rho_dim=rho_dim)
         weight_array = np.asarray(g.Gr.es['weight']).astype(float)
         weight_array = weight_array[~np.isnan(weight_array)]
         g.edge_weights = weight_array
