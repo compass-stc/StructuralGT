@@ -162,7 +162,7 @@ def gsd_to_pos(gsd_name, crop=None):
 
 #Function takes gsd rendering of a skeleton and returns the list of nodes and edges, as calculated by sknw. Optionally, it may crop. sub=True will reduce the returned graph to the largest connected induced subgraph, resetting node numbers to consecutive integers, starting from 0.
 #_2d=True ensures any additional redundant axes from the position list is removed. It does not guarantee a 3d graph
-def gsd_to_G(gsd_name, sub=False, _2d=False)#crop=None):
+def gsd_to_G(gsd_name, sub=False, _2d=False):#crop=None):
     start = time.time()
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
     positions = frame.particles.position.astype(int)
