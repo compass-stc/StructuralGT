@@ -764,6 +764,29 @@ def gyration_moments(G, sampling=1):
 
     return Ax, Ay
 
+def gyration_moments_2(G, sampling=1):
+#Serial implementation
+    Ax=0
+    Ay=0
+    node_count = np.asarray(list(range(G.vcount())))
+    mask = np.random.rand(G.vcount()) > (1-sampling)
+    trimmed_node_count = node_count[mask]
+    for i in trimmed_node_count:
+        for j in trimmed_node_count:
+            if i >= j:    #Symetric matrix
+                continue
+            path = G.get_shortest_paths(i,to=j)
+            Ax_term = 0
+            Ay_term = 0
+            for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
+                weight = G.es[G.get_eid(hop_s,hop_t)]['weight']
+                Ax_term = Ax_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0]))))
+                Ay_term = Ay_term + ((weight*(int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1]))))
+            Ax = Ax + (Ax_term)
+            Ay = Ay + (Ay_term)
+
+    return Ax, Ay
+
 def parallel_gyration(G):
         #Parallel implementation
     from mpi4py import MPI
