@@ -95,7 +95,7 @@ def G_to_gsd(G, gsd_name):
 
     N = len(positions)
     if dim==2:
-        positions = np.append(positions.T,[np.zeros(N)],axis=0).T
+        positions = np.append([np.zeros(N)],positions.T,axis=0).T
 
     s = gsd.hoomd.Snapshot()
     s.particles.N = N
@@ -162,18 +162,21 @@ def gsd_to_pos(gsd_name, crop=None):
 
 #Function takes gsd rendering of a skeleton and returns the list of nodes and edges, as calculated by sknw. Optionally, it may crop. sub=True will reduce the returned graph to the largest connected induced subgraph, resetting node numbers to consecutive integers, starting from 0.
 #_2d=True ensures any additional redundant axes from the position list is removed. It does not guarantee a 3d graph
-def gsd_to_G(gsd_name, crop=None, sub=False, _2d=False):
+def gsd_to_G(gsd_name, sub=False, _2d=False)#crop=None):
     start = time.time()
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
     positions = frame.particles.position.astype(int)
     if sum((positions<0).ravel()) != 0:
         positions = shift(positions)
     
+    """remove
     if crop != None:
         from numpy import logical_and as a
         p=positions.T
         positions = p.T[a(a(a(a(a(p[0]>=crop[0],p[0]<=crop[1]),p[1]>=crop[2]),p[1]<=crop[3]),p[2]>=crop[4]),p[2]<=crop[5])]
         positions = shift(positions)
+    """
+    
     if _2d:
         positions = dim_red(positions)
     canvas = np.zeros(list((max(positions.T[i])+1) for i in list(range(min(positions.shape)))))
@@ -326,14 +329,15 @@ def debubble(g, elements):
 
     g.skeleton = skeletonize_3d(canvas)/255
 
-    if g._2d:
-        g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 0, 1)
-        g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
-    else:
-        g.skeleton_3d = g.skeleton
-      
+    #if g._2d:
+    #    g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 0, 1)
+        #g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
+    #else:
+    #    g.skeleton_3d = g.skeleton
+    
+    g.skeleton_3d = np.asarray([g.skeleton])
+    
     positions = np.asarray(np.where(g.skeleton_3d!=0)).T
-    positions = shift(positions)
     with gsd.hoomd.open(name=g.gsd_name, mode='wb') as f:
         s = gsd.hoomd.Snapshot()
         s.particles.N = int(sum(g.skeleton_3d.ravel()))
@@ -687,7 +691,12 @@ def voltage_distribution(g, plane, boundary1, boundary2, crop=None, I_dim =1,  R
 
 #Labelling function which takes a graph object, node attribute and writes their values to a new .gsd file. 
 def Node_labelling(g, attribute, attribute_name, filename):
-
+    """
+    Function saves a new .gsd which has the graph in g.Gr labelled with the node attributes in attribute
+    """
+    
+    assert g.Gr.vcount() == len(attribute)
+    
     #save_name = os.path.split(prefix)[0] + '/'+attribute_name + os.path.split(prefix)[1]
     save_name = g.dir + '/' + filename
     if os.path.exists(save_name):
@@ -704,11 +713,11 @@ def Node_labelling(g, attribute, attribute_name, filename):
         positions=np.vstack((positions,edge['pts']))
     positions = np.unique(positions, axis=0)
     if g._2d:
-        node_positions = np.hstack((node_positions,np.zeros((len(node_positions),1))))
-        positions = np.hstack((positions,np.zeros((len(positions),1))))
+        node_positions = np.hstack((np.zeros((len(node_positions),1)),node_positions))
+        positions = np.hstack((np.zeros((len(positions),1)),positions))
 
-    node_positions = shift(node_positions)
-    positions = shift(positions)
+    #node_positions = base.shift(node_positions)
+    #positions = base.shift(positions)
     s = gsd.hoomd.Snapshot()
     N = len(positions)
     s.particles.N = N
@@ -732,6 +741,7 @@ def Node_labelling(g, attribute, attribute_name, filename):
             j+=1
     
     f.append(s)
+
 
 #Function returns the principal moments of the given network's gyration tensor.
 #Components in the sum forming the components of the gyration tensor are defined by shortest paths between pairs of nodes, not node pairs.

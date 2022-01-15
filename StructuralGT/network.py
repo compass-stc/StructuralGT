@@ -3,14 +3,16 @@ import numpy as np
 import igraph as ig
 import os
 import cv2 as cv
+import base
+import process_image
 import json
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from StructuralGT import error, process_image, base
+import error
 import time
 import functools
 import gsd.hoomd
-from skimage.morphology import skeletonize_3d
+from skimage.morphology import skeletonize_3d, disk
 import pandas as pd
 
 class Network():
@@ -76,6 +78,97 @@ class Network():
         The name of the written .gsd is set as an attribute so it may be easily matched with its Graph object 
         Running this also sets the positions, shape attributes
         
+        For 2D graphs, the first element of the 3D position list is all 0s. So the gsd y corresponds to the graph
+        x and the gsd z corresponds to the graph y.
+
+        """
+        start = time.time()
+        self.gsd_name = self.stack_dir + '/' + name
+        self.gsd_dir = os.path.split(self.gsd_name)[0]
+        img_bin=[]
+
+        #Initilise i such that it starts at the lowest number belonging to the images in the stack_dir
+        #First require boolean mask to filter out non image files
+        olist = np.asarray(sorted(os.listdir(self.stack_dir)))
+        mask = list(base.Q_img(olist[i]) for i in range(len(olist)))
+        if len(mask) == 0:
+            raise error.ImageDirectoryError(self.stack_dir)
+        fname = sorted(olist[mask])[0] #First name
+        i = int(os.path.splitext(fname)[0][5:]) #Strip file type and 'slice' then convert to int
+
+        #Generate 3d (or 2d) array from stack
+        for fname in sorted(os.listdir(self.stack_dir)):
+            if base.Q_img(fname):
+                img_slice = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
+                if rotate is not None:
+                    image_center = tuple(np.array(img_slice.shape[1::-1]) / 2)
+                    rot_mat = cv.getRotationMatrix2D(image_center, rotate, 1.0)
+                    img_slice = cv.warpAffine(img_slice, rot_mat, img_slice.shape[1::-1], flags=cv.INTER_LINEAR)
+                img_bin.append(img_slice)
+                i=i+1
+            else:
+                continue
+
+        #For 2D images, img_bin_3d.shape[0] == 1
+        img_bin = np.asarray(img_bin)
+        self.img_bin_3d = img_bin
+        self.img_bin = img_bin
+
+        #Note that numpy array slicing operations are carried out in reverse order!
+        #(...hence crop 2 and 3 before 0 and 1)
+        if crop and self._2d:
+            self.img_bin = self.img_bin[:, crop[2]:crop[3], crop[0]:crop[1]]
+            #img_bin = img_bin[crop[0]:crop[1], crop[2]:crop[3]]
+        elif crop:
+            #TODO figure tf this bit out
+            self.img_bin = self.img_bin[crop[0]:crop[1], crop[2]:crop[3], crop[4]:crop[5]]
+
+        assert self.img_bin_3d.shape[1] > 1
+        assert self.img_bin_3d.shape[2] > 1
+        
+        self.img_bin_3d = self.img_bin            #Always 3d, even for 2d images
+        self.img_bin = np.squeeze(self.img_bin)   #3d for 3d images, 2d otherwise
+
+        assert self.img_bin_3d.shape[1] == self.img_bin.shape[0]
+        assert self.img_bin_3d.shape[2] == self.img_bin.shape[1]
+        
+        if skeleton:
+            self.skeleton = skeletonize_3d(np.asarray(self.img_bin))
+            self.skeleton_3d = skeletonize_3d(np.asarray(self.img_bin_3d))
+            #self.skeleton_3d = np.swapaxes(self.skeleton_3d, 1, 2)
+        else:
+            self.img_bin = np.asarray(self.img_bin)
+
+        positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 255)).T
+        self.shape = np.asarray(list(max(positions.T[i])+1 for i in (0,1,2)[0:self.dim]))
+        self.positions = positions
+
+        print(positions)
+        print(self.img_bin.shape)
+
+        with gsd.hoomd.open(name=self.gsd_name, mode='wb') as f:
+            s = gsd.hoomd.Snapshot()
+            s.particles.N = len(positions)
+            s.particles.position = base.shift(positions)
+            s.particles.types = ['A']
+            s.particles.typeid = ['0']*s.particles.N
+            f.append(s)
+
+        end = time.time()
+        print('Ran stack_to_gsd() in ', end-start, 'for gsd with ', len(positions), 'particles')
+
+        if debubble is not None: self = base.debubble(self, debubble)
+
+        assert self.img_bin.shape == self.skeleton.shape
+        assert self.img_bin_3d.shape == self.skeleton_3d.shape
+
+        
+    def stack_to_circular_gsd(self, radius, name='circle.gsd', rotate=None, debubble=None, skeleton=True):
+        """Writes a cicular .gsd file from the object's directory.
+        Currently only capable of 2D graphs
+        Unlike stack_to_gsd, the axis of rotation is not the centre of the image, but the point (radius,radius)
+        The name of the written .gsd is set as an attribute so it may be easily matched with its Graph object 
+        Running this also sets the positions, shape attributes
         """
         start = time.time()
         self.gsd_name = self.stack_dir + '/' + name
@@ -91,38 +184,49 @@ class Network():
         fname = sorted(olist[mask])[0] #First name
         i = int(os.path.splitext(fname)[0][5:]) #Strip file type and 'slice' then convert to int
         
-        #Generate 3d (or 2d) array from stack
+        img_slice = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
+        
+        #Read the image
         for fname in sorted(os.listdir(self.stack_dir)):
             if base.Q_img(fname):
                 img_slice = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
                 if rotate is not None:
-                    image_center = tuple(np.array(img_slice.shape[1::-1]) / 2)
-                    rot_mat = cv.getRotationMatrix2D(image_center, rotate, 1.0)
+                    axis_of_rot = tuple((radius,radius))
+                    #image_center = tuple(np.array(img_slice.shape[1::-1]) / 2)
+                    rot_mat = cv.getRotationMatrix2D(axis_of_rot, rotate, 1.0)
                     img_slice = cv.warpAffine(img_slice, rot_mat, img_slice.shape[1::-1], flags=cv.INTER_LINEAR)
                 img_bin.append(img_slice)
                 i=i+1
             else:
                 continue
-        
+                
         #For 2D images, img_bin_3d.shape[0] == 1
         img_bin = np.asarray(img_bin)
-        self.img_bin_3d = img_bin
-        self.img_bin = img_bin
+        
+        self.img_bin_3d = img_bin            #Always 3d, even for 2d images
+        self.img_bin = np.squeeze(img_bin)   #3d for 3d images, 2d otherwise
         
         #Note that numpy array slicing operations are carried out in reverse order!
         #(...hence crop 2 and 3 before 0 and 1)
-        if crop and self._2d:
-            self.img_bin = self.img_bin[:, crop[2]:crop[3], crop[0]:crop[1]]
-            #img_bin = img_bin[crop[0]:crop[1], crop[2]:crop[3]]
-        elif crop:
-            #TODO figure tf this bit out
-            self.img_bin = self.img_bin[crop[0]:crop[1], crop[2]:crop[3], crop[4]:crop[5]]
+        assert self._2d
+
+
+        canvas = np.ones(self.img_bin.shape)
+        disk_pos = np.asarray(np.where(disk(radius)!=0)).T
+        canvas[disk_pos[0], disk_pos[1]] = 0
+        self.img_bin = np.ma.MaskedArray(self.img_bin, mask=canvas)
+        self.img_bin = np.ma.filled(self.img_bin, fill_value=0)
+        
+        canvas = np.ones(self.img_bin_3d.shape)
+        disk_pos = np.asarray(np.where(disk(radius)!=0)).T
+        disk_pos = np.array([np.zeros(len(disk_pos)), disk_pos.T[0], disk_pos.T[1]], dtype=int)
+        canvas[disk_pos[0], disk_pos[1], disk_pos[2]] = 0
+        self.img_bin_3d = np.ma.MaskedArray(self.img_bin_3d, mask=canvas)
+        self.img_bin_3d = np.ma.filled(self.img_bin_3d, fill_value=0)
+        self.img_bin = self.img_bin_3d[0]
         
         assert self.img_bin_3d.shape[1] > 1
         assert self.img_bin_3d.shape[2] > 1
-              
-        self.img_bin_3d = self.img_bin            #Always 3d, even for 2d images
-        self.img_bin = np.squeeze(self.img_bin)   #3d for 3d images, 2d otherwise
         
         if skeleton:
             self.skeleton = skeletonize_3d(np.asarray(self.img_bin))
@@ -133,9 +237,6 @@ class Network():
         positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 255)).T
         self.shape = np.asarray(list(max(positions.T[i])+1 for i in (0,1,2)[0:self.dim]))
         self.positions = positions
-        
-        print(positions)
-        print(self.img_bin.shape)
         
         with gsd.hoomd.open(name=self.gsd_name, mode='wb') as f:
             s = gsd.hoomd.Snapshot()
@@ -151,7 +252,8 @@ class Network():
         if debubble is not None: self = base.debubble(self, debubble)
             
         assert self.img_bin.shape == self.skeleton.shape
-        assert self.img_bin_3d.shape == self.skeleton_3d.shape
+        assert self.img_bin_3d.shape == self.skeleton_3d.shape    
+        
         
     def G_u(self):
         """Sets unweighted igraph object as an attribute
@@ -187,7 +289,7 @@ class ResistiveNetwork(Network):
         print('post sub has ', self.Gr.vcount(), ' nodes')
         if R_j != 'infinity':
             print(self.Gr.vcount())
-            self.Gr_connected = base.add_weights(self, weight_type='Conductance', R_j=R_j, rho_dim=rho_dim)
+            self.Gr_connected = base.add_weights(self, weight_type='Resistance', R_j=R_j, rho_dim=rho_dim)
             print(self.Gr.vcount())
             weight_array = np.asarray(self.Gr_connected.es['weight']).astype(float)
             weight_array = weight_array[~np.isnan(weight_array)]
