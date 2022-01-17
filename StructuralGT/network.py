@@ -289,7 +289,7 @@ class ResistiveNetwork(Network):
         print('post sub has ', self.Gr.vcount(), ' nodes')
         if R_j != 'infinity':
             print(self.Gr.vcount())
-            self.Gr_connected = base.add_weights(self, weight_type='Resistance', R_j=R_j, rho_dim=rho_dim)
+            self.Gr_connected = base.add_weights(self, weight_type='Conductance', R_j=R_j, rho_dim=rho_dim)
             print(self.Gr.vcount())
             weight_array = np.asarray(self.Gr_connected.es['weight']).astype(float)
             weight_array = weight_array[~np.isnan(weight_array)]

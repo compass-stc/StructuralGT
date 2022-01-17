@@ -698,7 +698,7 @@ def Node_labelling(g, attribute, attribute_name, filename):
     assert g.Gr.vcount() == len(attribute)
     
     #save_name = os.path.split(prefix)[0] + '/'+attribute_name + os.path.split(prefix)[1]
-    save_name = g.dir + '/' + filename
+    save_name = g.stack_dir + '/' + filename
     if os.path.exists(save_name):
         mode = 'rb+'
     else:
