@@ -751,7 +751,7 @@ def Node_labelling(g, attribute, attribute_name, filename):
 #~500/3000                 ~20 s
 #~1800/5500                ~10 min
 
-def gyration_moments(G, sampling=1):
+def gyration_moments(G, weighted=True, sampling=1):
 #Serial implementation
     Ax=0
     Ay=0
@@ -766,7 +766,10 @@ def gyration_moments(G, sampling=1):
             Ax_term = 0
             Ay_term = 0
             for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
-                weight = G.es[G.get_eid(hop_s,hop_t)]['weight']
+                if weighted:
+                    weight = G.es[G.get_eid(hop_s,hop_t)]['weight']
+                else:
+                    weight = 1
                 Ax_term = Ax_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
                 Ay_term = Ay_term + ((weight*(int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))**2)
             Ax = Ax + (Ax_term)
