@@ -698,7 +698,10 @@ def Node_labelling(g, attribute, attribute_name, filename):
     assert g.Gr.vcount() == len(attribute)
     
     #save_name = os.path.split(prefix)[0] + '/'+attribute_name + os.path.split(prefix)[1]
-    save_name = g.stack_dir + '/' + filename
+    if filename[0] == '/':
+        save_name = filename
+    else:
+        save_name = g.stack_dir + '/' + filename
     if os.path.exists(save_name):
         mode = 'rb+'
     else:
@@ -755,6 +758,8 @@ def gyration_moments(G, weighted=True, sampling=1):
 #Serial implementation
     Ax=0
     Ay=0
+    Axy=0
+    Ayx=0
     node_count = np.asarray(list(range(G.vcount())))
     mask = np.random.rand(G.vcount()) > (1-sampling)
     trimmed_node_count = node_count[mask]
@@ -765,6 +770,8 @@ def gyration_moments(G, weighted=True, sampling=1):
             path = G.get_shortest_paths(i,to=j)
             Ax_term = 0
             Ay_term = 0
+            Axy_term = 0
+            Ayx_term = 0
             for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
                 if weighted:
                     weight = G.es[G.get_eid(hop_s,hop_t)]['weight']
@@ -772,10 +779,15 @@ def gyration_moments(G, weighted=True, sampling=1):
                     weight = 1
                 Ax_term = Ax_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
                 Ay_term = Ay_term + ((weight*(int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))**2)
+                Axy_term = Axy_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][1])))**2)
+                Ayx_term = Ayx_term + ((weight*(int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][0])))**2)
+            
             Ax = Ax + (Ax_term)
             Ay = Ay + (Ay_term)
+            Axy = Axy + (Axy_term)
+            Ayx = Ayx + (Ayx_term)
 
-    return Ax, Ay
+    return Ax, Ay, Axy, Ayx
 
 def gyration_moments_2(G, weighted=True, sampling=1):
 #Serial implementation
