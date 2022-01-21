@@ -3,12 +3,10 @@ import numpy as np
 import igraph as ig
 import os
 import cv2 as cv
-import base
-import process_image
+from StructuralGT import base, process_image, error
 import json
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-import error
 import time
 import functools
 import gsd.hoomd
@@ -83,7 +81,11 @@ class Network():
 
         """
         start = time.time()
-        self.gsd_name = self.stack_dir + '/' + name
+        
+        if name[0] == '/':
+            self.gsd_name = name
+        else:
+            self.gsd_name = self.stack_dir + '/' + name
         self.gsd_dir = os.path.split(self.gsd_name)[0]
         img_bin=[]
 
