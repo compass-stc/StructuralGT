@@ -173,7 +173,10 @@ class Network():
         Running this also sets the positions, shape attributes
         """
         start = time.time()
-        self.gsd_name = self.stack_dir + '/' + name
+        if name[0] == '/':
+            self.gsd_name = name
+        else:
+            self.gsd_name = self.stack_dir + '/' + nameelf.gsd_name = self.stack_dir + '/' + name
         self.gsd_dir = os.path.split(self.gsd_name)[0]
         img_bin=[]
         
