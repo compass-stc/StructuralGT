@@ -4,6 +4,6 @@ scikit-image~=0.18.1
 matplotlib~=3.3.4
 networkx~=2.5
 opencv-python~=4.5.1.48
-sknw~=0.14
+sknwEdits~=0.1
 Pillow~=8.1.0
 pandas~=1.2.1

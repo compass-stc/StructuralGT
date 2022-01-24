@@ -1,5 +1,5 @@
 import numpy as np
-import sknw
+import sknwEdits as sknw
 import igraph as ig
 import gsd.hoomd
 import pandas as pd
@@ -329,11 +329,11 @@ def debubble(g, elements):
 
     g.skeleton = skeletonize_3d(canvas)/255
 
-    #if g._2d:
+    if g._2d:
     #    g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 0, 1)
-        #g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
-    #else:
-    #    g.skeleton_3d = g.skeleton
+        g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
+    else:
+        g.skeleton_3d = g.skeleton
     
     g.skeleton_3d = np.asarray([g.skeleton])
     
