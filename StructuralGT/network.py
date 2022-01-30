@@ -301,6 +301,7 @@ class ResistiveNetwork(Network):
             self.edge_weights = weight_array
             weight_avg =np.mean(weight_array)
         else:
+            self.Gr_connected = self.Gr
             self.Gr_connected.es['weight'] = np.ones(self.Gr_connected.ecount())
             weight_avg = 1
 
@@ -343,8 +344,9 @@ class ResistiveNetwork(Network):
         connected_name = os.path.split(self.gsd_name)[0] + '/connected_' + os.path.split(self.gsd_name)[1] 
         #connected_name = self.stack_dir + '/connected_' + self.gsd_name 
         base.G_to_gsd(self.Gr_connected, connected_name)
-
-        self.weighted_Laplacian()
+        
+        if R_j=='infinity': self.L = np.asarray(self.Gr.laplacian())
+        else: self.weighted_Laplacian()
         F = np.zeros(sink_id+1)
         print(F.shape,'F')
         print(self.L.shape, 'L')
