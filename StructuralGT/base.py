@@ -557,7 +557,7 @@ def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
         ge = edge['pts']
         pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin, weight_type=weight_type, R_j=R_j, rho_dim=rho_dim)
         edge['pixel width'] = pix_width
-        edge['weight'] = wt
+        edge[weight_type] = wt
     end = time.time()
     
     return g.Gr

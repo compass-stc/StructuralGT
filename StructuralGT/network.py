@@ -267,9 +267,9 @@ class Network():
         self.Gr = G
         self.shape = list(max(list(self.Gr.vs[i]['o'][j] for i in range(self.Gr.vcount()))) for j in (0,1,2)[0:self.dim])
         
-    def weighted_Laplacian(self):
+    def weighted_Laplacian(self, weights='weight'):
 
-        L=np.asarray(self.Gr.laplacian(weights='weight'))
+        L=np.asarray(self.Gr.laplacian(weights=weights))
         self.L = L
 
 class ResistiveNetwork(Network):
@@ -277,8 +277,8 @@ class ResistiveNetwork(Network):
     Equipped with methods for analysing resistive flow networks
 
     """
-    def __init__(self, directory):
-        super().__init__(directory)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         
     def potential_distribution(self, plane, boundary1, boundary2, R_j=0, rho_dim=1, F_dim=1):
         """Solves for the potential distribution in a weighted network.
@@ -296,13 +296,13 @@ class ResistiveNetwork(Network):
             print(self.Gr.vcount())
             self.Gr_connected = base.add_weights(self, weight_type='Conductance', R_j=R_j, rho_dim=rho_dim)
             print(self.Gr.vcount())
-            weight_array = np.asarray(self.Gr_connected.es['weight']).astype(float)
+            weight_array = np.asarray(self.Gr_connected.es['Conductance']).astype(float)
             weight_array = weight_array[~np.isnan(weight_array)]
             self.edge_weights = weight_array
             weight_avg =np.mean(weight_array)
         else:
             self.Gr_connected = self.Gr
-            self.Gr_connected.es['weight'] = np.ones(self.Gr_connected.ecount())
+            self.Gr_connected.es['Conductance'] = np.ones(self.Gr_connected.ecount())
             weight_avg = 1
 
         #Add source and sink nodes:
@@ -331,11 +331,11 @@ class ResistiveNetwork(Network):
         for node in self.Gr_connected.vs:
             if node['o'][plane] > boundary1[0] and node['o'][plane] < boundary1[1]:
                 self.Gr_connected.add_edges([(node.index, source_id)])
-                self.Gr_connected.es[self.Gr_connected.get_eid(node.index,source_id)]['weight'] = weight_avg
+                self.Gr_connected.es[self.Gr_connected.get_eid(node.index,source_id)]['Conductance'] = weight_avg
                 self.Gr_connected.es[self.Gr_connected.get_eid(node.index,source_id)]['pts'] = base.connector(source_coord,node['o'])
             if node['o'][plane] > boundary2[0] and node['o'][plane] < boundary2[1]:
                 self.Gr_connected.add_edges([(node.index, sink_id)])
-                self.Gr_connected.es[self.Gr_connected.get_eid(node.index,sink_id)]['weight'] = weight_avg 
+                self.Gr_connected.es[self.Gr_connected.get_eid(node.index,sink_id)]['Conductance'] = weight_avg 
                 self.Gr_connected.es[self.Gr_connected.get_eid(node.index,sink_id)]['pts'] = base.connector(sink_coord,node['o'])
 
     #Write skeleton connected to external node
@@ -346,7 +346,7 @@ class ResistiveNetwork(Network):
         base.G_to_gsd(self.Gr_connected, connected_name)
         
         if R_j=='infinity': self.L = np.asarray(self.Gr.laplacian())
-        else: self.weighted_Laplacian()
+        else: self.weighted_Laplacian(weights='Conductance')
         F = np.zeros(sink_id+1)
         print(F.shape,'F')
         print(self.L.shape, 'L')
