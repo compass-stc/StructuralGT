@@ -765,12 +765,12 @@ def gyration_moments(G, weighted=True, sampling=1):
         for j in trimmed_node_count:
             if i >= j:    #Symetric matrix
                 continue
-            path = G.get_shortest_paths(i,to=j)
+            path = G.get_shortest_paths(i,to=j, weights='Resistance')
             Ax_term = 0
             Ay_term = 0
             for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
                 if weighted:
-                    weight = G.es[G.get_eid(hop_s,hop_t)]['weight']
+                    weight = G.es[G.get_eid(hop_s,hop_t)]['Conductance']
                 else:
                     weight = 1
                 Ax_term = Ax_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
