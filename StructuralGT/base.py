@@ -44,19 +44,25 @@ def canvas_to_G(name):
     canvas = np.load(name)
     G = sknw.build_sknw(canvas.astype(int))
 
-def shift(points):
-    if len(points[0]) == 3:
-        shift=(np.full((np.shape(points)[0],3),[np.min(points.T[0]),np.min(points.T[1]),np.min(points.T[2])]))
-    else:   
-        shift=(np.full((np.shape(points)[0],2),[np.min(points.T[0]),np.min(points.T[1])]))
-
-    points = points - shift
+def shift(points, _shift=None):
+    if _shift is None:
+        if len(points[0]) == 3:
+            _shift=(np.full((np.shape(points)[0],3),[np.min(points.T[0]),np.min(points.T[1]),np.min(points.T[2])]))
+        else:   
+            _shift=(np.full((np.shape(points)[0],2),[np.min(points.T[0]),np.min(points.T[1])]))
+            
+    points = points - _shift
     return points
 
 #Shifts points to origin centre
-def oshift(points):
-    shift = np.full((np.shape(points)[0],3),[np.max(points.T[0])/2,np.max(points.T[1])/2,np.max(points.T[2])/2]) 
-    points = points - shift
+def oshift(points, _shift=None):
+    if _shift is None:
+        if len(points[0]) == 3:
+            _shift = np.full((np.shape(points)[0],3),[np.max(points.T[0])/2,np.max(points.T[1])/2,np.max(points.T[2])/2])
+        else:
+            _shift = np.full((np.shape(points)[0],2),[np.max(points.T[0])/2,np.max(points.T[1])/2])
+
+    points = points - _shift 
     return points
 
 #For lists of positions where all elements along one axis have the same value, this returns the same list of positions but with the redundant dimension(s) removed
