@@ -1,7 +1,6 @@
 import numpy as np
-import sknw
+import sknwEdits as sknw
 import igraph as ig
-import graph_tool.all as gt
 import gsd.hoomd
 import pandas as pd
 import os
@@ -12,11 +11,9 @@ import json
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import csv
-import error
 
-from skimage.morphology import skeletonize, skeletonize_3d
-from StructuralGT import process_image
-import GetWeights_3d
+from skimage.morphology import skeletonize, skeletonize_3d, binary_closing
+from StructuralGT import process_image, GetWeights_3d, error
 
 #Function returns true for names of images
 def Q_img(name):
@@ -47,19 +44,25 @@ def canvas_to_G(name):
     canvas = np.load(name)
     G = sknw.build_sknw(canvas.astype(int))
 
-def shift(points):
-    if len(points[0]) == 3:
-        shift=(np.full((np.shape(points)[0],3),[np.min(points.T[0]),np.min(points.T[1]),np.min(points.T[2])]))
-    else:   
-        shift=(np.full((np.shape(points)[0],2),[np.min(points.T[0]),np.min(points.T[1])]))
-
-    points = points - shift
+def shift(points, _shift=None):
+    if _shift is None:
+        if len(points[0]) == 3:
+            _shift=(np.full((np.shape(points)[0],3),[np.min(points.T[0]),np.min(points.T[1]),np.min(points.T[2])]))
+        else:   
+            _shift=(np.full((np.shape(points)[0],2),[np.min(points.T[0]),np.min(points.T[1])]))
+            
+    points = points - _shift
     return points
 
 #Shifts points to origin centre
-def oshift(points):
-    shift = np.full((np.shape(points)[0],3),[np.max(points.T[0])/2,np.max(points.T[1])/2,np.max(points.T[2])/2]) 
-    points = points - shift
+def oshift(points, _shift=None):
+    if _shift is None:
+        if len(points[0]) == 3:
+            _shift = np.full((np.shape(points)[0],3),[np.max(points.T[0])/2,np.max(points.T[1])/2,np.max(points.T[2])/2])
+        else:
+            _shift = np.full((np.shape(points)[0],2),[np.max(points.T[0])/2,np.max(points.T[1])/2])
+
+    points = points - _shift 
     return points
 
 #For lists of positions where all elements along one axis have the same value, this returns the same list of positions but with the redundant dimension(s) removed
@@ -98,7 +101,7 @@ def G_to_gsd(G, gsd_name):
 
     N = len(positions)
     if dim==2:
-        positions = np.append(positions.T,[np.zeros(N)],axis=0).T
+        positions = np.append([np.zeros(N)],positions.T,axis=0).T
 
     s = gsd.hoomd.Snapshot()
     s.particles.N = N
@@ -110,7 +113,6 @@ def G_to_gsd(G, gsd_name):
         f.append(s)
     
 def stack_to_canvas(stack_directory, crop=None):
-    print('stack directory is ',stack_directory)
     img_bin = []
     i=0
     for name in sorted(os.listdir(stack_directory)):
@@ -166,18 +168,21 @@ def gsd_to_pos(gsd_name, crop=None):
 
 #Function takes gsd rendering of a skeleton and returns the list of nodes and edges, as calculated by sknw. Optionally, it may crop. sub=True will reduce the returned graph to the largest connected induced subgraph, resetting node numbers to consecutive integers, starting from 0.
 #_2d=True ensures any additional redundant axes from the position list is removed. It does not guarantee a 3d graph
-def gsd_to_G(gsd_name, crop=None, sub=False, _2d=False):
+def gsd_to_G(gsd_name, sub=False, _2d=False):#crop=None):
     start = time.time()
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
     positions = frame.particles.position.astype(int)
     if sum((positions<0).ravel()) != 0:
         positions = shift(positions)
     
+    """remove
     if crop != None:
         from numpy import logical_and as a
         p=positions.T
         positions = p.T[a(a(a(a(a(p[0]>=crop[0],p[0]<=crop[1]),p[1]>=crop[2]),p[1]<=crop[3]),p[2]>=crop[4]),p[2]<=crop[5])]
         positions = shift(positions)
+    """
+    
     if _2d:
         positions = dim_red(positions)
     canvas = np.zeros(list((max(positions.T[i])+1) for i in list(range(min(positions.shape)))))
@@ -317,45 +322,39 @@ def write_averaged(gsd_name):
     datas = pd.DataFrame(data)
     datas.to_csv(gsd_name + 'Averaged_indices.csv')
 
-def debubble(gsd_name):
-    from skimage.morphology import binary_closing, disk, ball, skeletonize_3d
+def debubble(g, elements):
+    if not isinstance(elements,list): raise error.StructuralElementError
+ 
     start = time.time()
-    #First rewrite the gsd from position to image space
-    frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
-    positions = frame.particles.position.astype(int)
-    positions = shift(positions)
-    positions = dim_red(positions)
-    dims = len(positions.T)
-    canvas=np.zeros(list(max(positions.T[i])+3 for i in range(dims)))
-    canvas[tuple(list(positions.T))] = 1
-    #Canvas and positions are all positive
-    sizes = [4,2,6]
-    elems = [disk,ball]
-    elem = elems[dims == [2,3]]
-    #Fill in all gaps. Consider successive selem passes.
-    canvas = binary_closing(canvas, selem=elem(sizes[0]))
-    canvas = skeletonize_3d(canvas)/255
-    canvas = binary_closing(canvas, selem=elem(sizes[1]))
-    canvas = skeletonize_3d(canvas)/255
-    canvas = binary_closing(canvas, selem=elem(sizes[2]))
+    g.gsd_name = g.gsd_dir + '/debubbled_' + os.path.split(g.gsd_name)[1]
     
-    reskel =skeletonize_3d(canvas)/255
-    name = os.path.split(gsd_name)[0] + '/debubbled_' + os.path.split(gsd_name)[1]    
-    positions = np.asarray(np.where(reskel!=0)).T
-    positions = np.append(positions.T,[np.zeros(len(positions))],axis=0).T
-    positions = shift(positions)
-    with gsd.hoomd.open(name=name, mode='wb') as f:
+    canvas = g.img_bin
+    for elem in elements:
+        canvas = skeletonize_3d(canvas)/255
+        canvas = binary_closing(canvas, selem=elem)
+
+    g.skeleton = skeletonize_3d(canvas)/255
+
+    if g._2d:
+    #    g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 0, 1)
+        g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
+    else:
+        g.skeleton_3d = g.skeleton
+    
+    g.skeleton_3d = np.asarray([g.skeleton])
+    
+    positions = np.asarray(np.where(g.skeleton_3d!=0)).T
+    with gsd.hoomd.open(name=g.gsd_name, mode='wb') as f:
         s = gsd.hoomd.Snapshot()
-        s.particles.N = int(sum(reskel.ravel()))
+        s.particles.N = int(sum(g.skeleton_3d.ravel()))
         s.particles.position = positions 
         s.particles.types = ['A']
         s.particles.typeid = ['0']*s.particles.N
-        #L = list(max(positions.T[i]) for i in (0,1,2))
-        #if dims == 2: L.append(0)
-        #s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
         f.append(s)
     end = time.time()
-    print('Ran debubble in ', end-start, 'for an image with shape ', reskel.shape)
+    print('Ran debubble in ', end-start, 'for an image with shape ', g.skeleton_3d.shape)
+    
+    return g
 
 def igraph_ANC(directory, I):
     start = time.time()
@@ -411,7 +410,8 @@ def igraph_calcs(directory, G):
     
 
 
-
+"""
+REQUIRES GRAPH_TOOL - NOT IMPORTED BY DEFAULT
 def benchmark(gsd_name,skel_name):
     start = time.time()
 #Generate NetworkX type graph object
@@ -459,6 +459,8 @@ def benchmark(gsd_name,skel_name):
     print('Betweenness = ', gt.betweenness(G))
     end = time.time()
     print("graph-tool Clo/Deg/Bet calculated in ", end-start)
+"""
+
 
 #Binarizes stack of experimental images using a set of image processing parameters in options_dict.
 #Note this enforces that all images have the same shape as the first image encountered by the for loop.
@@ -469,12 +471,6 @@ def ExpProcess(directory, options_dict=None):
         options = directory + '/img_options.json'
         with open(options) as f:
             options_dict = json.load(f)
-        
-    #Reset write directory
-    #try:
-    #    shutil.rmtree(directory+'/Binarized')
-    #except FileNotFoundError:
-    #    os.mkdir(directory+'/Binarized')
     
     #Check if directory exists
     if not os.path.isdir(directory + '/Binarized'):
@@ -489,8 +485,6 @@ def ExpProcess(directory, options_dict=None):
             img_exp = cv.imread(directory+'/'+name,cv.IMREAD_GRAYSCALE)
             if i == 0: shape = img_exp.shape
             elif img_exp.shape != shape: continue
-            if img_exp is None:
-                raise TypeError('img_exp is None')
             _, img_bin, _ = process_image.binarize(img_exp, options_dict)
             plt.imsave(directory+'/'+'Binarized'+'/'+'slice'+str(i)+'.tiff', img_bin, cmap=cm.gray)
             i+=1
@@ -532,19 +526,6 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
         positions = p.T[a(a(a(a(a(p[0]>=crop[0],p[0]<=crop[1]),p[1]>=crop[2]),p[1]<=crop[3]),p[2]>=crop[4]),p[2]<=crop[5])]
         positions = shift(positions)
 
-    #For rotating rectangular networks, the steps include
-      #Centre on origin
-      #Apply rotation
-      #Crop to square
-      #Corner on origin
-    if 1==2:#rotate is not None:
-        positions = oshift(positions)
-        positions = np.matmul(positions,rotate).astype(int)
-        from numpy import logical_and as a
-        p = positions.T
-        positions = p.T[a(a(a(a(a(p[0]>=crop[0],p[0]<=crop[1]),p[1]>=crop[2]),p[1]<=crop[3]),p[2]>=crop[4]),p[2]<=crop[5])]
-        positions = shift(positions)
-
     if crop is not None and rotate is None:
         from numpy import logical_and as a
         p = positions.T
@@ -558,7 +539,6 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
 
     #Roll axes such that z=0 for all positions when the graph is 2D
     img_bin = np.swapaxes(img_bin, 0, 2)
-    #img_bin = np.swapaxes(img_bin, 0, 1) 
     if skeleton:
         img_bin = skeletonize_3d(np.asarray(img_bin))
     else:
@@ -570,39 +550,23 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
     with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
         s = gsd.hoomd.Snapshot()
         s.particles.N = len(positions)
-        s.particles.position = positions
+        s.particles.position = shift(positions)
         s.particles.types = ['A']
         s.particles.typeid = ['0']*s.particles.N
         f.append(s)
     end = time.time()
     print('Ran stack_to_gsd() in ', end-start, 'for gsd with ', len(positions), 'particles')
 
-def add_weights(G, stack_directory, crop=None, weight_type=None, R_j=0, rho_dim=1):
-    #Before adding weights, important to chck that the image and skeleton are appropriately oriented.
-    #The shape of the image should ~= the maximum positions of the graph
-    #Currently this check assumes that there is a 'slice0.tiff' in the stack_directory
-    #TODO find a better way to check this
-
-    img_shape = cv.imread(stack_directory+'/slice0.tiff',cv.IMREAD_GRAYSCALE).shape
-    graph_shape = list(max(list(G.vs[i]['o'][j] for i in range(G.vcount()))) for j in (0,1))
-    print('graph_shape is ', graph_shape, ' and img_shape is ', img_shape)
-    
+def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
     start = time.time()
-    img_bin = stack_to_canvas(stack_directory, crop)
-    end = time.time()
-    print('Loaded img in ', end-start)
-    start = time.time()
-    print('img_bin has shape ', img_bin.shape)
-    plt.imsave('weight_image.tiff', img_bin, cmap=cm.gray)
-    for i,edge in enumerate(G.es()):
+    for i,edge in enumerate(g.Gr.es()):
         ge = edge['pts']
-        pix_width, wt = GetWeights_3d.assignweights(ge, img_bin, weight_type=weight_type, R_j=R_j, rho_dim=rho_dim)
+        pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin, weight_type=weight_type, R_j=R_j, rho_dim=rho_dim)
         edge['pixel width'] = pix_width
-        edge['weight'] = wt
+        edge[weight_type] = wt
     end = time.time()
-    print('Added weights to a graph  with ', G.vcount(), 'nodes in ', end-start)
     
-    return G
+    return g.Gr
 
 def stack_analysis(stack_directory, suffix, ANC=False, crop=None):
      ExpProcess(stack_directory)
@@ -634,41 +598,41 @@ def weighted_Laplacian(G):
 
 #The 'plane' arguement defines the /axis/ which along which the boundary arguements refer to
 #Weighted=False enables the unusual case of all edges having the same resistance and can be used to establish the relative effects of geometry and topology
-def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2, graph=None, crop=None, weighted=True, _2d=False, I_dim=1, R_j=0, rho_dim=1):
-    if graph is None:
-        start = time.time()
-        G = gsd_to_G(gsd_name, crop=crop, _2d=_2d)
-        end = time.time()
-    else:
-        G = graph
+def voltage_distribution(g, plane, boundary1, boundary2, crop=None, I_dim =1,  R_j=0, rho_dim=1):
 
-    G = sub_G(G)
-    print('post sub has ', G.vcount(), ' nodes')
-    if weighted:
-        G = add_weights(G, stack_directory, crop=crop, weight_type='Resistance', R_j=R_j, rho_dim=rho_dim)
-        weight_array = np.asarray(G.es['weight']).astype(float)
+    print('pre sub has ', g.Gr.vcount(), ' nodes')
+    g.Gr = sub_G(g.Gr)
+    print('post sub has ', g.Gr.vcount(), ' nodes')
+    if R_j != 'infinity':
+        g = add_weights(g, crop=crop, weight_type='Conductance', R_j=R_j, rho_dim=rho_dim)
+        weight_array = np.asarray(g.Gr.es['weight']).astype(float)
         weight_array = weight_array[~np.isnan(weight_array)]
+        g.edge_weights = weight_array
         weight_avg =np.mean(weight_array)
     else:
-        G.es['weight'] = np.ones(G.ecount())
+        g.Gr.es['weight'] = np.ones(g.Gr.ecount())
         weight_avg = 1
   
 
 #Add source and sink nodes:
-    source_id = max(G.vs).index + 1
+    source_id = max(g.Gr.vs).index + 1
     sink_id = source_id + 1
-    G.add_vertices(2)
+    g.Gr.add_vertices(2)
 #Add coords for plotting
-    positions = []
-    for i in range(G.vcount()):
-        if G.vs[i]['o'] is None:
-            pass
-        else:
-            positions.append(G.vs[i]['o'].ravel())
+    #positions = []
+    #for i in range(G.vcount()):
+    #    if g.G.vs[i]['o'] is None:
+    #        pass
+    #    else:
+    #        positions.append(g.G.vs[i]['o'].ravel())
     
-    positions = np.concatenate(np.asarray(positions)).reshape((len(positions),len(positions[0])))
-    dim = len(positions[0])
-    dims = list(max(positions.T[i]) for i in (range(dim)))
+    #positions = np.concatenate(np.asarray(positions)).reshape((len(positions),len(positions[0])))
+    
+    positions = g.positions
+    dims = g.shape
+    dim = g.dim
+    #dim = len(positions[0])
+    #dims = list(max(positions.T[i]) for i in (range(dim)))
     #dims = list(max(np.stack(list(G.vs[i]['o'] for i in range(G.vcount()))).T[j]) for j in (0,1,2)) 
     #mins = list(min(np.asarray(list(G.vs[i]['o'] for i in range(G.vcount())), dtype=object).T[j]) for j in (0,1,2))
     #print(np.asarray(list(G.vs[i]['o'] for i in range(G.vcount()))).T)
@@ -685,68 +649,84 @@ def voltage_distribution(stack_directory, gsd_name, plane, boundary1, boundary2,
     sink_coord = plane_centre2 + delta
     print('source coord is ', source_coord)
     print('sink coord is ', sink_coord)
-    G.vs[source_id]['o'] = source_coord
-    G.vs[sink_id]['o'] = sink_coord
+    g.Gr.vs[source_id]['o'] = source_coord
+    g.Gr.vs[sink_id]['o'] = sink_coord
 
 #Connect nodes on a given boundary to the external current nodes
-    print('Before connecting external nodes, G has vcount ', G.vcount())
-    for node in G.vs:
+    print('Before connecting external nodes, G has vcount ', g.Gr.vcount())
+    for node in g.Gr.vs:
         if node['o'][plane] > boundary1[0] and node['o'][plane] < boundary1[1]:
-            G.add_edges([(node.index, source_id)])
-            G.es[G.get_eid(node.index,source_id)]['weight'] = weight_avg
-            G.es[G.get_eid(node.index,source_id)]['pts'] = connector(source_coord,node['o'])
+            g.Gr.add_edges([(node.index, source_id)])
+            g.Gr.es[g.Gr.get_eid(node.index,source_id)]['weight'] = weight_avg
+            g.Gr.es[g.Gr.get_eid(node.index,source_id)]['pts'] = connector(source_coord,node['o'])
         if node['o'][plane] > boundary2[0] and node['o'][plane] < boundary2[1]:
-            G.add_edges([(node.index, sink_id)])
-            G.es[G.get_eid(node.index,sink_id)]['weight'] = weight_avg 
-            G.es[G.get_eid(node.index,sink_id)]['pts'] = connector(sink_coord,node['o'])
+            g.Gr.add_edges([(node.index, sink_id)])
+            g.Gr.es[g.Gr.get_eid(node.index,sink_id)]['weight'] = weight_avg 
+            g.Gr.es[g.Gr.get_eid(node.index,sink_id)]['pts'] = connector(sink_coord,node['o'])
 
 #Write skeleton connected to external node
-    print(G.is_connected(), ' connected')
-    print('After connecting external nodes, G has vcount ', G.vcount())
-    connected_name = os.path.split(gsd_name)[0] + '/connected_' + os.path.split(gsd_name)[1] 
-    G_to_gsd(G, connected_name)
+    print(g.Gr.is_connected(), ' connected')
+    print('After connecting external nodes, G has vcount ', g.Gr.vcount())
+    connected_name = os.path.split(g.gsd_name)[0] + '/connected_' + os.path.split(g.gsd_name)[1] 
+    #connected_name = g.stack_directory + '/connected_' + g.gsd_name 
+    G_to_gsd(g.Gr, connected_name)
 
-    L = weighted_Laplacian(G)
+    L = weighted_Laplacian(g.Gr)
     I = np.zeros(sink_id+1)
     print(I.shape,'I')
     print(L.shape, 'L')
     I[source_id] = I_dim
     I[sink_id] = -I_dim
-    np.save(stack_directory+'/L.npy',L)
-    np.save(stack_directory+'/I.npy',I)
-    VC = np.matmul(np.linalg.pinv(L, hermitian=True),I)
+    np.save(g.stack_dir+'/L.npy',L)
+    np.save(g.stack_dir+'/I.npy',I)
+    V = np.matmul(np.linalg.pinv(L, hermitian=True),I)
     #VC =np.linalg.solve(L,I)
-    np.save(stack_directory+'/VC.npy',VC)
-    return VC,G
+    np.save(g.stack_dir+'/V.npy',V)
+    
+    g.L = L
+    g.V = V
+    g.I = I
+
+    return g
 
 #Labelling function which takes an attribute calculating function and its relevant parameters (usually gsd, img_bin and, optionally, crop)
 #The labelling function calls the attribute calculating function so that the graph and its nodes' attributes are returned
 #The labelling funciton appends the attribute to the graph and rewrites the gsd
 #Note that all attribute calculating functions must return the attribute tensor and the graph which is to be labelled
 #The gsd_name given in *args is the file in which the unlabelled graph should be extracted from.
-def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
 
-    #positions = gsd.hoomd.open(name=gsd_name, mode='rb')[0].particles.position
-    start = time.time()
-    attribute,G = AttrCalcFunc(*args, **kwargs)
-    end = time.time()
-    save_name = os.path.split(prefix)[0] + '/'+attribute_name + os.path.split(prefix)[1]
+#Labelling function which takes a graph object, node attribute and writes their values to a new .gsd file. 
+def Node_labelling(g, attribute, attribute_name, filename):
+    """
+    Function saves a new .gsd which has the graph in g.Gr labelled with the node attributes in attribute
+    """
+    
+    assert g.Gr.vcount() == len(attribute)
+    
+    #save_name = os.path.split(prefix)[0] + '/'+attribute_name + os.path.split(prefix)[1]
+    if filename[0] == '/':
+        save_name = filename
+    else:
+        save_name = g.stack_dir + '/' + filename
     if os.path.exists(save_name):
         mode = 'rb+'
     else:
         mode = 'wb'
+
     f = gsd.hoomd.open(name=save_name, mode=mode)
-    node_positions = np.asarray(list(G.vs()[i]['o'] for i in range(G.vcount())))
+    
+    #Must segregate position list into a node_position section and edge_position
+    node_positions = np.asarray(list(g.Gr.vs()[i]['o'] for i in range(g.Gr.vcount())))
     positions = node_positions
-    for edge in G.es():
+    for edge in g.Gr.es():
         positions=np.vstack((positions,edge['pts']))
     positions = np.unique(positions, axis=0)
-    if kwargs['_2d']: #TODO change so that _2d should only need to be specified if =True. I.e. user currently has to specify _2d=False.
-        node_positions = np.hstack((node_positions,np.zeros((len(node_positions),1))))
-        positions = np.hstack((positions,np.zeros((len(positions),1))))
+    if g._2d:
+        node_positions = np.hstack((np.zeros((len(node_positions),1)),node_positions))
+        positions = np.hstack((np.zeros((len(positions),1)),positions))
 
-    node_positions = shift(node_positions)
-    positions = shift(positions)
+    #node_positions = base.shift(node_positions)
+    #positions = base.shift(positions)
     s = gsd.hoomd.Snapshot()
     N = len(positions)
     s.particles.N = N
@@ -771,7 +751,6 @@ def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
     
     f.append(s)
 
-    return G
 
 #Function returns the principal moments of the given network's gyration tensor.
 #Components in the sum forming the components of the gyration tensor are defined by shortest paths between pairs of nodes, not node pairs.
@@ -781,7 +760,33 @@ def Node_labelling(AttrCalcFunc, attribute_name, prefix, *args, **kwargs):
 #~500/3000                 ~20 s
 #~1800/5500                ~10 min
 
-def gyration_moments(G, sampling=1):
+def gyration_moments(G, weighted=True, sampling=1):
+#Serial implementation
+    Ax=0
+    Ay=0
+    node_count = np.asarray(list(range(G.vcount())))
+    mask = np.random.rand(G.vcount()) > (1-sampling)
+    trimmed_node_count = node_count[mask]
+    for i in trimmed_node_count:
+        for j in trimmed_node_count:
+            if i >= j:    #Symetric matrix
+                continue
+            path = G.get_shortest_paths(i,to=j, weights='Resistance')
+            Ax_term = 0
+            Ay_term = 0
+            for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
+                if weighted:
+                    weight = G.es[G.get_eid(hop_s,hop_t)]['Conductance']
+                else:
+                    weight = 1
+                Ax_term = Ax_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
+                Ay_term = Ay_term + ((weight*(int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))**2)
+            Ax = Ax + (Ax_term)
+            Ay = Ay + (Ay_term)
+    
+    return Ax, Ay
+
+def gyration_moments_2(G, weighted=True, sampling=1):
 #Serial implementation
     Ax=0
     Ay=0
@@ -796,9 +801,12 @@ def gyration_moments(G, sampling=1):
             Ax_term = 0
             Ay_term = 0
             for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
-                weight = G.es[G.get_eid(hop_s,hop_t)]['weight']
-                Ax_term = Ax_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
-                Ay_term = Ay_term + ((weight*(int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))**2)
+                if weighted:
+                    weight = G.es[G.get_eid(hop_s,hop_t)]['weight']
+                else:
+                    weight = 1
+                Ax_term = Ax_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0]))))
+                Ay_term = Ay_term + ((weight*(int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1]))))
             Ax = Ax + (Ax_term)
             Ay = Ay + (Ay_term)
 

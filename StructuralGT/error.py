@@ -9,3 +9,10 @@ class ImageDirectoryError(NotADirectoryError):
     def __str__(self):
         """Returns the error message"""
         return (f'The directory {self.directory_name} has no images.')
+
+class StructuralElementError(TypeError):
+    """Raised when single structural element is passed to a deubbling function without parentheses"""
+
+    def __str__(self):
+        """Returns the error message"""
+        return ("Single structural elements must be passed as a single item list")

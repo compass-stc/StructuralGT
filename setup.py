@@ -54,7 +54,7 @@ setup(
         'matplotlib',
         'networkx',
         'opencv-python',
-        'sknw',
+        'sknwEdits',
         'Pillow',
         'pandas',
     ],

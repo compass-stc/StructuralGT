@@ -153,12 +153,18 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
         pix_width = int(lengthtoedge(m, orth, img_bin)) 
     if(weight_type==None):
         wt = pix_width/10
-    elif(weight_type=='Resistance'):
+    elif(weight_type=='Conductance'): #This is electrical conductance; not graph conductance
         length = len(ge)
         if pix_width == 0 or length == 0:
             wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal, rendering flow problems underdetermined
         else:
-            wt = (((length*rho_dim)/pix_width**2) + R_j)**-1
+            wt = ((length*rho_dim/pix_width**2) + R_j*2)**-1
+    elif(weight_type=='Resistance'): #Reciprocal of conductance
+        length = len(ge)
+        if pix_width == 0 or length == 0:
+            wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal, rendering flow problems underdetermined
+        else:
+            wt = ((length*rho_dim/pix_width**2) + R_j*2)
     elif(weight_type=='Area'):
         length = len(ge)
         if pix_width == 0 or length == 0:
