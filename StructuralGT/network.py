@@ -13,6 +13,7 @@ import gsd.hoomd
 from skimage.morphology import skeletonize_3d, disk
 import pandas as pd
 
+
 class Network():
     """Generic SGT graph class: a specialised case of the igraph Graph object with 
     additional attributes defining geometric features, associated images,
@@ -271,6 +272,7 @@ class Network():
         G =  base.gsd_to_G(self.gsd_name, _2d = self._2d)
         self.Gr = G
         if len(kwargs)!=0:
+            print(kwargs)
             self.Gr = base.add_weights(self, **kwargs)
         
         self.shape = list(max(list(self.Gr.vs[i]['o'][j] for i in range(self.Gr.vcount()))) for j in (0,1,2)[0:self.dim])
@@ -304,7 +306,7 @@ class ResistiveNetwork(Network):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-    def potential_distribution(self, plane, boundary1, boundary2, R_j=0, rho_dim=1, F_dim=1):
+    def potential_distribution(self, plane, boundary1, boundary2, R_j=0, rho_dim=1):
         """Solves for the potential distribution in a weighted network.
         Source and sink nodes are connected according to a penetration boundary condition.
         Sets the corresponding weighted Laplacian, potential and flow attributes.
@@ -314,18 +316,16 @@ class ResistiveNetwork(Network):
         NOTE: Critical that self.G_u() is called before every self.potential_distribution() call
         TODO: Remove this requirement or add an error to warn
         """
+        self.G_u(weight_type='Conductance', R_j=R_j, rho_dim=rho_dim) #Assign weighted graph attribute
         self.Gr = base.sub_G(self.Gr)
+        self.Gr_connected = self.Gr
         print('post sub has ', self.Gr.vcount(), ' nodes')
         if R_j != 'infinity':
-            print(self.Gr.vcount())
-            self.Gr_connected = base.add_weights(self, weight_type='Conductance', R_j=R_j, rho_dim=rho_dim)
-            print(self.Gr.vcount())
             weight_array = np.asarray(self.Gr_connected.es['Conductance']).astype(float)
             weight_array = weight_array[~np.isnan(weight_array)]
             self.edge_weights = weight_array
             weight_avg =np.mean(weight_array)
         else:
-            self.Gr_connected = self.Gr
             self.Gr_connected.es['Conductance'] = np.ones(self.Gr_connected.ecount())
             weight_avg = 1
 
@@ -393,17 +393,24 @@ class ResistiveNetwork(Network):
         
         if R_j=='infinity': self.L = np.asarray(self.Gr.laplacian())
         else: self.weighted_Laplacian(weights='Conductance')
+        
         F = np.zeros(sink_id+1)
         print(self.L.shape, 'L')
-        F[source_id] = F_dim
-        F[sink_id] = -F_dim
-        np.save(self.stack_dir+'/L.npy',self.L)
-        np.save(self.stack_dir+'/F.npy',F)
-        P = np.matmul(np.linalg.pinv(self.L, hermitian=True),F)
-        np.save(self.stack_dir+'/P.npy',P)
+        F[source_id] = 1
+        F[sink_id] = -1
+
+        Q = np.linalg.pinv(self.L, hermitian=True)
+        P = np.matmul(Q,F)
 
         self.P = P
         self.F = F
+        self.Q = Q
+        
+    def effective_resistance(self, source=-1, sink=-2):
+
+        O_eff = self.Q[source,source]+self.Q[sink,sink]-2*self.Q[source,sink]
+        
+        return O_eff
 
 class StructuralNetwork(Network):
     """Child of generic SGT Network class.
