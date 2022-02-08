@@ -31,6 +31,7 @@ class Network():
         self.dir = directory
         self.child_dir = child_dir
         self.stack_dir = self.dir + self.child_dir
+        self.rotate = None
         
         shape = []
         for name in sorted(os.listdir(self.dir)):
@@ -78,7 +79,6 @@ class Network():
         
         For 2D graphs, the first element of the 3D position list is all 0s. So the gsd y corresponds to the graph
         x and the gsd z corresponds to the graph y.
-
         """
         start = time.time()
         
@@ -145,9 +145,6 @@ class Network():
         self.shape = np.asarray(list(max(positions.T[i])+1 for i in (0,1,2)[0:self.dim]))
         self.positions = positions
 
-        print(positions)
-        print(self.img_bin.shape)
-
         with gsd.hoomd.open(name=self.gsd_name, mode='wb') as f:
             s = gsd.hoomd.Snapshot()
             s.particles.N = len(positions)
@@ -170,7 +167,14 @@ class Network():
         Currently only capable of 2D graphs
         Unlike stack_to_gsd, the axis of rotation is not the centre of the image, but the point (radius,radius)
         The name of the written .gsd is set as an attribute so it may be easily matched with its Graph object 
-        Running this also sets the positions, shape attributes
+        Running this also sets the positions, shape attributes.
+        
+        Note the rotation implementation is very different to self.stack_to_gsd():
+        A rotating circular graph will never lose/gain nodes so no need to recalculate weights
+        Instead
+            Generate the graph at theta=0.
+            Set all attributes.
+            Apply rotation matrix to positional attributes
         """
         start = time.time()
         if name[0] == '/':
@@ -195,11 +199,6 @@ class Network():
         for fname in sorted(os.listdir(self.stack_dir)):
             if base.Q_img(fname):
                 img_slice = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
-                if rotate is not None:
-                    axis_of_rot = tuple((radius,radius))
-                    #image_center = tuple(np.array(img_slice.shape[1::-1]) / 2)
-                    rot_mat = cv.getRotationMatrix2D(axis_of_rot, rotate, 1.0)
-                    img_slice = cv.warpAffine(img_slice, rot_mat, img_slice.shape[1::-1], flags=cv.INTER_LINEAR)
                 img_bin.append(img_slice)
                 i=i+1
             else:
@@ -259,13 +258,39 @@ class Network():
         assert self.img_bin.shape == self.skeleton.shape
         assert self.img_bin_3d.shape == self.skeleton_3d.shape    
         
+        """Set rot matrix attribute for later"""
+        if rotate is not None:
+            from scipy.spatial.transform import Rotation as R
+            r = R.from_rotvec(rotate/180*np.pi * np.array([0, 0, 1]))
+            self.rotate = r.as_matrix()
+            
         
-    def G_u(self):
-        """Sets unweighted igraph object as an attribute
+    def G_u(self, **kwargs):
+        """Sets igraph object as an attribute
         """
         G =  base.gsd_to_G(self.gsd_name, _2d = self._2d)
         self.Gr = G
+        if len(kwargs)!=0:
+            self.Gr = base.add_weights(self, **kwargs)
+        
         self.shape = list(max(list(self.Gr.vs[i]['o'][j] for i in range(self.Gr.vcount()))) for j in (0,1,2)[0:self.dim])
+
+        if self.rotate is not None:
+            centre = np.asarray(self.shape)/2
+            node_positions = np.asarray(list(self.Gr.vs[i]['o'] for i in range(self.Gr.vcount())))
+            node_positions = base.oshift(node_positions, _shift=centre)
+            node_positions = np.vstack((node_positions.T, np.zeros(len(node_positions)))).T
+            node_positions = np.matmul(node_positions, self.rotate).T[0:2].T
+            node_positions = base.shift(node_positions, _shift=-centre)
+            for i in range(self.Gr.vcount()):
+                self.Gr.vs[i]['o'] = node_positions[i]
+                self.Gr.vs[i]['pts'] = node_positions[i]
+            
+            edge_positions_list = np.asarray(list(base.oshift(self.Gr.es[i]['pts'], _shift=centre) for i in range(self.Gr.ecount())))
+            for i, edge in enumerate(edge_positions_list):
+                edge_position = np.vstack((edge.T, np.zeros(len(edge)))).T
+                edge_position = np.matmul(edge_position, self.rotate).T[0:2].T
+                self.Gr.es[i]['pts'] = base.shift(edge_position, _shift=-centre)
         
     def weighted_Laplacian(self, weights='weight'):
 
@@ -275,7 +300,6 @@ class Network():
 class ResistiveNetwork(Network):
     """Child of generic SGT Network class.
     Equipped with methods for analysing resistive flow networks
-
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -287,7 +311,7 @@ class ResistiveNetwork(Network):
         The 'plane' arguement defines the axis along which the boundary arguements refer to.
         R_j='infinity' enables the unusual case of all edges having the same unit resistance.
         
-        NOTE: Critical that self.G_u() is called before every self.potential_distribution()
+        NOTE: Critical that self.G_u() is called before every self.potential_distribution() call
         TODO: Remove this requirement or add an error to warn
         """
         self.Gr = base.sub_G(self.Gr)
@@ -305,6 +329,28 @@ class ResistiveNetwork(Network):
             self.Gr_connected.es['Conductance'] = np.ones(self.Gr_connected.ecount())
             weight_avg = 1
 
+            
+        """Apply rotation for circular gsds
+        if self.rotate is not None:
+            centre = np.asarray(self.shape)/2
+            print(centre)
+            node_positions = np.asarray(list(self.Gr_connected.vs[i]['o'] for i in range(self.Gr_connected.vcount())))
+            node_positions = base.oshift(node_positions, _shift=centre)
+            print(node_positions)
+            node_positions = np.vstack((node_positions.T, np.zeros(len(node_positions)))).T
+            node_positions = np.matmul(node_positions, self.rotate).T[0:2].T
+            node_positions = base.shift(node_positions, _shift=-centre)
+            for i in range(self.Gr_connected.vcount()):
+                print(node_positions[i],i)
+                self.Gr_connected.vs[i]['o'] = node_positions[i]
+                
+            
+            edge_positions_list = np.asarray(list(base.oshift(self.Gr_connected.es[i]['pts'], _shift=-centre) for i in range(self.Gr_connected.ecount())))
+            for i, edge in enumerate(edge_positions_list):
+                edge_position = np.vstack((edge.T, np.zeros(len(edge)))).T
+                edge_position = np.matmul(edge_position, self.rotate).T[0:2].T
+                self.Gr_connected.es[i]['pts'] = base.shift(edge_position, _shift=centre)
+        """        
         #Add source and sink nodes:
         source_id = max(self.Gr_connected.vs).index + 1
         sink_id = source_id + 1
@@ -348,7 +394,6 @@ class ResistiveNetwork(Network):
         if R_j=='infinity': self.L = np.asarray(self.Gr.laplacian())
         else: self.weighted_Laplacian(weights='Conductance')
         F = np.zeros(sink_id+1)
-        print(F.shape,'F')
         print(self.L.shape, 'L')
         F[source_id] = F_dim
         F[sink_id] = -F_dim
