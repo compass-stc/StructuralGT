@@ -298,6 +298,62 @@ class Network():
 
         L=np.asarray(self.Gr.laplacian(weights=weights))
         self.L = L
+        
+    def Node_labelling(self, attribute, attribute_name, filename):
+        """
+        Function saves a new .gsd which has the graph in self.Gr labelled with the node attributes in attribute
+        """
+
+        assert self.Gr.vcount() == len(attribute)
+
+        #save_name = os.path.split(prefix)[0] + '/'+attribute_name + os.path.split(prefix)[1]
+        if filename[0] == '/':
+            save_name = filename
+        else:
+            save_name = self.stack_dir + '/' + filename
+        if os.path.exists(save_name):
+            mode = 'rb+'
+        else:
+            mode = 'wb'
+
+        f = gsd.hoomd.open(name=save_name, mode=mode)
+        self.labelled_name = save_name
+        
+        #Must segregate position list into a node_position section and edge_position
+        node_positions = np.asarray(list(self.Gr.vs()[i]['o'] for i in range(self.Gr.vcount())))
+        positions = node_positions
+        for edge in self.Gr.es():
+            positions=np.vstack((positions,edge['pts']))
+        positions = np.unique(positions, axis=0)
+        if self._2d:
+            node_positions = np.hstack((np.zeros((len(node_positions),1)),node_positions))
+            positions = np.hstack((np.zeros((len(positions),1)),positions))
+
+        #node_positions = base.shift(node_positions)
+        #positions = base.shift(positions)
+        s = gsd.hoomd.Snapshot()
+        N = len(positions)
+        s.particles.N = N
+        s.particles.position = positions
+        s.particles.types = ['Edge', 'Node']
+        s.particles.typeid = [0]*N
+        L = list(max(positions.T[i])*2 for i in (0,1,2))
+        #s.configuration.box = [L[0]/2, L[1]/2, L[2]/2, 0, 0, 0]
+        s.configuration.box = [1,1,1,0,0,0]
+        s.log['particles/'+attribute_name] = [np.NaN]*N
+        start = time.time()
+
+        j=0
+        for i,particle in enumerate(positions):
+            node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[0]
+            if len(node_id) == 0: 
+                continue
+            else:
+                s.log['particles/'+attribute_name][i] = attribute[node_id[0]]
+                s.particles.typeid[i] = 1
+                j+=1
+
+        f.append(s)
 
 class ResistiveNetwork(Network):
     """Child of generic SGT Network class.

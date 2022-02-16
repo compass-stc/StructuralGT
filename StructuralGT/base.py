@@ -338,10 +338,9 @@ def debubble(g, elements):
     if g._2d:
     #    g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 0, 1)
         g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
+        g.skeleton_3d = np.asarray([g.skeleton])
     else:
-        g.skeleton_3d = g.skeleton
-    
-    g.skeleton_3d = np.asarray([g.skeleton])
+        g.skeleton_3d = np.asarray(g.skeleton)
     
     positions = np.asarray(np.where(g.skeleton_3d!=0)).T
     with gsd.hoomd.open(name=g.gsd_name, mode='wb') as f:
@@ -689,18 +688,12 @@ def voltage_distribution(g, plane, boundary1, boundary2, crop=None, I_dim =1,  R
 
     return g
 
-#Labelling function which takes an attribute calculating function and its relevant parameters (usually gsd, img_bin and, optionally, crop)
-#The labelling function calls the attribute calculating function so that the graph and its nodes' attributes are returned
-#The labelling funciton appends the attribute to the graph and rewrites the gsd
-#Note that all attribute calculating functions must return the attribute tensor and the graph which is to be labelled
-#The gsd_name given in *args is the file in which the unlabelled graph should be extracted from.
-
+""" 
+MOVED TO NETWORK METHOD
 #Labelling function which takes a graph object, node attribute and writes their values to a new .gsd file. 
 def Node_labelling(g, attribute, attribute_name, filename):
-    """
-    Function saves a new .gsd which has the graph in g.Gr labelled with the node attributes in attribute
-    """
-    
+    #Function saves a new .gsd which has the graph in g.Gr labelled with the node attributes in attribute
+
     assert g.Gr.vcount() == len(attribute)
     
     #save_name = os.path.split(prefix)[0] + '/'+attribute_name + os.path.split(prefix)[1]
@@ -750,7 +743,7 @@ def Node_labelling(g, attribute, attribute_name, filename):
             j+=1
     
     f.append(s)
-
+"""
 
 #Function returns the principal moments of the given network's gyration tensor.
 #Components in the sum forming the components of the gyration tensor are defined by shortest paths between pairs of nodes, not node pairs.
