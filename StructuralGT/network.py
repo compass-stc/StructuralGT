@@ -3,16 +3,18 @@ import numpy as np
 import igraph as ig
 import os
 import cv2 as cv
-from StructuralGT import base, process_image, error
+from StructuralGT import error, base, process_image
 import json
+import base
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import figure
 import matplotlib.cm as cm
 import time
 import functools
 import gsd.hoomd
-from skimage.morphology import skeletonize_3d, disk
+from skimage.morphology import skeletonize_3d, disk, ball
 import pandas as pd
-
+import copy
 
 class Network():
     """Generic SGT graph class: a specialised case of the igraph Graph object with 
@@ -33,6 +35,16 @@ class Network():
         self.child_dir = child_dir
         self.stack_dir = self.dir + self.child_dir
         self.rotate = None
+        self.crop = None
+
+        self.img = []
+        i=0
+        for fname in sorted(os.listdir(self.dir)):
+            if base.Q_img(fname):
+                self.img.append(cv.imread(self.dir+'/'+fname))
+                i=i+1
+            else:
+                continue
         
         shape = []
         for name in sorted(os.listdir(self.dir)):
@@ -82,49 +94,66 @@ class Network():
         x and the gsd z corresponds to the graph y.
         """
         start = time.time()
-        
+        self.type = 'rectangular'
         if name[0] == '/':
             self.gsd_name = name
         else:
             self.gsd_name = self.stack_dir + '/' + name
-        self.gsd_dir = os.path.split(self.gsd_name)[0]
-        img_bin=[]
+        self.gsd_dir = os.path.split(self.gsd_name)[0]       
+        
+        
+        if rotate is not None:
+            #Calculate outer crop
+            #(i.e. that which could contain any rotation of the inner crop)
+            #Use it to write the unrotated skel.gsd
+            centre = 0.5*np.array([crop[0]+crop[1],crop[2]+crop[3]])
+            diagonal = ((crop[1]-crop[0])**2+(crop[3]-crop[2])**2)**0.5
 
+            outer_crop = np.array([centre[0]-diagonal*0.5,
+                                   centre[0]+diagonal*0.5,
+                                   centre[1]-diagonal*0.5,
+                                   centre[1]+diagonal*0.5], dtype=int)
+            inner_crop = crop
+            self.inner_crop = inner_crop
+            crop = outer_crop
+            
         #Initilise i such that it starts at the lowest number belonging to the images in the stack_dir
         #First require boolean mask to filter out non image files
+        if self._2d:
+            img_bin = np.zeros((1, crop[3]-crop[2],crop[1]-crop[0]))
+        else:
+            img_bin = np.zeros((crop[5]-crop[4],crop[3]-crop[2],crop[1]-crop[0]))
+        
         olist = np.asarray(sorted(os.listdir(self.stack_dir)))
         mask = list(base.Q_img(olist[i]) for i in range(len(olist)))
         if len(mask) == 0:
             raise error.ImageDirectoryError(self.stack_dir)
         fname = sorted(olist[mask])[0] #First name
         i = int(os.path.splitext(fname)[0][5:]) #Strip file type and 'slice' then convert to int
-
+        if self._2d: depth = 1
+        else: depth = crop[5]-crop[4]
+            
+        
         #Generate 3d (or 2d) array from stack
         for fname in sorted(os.listdir(self.stack_dir)):
-            if base.Q_img(fname):
-                img_slice = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
-                if rotate is not None:
-                    image_center = tuple(np.array(img_slice.shape[1::-1]) / 2)
-                    rot_mat = cv.getRotationMatrix2D(image_center, rotate, 1.0)
-                    img_slice = cv.warpAffine(img_slice, rot_mat, img_slice.shape[1::-1], flags=cv.INTER_LINEAR)
-                img_bin.append(img_slice)
+            if base.Q_img(fname) and i<depth:
+                img_bin[i] = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)[crop[2]:crop[3],crop[0]:crop[1]]/255
                 i=i+1
             else:
                 continue
 
         #For 2D images, img_bin_3d.shape[0] == 1
-        img_bin = np.asarray(img_bin)
         self.img_bin_3d = img_bin
         self.img_bin = img_bin
 
         #Note that numpy array slicing operations are carried out in reverse order!
         #(...hence crop 2 and 3 before 0 and 1)
-        if crop and self._2d:
-            self.img_bin = self.img_bin[:, crop[2]:crop[3], crop[0]:crop[1]]
+        #if crop and self._2d:
+            #self.img_bin = self.img_bin[:, outer_crop[2]:outer_crop[3], outer_crop[0]:outer_crop[1]]
             #img_bin = img_bin[crop[0]:crop[1], crop[2]:crop[3]]
-        elif crop:
+        #elif crop:
             #TODO figure tf this bit out
-            self.img_bin = self.img_bin[crop[0]:crop[1], crop[2]:crop[3], crop[4]:crop[5]]
+            #self.img_bin = self.img_bin[crop[4]:crop[5], crop[2]:crop[3], crop[0]:crop[1]]
 
         assert self.img_bin_3d.shape[1] > 1
         assert self.img_bin_3d.shape[2] > 1
@@ -132,17 +161,20 @@ class Network():
         self.img_bin_3d = self.img_bin            #Always 3d, even for 2d images
         self.img_bin = np.squeeze(self.img_bin)   #3d for 3d images, 2d otherwise
 
-        assert self.img_bin_3d.shape[1] == self.img_bin.shape[0]
-        assert self.img_bin_3d.shape[2] == self.img_bin.shape[1]
+        if self._2d:
+            assert self.img_bin_3d.shape[1] == self.img_bin.shape[0]
+            assert self.img_bin_3d.shape[2] == self.img_bin.shape[1]
+        else:
+            self.img_bin_3d.shape == self.img_bin.shape
         
         if skeleton:
-            self.skeleton = skeletonize_3d(np.asarray(self.img_bin))
-            self.skeleton_3d = skeletonize_3d(np.asarray(self.img_bin_3d))
+            self.skeleton = skeletonize_3d(np.asarray(self.img_bin, dtype=int))
+            self.skeleton_3d = skeletonize_3d(np.asarray(self.img_bin_3d, dtype=int))
             #self.skeleton_3d = np.swapaxes(self.skeleton_3d, 1, 2)
         else:
             self.img_bin = np.asarray(self.img_bin)
 
-        positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 255)).T
+        positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
         self.shape = np.asarray(list(max(positions.T[i])+1 for i in (0,1,2)[0:self.dim]))
         self.positions = positions
 
@@ -162,7 +194,13 @@ class Network():
         assert self.img_bin.shape == self.skeleton.shape
         assert self.img_bin_3d.shape == self.skeleton_3d.shape
 
-        
+        """Set rot matrix attribute for later"""
+        if rotate is not None:
+            from scipy.spatial.transform import Rotation as R
+            r = R.from_rotvec(rotate/180*np.pi * np.array([0, 0, 1]))
+            self.rotate = r.as_matrix()
+            self.crop = np.asarray(outer_crop) - min(outer_crop)
+            
     def stack_to_circular_gsd(self, radius, name='circle.gsd', rotate=None, debubble=None, skeleton=True):
         """Writes a cicular .gsd file from the object's directory.
         Currently only capable of 2D graphs
@@ -176,8 +214,11 @@ class Network():
             Generate the graph at theta=0.
             Set all attributes.
             Apply rotation matrix to positional attributes
+            
+        TODO: Change positions ... != 0 to == 1
         """
         start = time.time()
+        self.type = 'circle'
         if name[0] == '/':
             self.gsd_name = name
         else:
@@ -194,12 +235,12 @@ class Network():
         fname = sorted(olist[mask])[0] #First name
         i = int(os.path.splitext(fname)[0][5:]) #Strip file type and 'slice' then convert to int
         
-        img_slice = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
+        #img_slice = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
         
         #Read the image
         for fname in sorted(os.listdir(self.stack_dir)):
             if base.Q_img(fname):
-                img_slice = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
+                img_slice = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)/255
                 img_bin.append(img_slice)
                 i=i+1
             else:
@@ -211,10 +252,7 @@ class Network():
         self.img_bin_3d = img_bin            #Always 3d, even for 2d images
         self.img_bin = np.squeeze(img_bin)   #3d for 3d images, 2d otherwise
         
-        #Note that numpy array slicing operations are carried out in reverse order!
-        #(...hence crop 2 and 3 before 0 and 1)
         assert self._2d
-
 
         canvas = np.ones(self.img_bin.shape)
         disk_pos = np.asarray(np.where(disk(radius)!=0)).T
@@ -239,7 +277,8 @@ class Network():
         else:
             self.img_bin = np.asarray(self.img_bin)
         
-        positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 255)).T
+        print(np.unique(self.skeleton_3d))
+        positions = np.asarray(np.where(np.asarray(self.skeleton_3d) != 0)).T
         self.shape = np.asarray(list(max(positions.T[i])+1 for i in (0,1,2)[0:self.dim]))
         self.positions = positions
         
@@ -255,7 +294,7 @@ class Network():
         print('Ran stack_to_gsd() in ', end-start, 'for gsd with ', len(positions), 'particles')
         
         if debubble is not None: self = base.debubble(self, debubble)
-            
+        
         assert self.img_bin.shape == self.skeleton.shape
         assert self.img_bin_3d.shape == self.skeleton_3d.shape    
         
@@ -267,38 +306,68 @@ class Network():
             
         
     def G_u(self, **kwargs):
-        """Sets igraph object as an attribute
         """
+        Sets igraph object as an attribute
+        """
+        print('name is ',self.gsd_name)
         G =  base.gsd_to_G(self.gsd_name, _2d = self._2d)
-        self.Gr = G
-        if len(kwargs)!=0:
-            print(kwargs)
-            self.Gr = base.add_weights(self, **kwargs)
         
+        self.Gr = G
+        #self.Gr_copy = copy.deepcopy(G)
+        
+        if len(kwargs)!=0:
+            print('calling add weights')
+            self.Gr = base.add_weights(self, **kwargs)
+
         self.shape = list(max(list(self.Gr.vs[i]['o'][j] for i in range(self.Gr.vcount()))) for j in (0,1,2)[0:self.dim])
 
         if self.rotate is not None:
+            print(self.shape)
             centre = np.asarray(self.shape)/2
+            inner_length = (self.inner_crop[1]-self.inner_crop[0])*0.5
+            inner_crop = np.array([centre[0]-inner_length,
+                                   centre[0]+inner_length,
+                                   centre[1]-inner_length,
+                                   centre[1]+inner_length], dtype=int)
+            
             node_positions = np.asarray(list(self.Gr.vs[i]['o'] for i in range(self.Gr.vcount())))
             node_positions = base.oshift(node_positions, _shift=centre)
             node_positions = np.vstack((node_positions.T, np.zeros(len(node_positions)))).T
             node_positions = np.matmul(node_positions, self.rotate).T[0:2].T
             node_positions = base.shift(node_positions, _shift=-centre)
+            drop_list = []
             for i in range(self.Gr.vcount()):
+                if not base.Q_inside(np.asarray([node_positions[i]]), inner_crop):
+                    drop_list.append(i)
+                    continue
+                    
                 self.Gr.vs[i]['o'] = node_positions[i]
                 self.Gr.vs[i]['pts'] = node_positions[i]
-            
+            self.Gr.delete_vertices(drop_list)
+
+            node_positions = np.asarray(list(self.Gr.vs[i]['o'] for i in range(self.Gr.vcount())))
+            final_shift = np.min(list(node_positions.T[i] for i in range(self.dim)))
             edge_positions_list = np.asarray(list(base.oshift(self.Gr.es[i]['pts'], _shift=centre) for i in range(self.Gr.ecount())))
             for i, edge in enumerate(edge_positions_list):
                 edge_position = np.vstack((edge.T, np.zeros(len(edge)))).T
                 edge_position = np.matmul(edge_position, self.rotate).T[0:2].T
-                self.Gr.es[i]['pts'] = base.shift(edge_position, _shift=-centre)
-        
+                edge_position = base.shift(edge_position, _shift=-centre+final_shift)
+                self.Gr.es[i]['pts'] = edge_position
+            
+            
+            node_positions = base.shift(node_positions, _shift=final_shift)
+            for i in range(self.Gr.vcount()): 
+                self.Gr.vs[i]['o'] = node_positions[i]
+                self.Gr.vs[i]['pts'] = node_positions[i]
+                
+            self.shape = list(max(list(self.Gr.vs[i]['o'][j] for i in range(self.Gr.vcount()))) for j in (0,1,2)[0:self.dim])
+
     def weighted_Laplacian(self, weights='weight'):
 
         L=np.asarray(self.Gr.laplacian(weights=weights))
         self.L = L
-        
+
+    #Labelling function which takes a graph object, node attribute and writes their values to a new .gsd file. 
     def Node_labelling(self, attribute, attribute_name, filename):
         """
         Function saves a new .gsd which has the graph in self.Gr labelled with the node attributes in attribute
@@ -354,7 +423,43 @@ class Network():
                 j+=1
 
         f.append(s)
+        
+     
+    def recon(self, axis, surface, depth):
 
+        #Method displays 2D slice of binary image and annotates with attributes from 3D graph subslice
+
+        Gr_copy = copy.deepcopy(self.Gr)
+
+        #self.Gr = base.sub_G(self.Gr)
+
+        axis_0 = abs(axis-2)
+
+        display_img = np.swapaxes(self.img_bin_3d, 0, axis_0)[surface]
+
+        drop_list=[]
+        for i in range(self.Gr.vcount()):
+            if self.Gr.vs[i]['o'][axis_0] < surface or self.Gr.vs[i]['o'][axis_0] > surface+depth:
+                drop_list.append(i)
+                continue
+
+        self.Gr.delete_vertices(drop_list)
+
+        node_positions = np.asarray(list(self.Gr.vs()[i]['o'] for i in range(self.Gr.vcount())))
+        positions = np.array([[0,0,0]])
+        for edge in self.Gr.es():
+            positions=np.vstack((positions,edge['pts']))
+
+
+        fig = plt.figure(figsize=(10,25))
+        plt.scatter(node_positions.T[2], node_positions.T[1], s=10, color='red')
+        plt.scatter(positions.T[2], positions.T[1], s=2)
+        plt.imshow(self.img_bin[axis], cmap=cm.gray)
+        plt.show()
+
+        self.Gr = Gr_copy
+
+    
 class ResistiveNetwork(Network):
     """Child of generic SGT Network class.
     Equipped with methods for analysing resistive flow networks
@@ -363,7 +468,8 @@ class ResistiveNetwork(Network):
         super().__init__(*args, **kwargs)
         
     def potential_distribution(self, plane, boundary1, boundary2, R_j=0, rho_dim=1):
-        """Solves for the potential distribution in a weighted network.
+        """
+        Solves for the potential distribution in a weighted network.
         Source and sink nodes are connected according to a penetration boundary condition.
         Sets the corresponding weighted Laplacian, potential and flow attributes.
         The 'plane' arguement defines the axis along which the boundary arguements refer to.
@@ -372,7 +478,7 @@ class ResistiveNetwork(Network):
         NOTE: Critical that self.G_u() is called before every self.potential_distribution() call
         TODO: Remove this requirement or add an error to warn
         """
-        self.G_u(weight_type='Conductance', R_j=R_j, rho_dim=rho_dim) #Assign weighted graph attribute
+        self.G_u(weight_type=['Conductance'], R_j=R_j, rho_dim=rho_dim) #Assign weighted graph attribute
         self.Gr = base.sub_G(self.Gr)
         self.Gr_connected = self.Gr
         print('post sub has ', self.Gr.vcount(), ' nodes')
@@ -385,28 +491,6 @@ class ResistiveNetwork(Network):
             self.Gr_connected.es['Conductance'] = np.ones(self.Gr_connected.ecount())
             weight_avg = 1
 
-            
-        """Apply rotation for circular gsds
-        if self.rotate is not None:
-            centre = np.asarray(self.shape)/2
-            print(centre)
-            node_positions = np.asarray(list(self.Gr_connected.vs[i]['o'] for i in range(self.Gr_connected.vcount())))
-            node_positions = base.oshift(node_positions, _shift=centre)
-            print(node_positions)
-            node_positions = np.vstack((node_positions.T, np.zeros(len(node_positions)))).T
-            node_positions = np.matmul(node_positions, self.rotate).T[0:2].T
-            node_positions = base.shift(node_positions, _shift=-centre)
-            for i in range(self.Gr_connected.vcount()):
-                print(node_positions[i],i)
-                self.Gr_connected.vs[i]['o'] = node_positions[i]
-                
-            
-            edge_positions_list = np.asarray(list(base.oshift(self.Gr_connected.es[i]['pts'], _shift=-centre) for i in range(self.Gr_connected.ecount())))
-            for i, edge in enumerate(edge_positions_list):
-                edge_position = np.vstack((edge.T, np.zeros(len(edge)))).T
-                edge_position = np.matmul(edge_position, self.rotate).T[0:2].T
-                self.Gr_connected.es[i]['pts'] = base.shift(edge_position, _shift=centre)
-        """        
         #Add source and sink nodes:
         source_id = max(self.Gr_connected.vs).index + 1
         sink_id = source_id + 1
@@ -467,9 +551,11 @@ class ResistiveNetwork(Network):
         O_eff = self.Q[source,source]+self.Q[sink,sink]-2*self.Q[source,sink]
         
         return O_eff
+    
 
 class StructuralNetwork(Network):
-    """Child of generic SGT Network class.
+    """
+    Child of generic SGT Network class.
     Equipped with methods for analysing structural networks
     """
     def __init__(self, directory):
@@ -489,7 +575,8 @@ class StructuralNetwork(Network):
             
         self.G_attributes = avg_indices
         
-    def node_calc(self):
-        self.Betweenness = self.Gr.betweenness()
-        self.Closeness = self.Gr.closeness()
-        self.Degree = self.Gr.degree()
+    def node_calc(self, Betweenness=True, Closeness=True, Degree=True):
+        if Betweenness: self.Betweenness = self.Gr.betweenness()
+        if Closeness: self.Closeness = self.Gr.closeness()
+        if Degree: self.Degree = self.Gr.degree()
+
