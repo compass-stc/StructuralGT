@@ -585,13 +585,14 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
 
 def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
     start = time.time()
-    for i,edge in enumerate(g.Gr.es()):
-        ge = edge['pts']
-        pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin, weight_type=weight_type, R_j=R_j, rho_dim=rho_dim)
-        edge['pixel width'] = pix_width
-        edge[weight_type] = wt
+    for _type in weight_type:
+        for i,edge in enumerate(g.Gr.es()):
+            ge = edge['pts']
+            pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin, weight_type=_type, R_j=R_j, rho_dim=rho_dim)
+            edge['pixel width'] = pix_width
+            edge[_type] = wt
+            
     end = time.time()
-    
     return g.Gr
 
 def stack_analysis(stack_directory, suffix, ANC=False, crop=None):
@@ -831,6 +832,33 @@ def gyration_moments_2(G, weighted=True, sampling=1):
             Ay = Ay + (Ay_term)
 
     return Ax, Ay
+
+def gyration_moments_3(G, sampling=1):
+    Ax=0
+    Ay=0
+    Axy=0
+    node_count = np.asarray(list(range(G.vcount())))
+    mask = np.random.rand(G.vcount()) > (1-sampling)
+    trimmed_node_count = node_count[mask]
+    for i in trimmed_node_count:
+        for j in trimmed_node_count:
+            if i >= j:    #Symetric matrix
+                continue
+            
+            path = G.get_shortest_paths(i,to=j, weights='Resistance')
+            Ax_term  = 0
+            Ay_term  = 0
+            Axy_term = 0
+            for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
+                weight = G.es[G.get_eid(hop_s,hop_t)]['Conductance']
+                Ax_term  = Ax_term  + weight*(((int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
+                Ay_term  = Ay_term  + weight*(((int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))**2)
+                Axy_term = Axy_term + weight*(((int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))*((int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0]))))
+            Ax  = Ax  + (Ax_term)
+            Ay  = Ay  + (Ay_term)
+            Axy = Axy + (Axy_term)
+            A = np.array([[Ax,Axy,0],[Axy,Ay,0],[0,0,0]])
+    return A
 
 def parallel_gyration(G):
         #Parallel implementation
