@@ -65,6 +65,33 @@ def oshift(points, _shift=None):
     points = points - _shift 
     return points
 
+def Q_inside(points, crop):
+    """
+    If points is a single point:
+        Function returns True if point inside region defined by crop
+    If points is a collection of points:
+        Function returns True if all points inside region defined by crop
+    """
+    
+    if points.T.shape[0] == 2:
+        for point in points:
+            if (point[0] < crop[0] or
+                point[0] > crop[1] or
+                point[1] < crop[2] or
+                point[1] > crop[3]):
+                return False
+            return True
+    else:
+        for point in points:
+            if (point[0] < crop[0] or
+                point[0] > crop[1] or
+                point[1] < crop[2] or
+                point[1] > crop[3] or
+                point[2] < crop[4] or
+                point[2] > crop[5]):
+                return False
+            return True
+   
 #For lists of positions where all elements along one axis have the same value, this returns the same list of positions but with the redundant dimension(s) removed
 def dim_red(positions):
     unique_positions = np.asarray(list(len(np.unique(positions.T[i])) for i in range(len(positions.T))))
