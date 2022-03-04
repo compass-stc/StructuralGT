@@ -212,6 +212,10 @@ def gsd_to_G(gsd_name, sub=False, _2d=False):#crop=None):
     
     if _2d:
         positions = dim_red(positions)
+        new_pos = np.zeros((positions.T.shape))
+        new_pos[0] = positions.T[1]
+        new_pos[1] = positions.T[0]
+        positions=new_pos.T.astype(int)
     canvas = np.zeros(list((max(positions.T[i])+1) for i in list(range(min(positions.shape)))))
     canvas[tuple(list(positions.T))] = 1
     canvas = canvas.astype(int)
@@ -833,7 +837,7 @@ def gyration_moments_2(G, weighted=True, sampling=1):
 
     return Ax, Ay
 
-def gyration_moments_3(G, sampling=1):
+def gyration_moments_3(G, sampling=1, weighted=True):
     Ax=0
     Ay=0
     Axy=0
@@ -845,12 +849,18 @@ def gyration_moments_3(G, sampling=1):
             if i >= j:    #Symetric matrix
                 continue
             
-            path = G.get_shortest_paths(i,to=j, weights='Resistance')
+            if weighted:
+                path = G.get_shortest_paths(i,to=j, weights='Resistance')
+            else:
+                path = G.get_shortest_paths(i,to=j)
             Ax_term  = 0
             Ay_term  = 0
             Axy_term = 0
             for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
-                weight = G.es[G.get_eid(hop_s,hop_t)]['Conductance']
+                if weighted:
+                    weight = G.es[G.get_eid(hop_s,hop_t)]['Conductance']
+                else:
+                    weight = 1
                 Ax_term  = Ax_term  + weight*(((int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
                 Ay_term  = Ay_term  + weight*(((int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))**2)
                 Axy_term = Axy_term + weight*(((int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))*((int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0]))))
