@@ -5,7 +5,6 @@ import os
 import cv2 as cv
 from StructuralGT import error, base, process_image
 import json
-import base
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
 import matplotlib.cm as cm
@@ -478,7 +477,7 @@ class ResistiveNetwork(Network):
         NOTE: Critical that self.G_u() is called before every self.potential_distribution() call
         TODO: Remove this requirement or add an error to warn
         """
-        self.G_u(weight_type=['Conductance'], R_j=R_j, rho_dim=rho_dim) #Assign weighted graph attribute
+        self.G_u(weight_type=['Conductance','Resistance'], R_j=R_j, rho_dim=rho_dim) #Assign weighted graph attribute
         self.Gr = base.sub_G(self.Gr)
         self.Gr_connected = self.Gr
         print('post sub has ', self.Gr.vcount(), ' nodes')
