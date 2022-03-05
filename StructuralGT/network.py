@@ -5,7 +5,6 @@ import os
 import cv2 as cv
 from StructuralGT import error, base, process_image
 import json
-import base
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
 import matplotlib.cm as cm
