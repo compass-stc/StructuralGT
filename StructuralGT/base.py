@@ -213,8 +213,8 @@ def gsd_to_G(gsd_name, sub=False, _2d=False):#crop=None):
     if _2d:
         positions = dim_red(positions)
         new_pos = np.zeros((positions.T.shape))
-        new_pos[0] = positions.T[1]
-        new_pos[1] = positions.T[0]
+        new_pos[0] = positions.T[0]
+        new_pos[1] = positions.T[1]
         positions=new_pos.T.astype(int)
     canvas = np.zeros(list((max(positions.T[i])+1) for i in list(range(min(positions.shape)))))
     canvas[tuple(list(positions.T))] = 1
