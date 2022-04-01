@@ -132,7 +132,9 @@ class Network():
                 _, img_bin, _ = process_image.binarize(img_exp, options_dict)
                 plt.imsave(self.dir+self.child_dir+'/slice'+str(i)+'.tiff', img_bin, cmap=cm.gray)
                 i+=1
-        
+
+        self.options = options_dict
+
     def stack_to_gsd(self, name='skel.gsd', crop=None, skeleton=True, rotate=None, debubble=None):
         """Writes a .gsd file from the object's directory.
         The name of the written .gsd is set as an attribute so it may be easily matched with its Graph object 
