@@ -15,8 +15,57 @@ from skimage.morphology import skeletonize_3d, disk, ball
 import pandas as pd
 import copy
 
+class _crop():
+    """
+    Crop object
+    dim is dimensions: 2 or 3
+    dims is lengths: eg (500,1500,10)
+    crop is crop point locations eg (200,300,200,300)
+    """
+    
+    def __init__(self, Network, domain=None):
+        self.dim = Network.dim
+        
+        ## Find depth and surface of network and assign to _crop.depth; _crop.surface ##
+        olist = np.asarray(sorted(os.listdir(Network.stack_dir)))
+        mask = list(base.Q_img(olist[i]) for i in range(len(olist)))
+        fname = sorted(olist[mask])[0] #First name
+        self.surface = int(os.path.splitext(fname)[0][5:]) #Strip file type and 'slice' then convert to int
+        if Network._2d:
+            self.depth = 1
+        else:
+            if domain == None:
+                self.depth = sum(mask)
+            else:
+                self.depth = domain[5]-domain[4]
+            if self.depth == 0:
+                raise error.ImageDirectoryError(Network.stack_dir)
+        
+        ## Assign dims and crop ##
+        if domain is None:
+            self.crop = slice(None)
+            planar_dims = cv.imread(Network.stack_dir+'/slice'+str(0)+'.tiff',cv.IMREAD_GRAYSCALE).shape
+            if self.dim == 2:
+                self.dims = (1,) + planar_dims
+            else:
+                self.dims = (self.depth,) + planar_dims 
+                
+        else:
+            self.crop = slice(domain[2],domain[3]),slice(domain[0],domain[1])
+            if self.dim == 2: 
+                self.dims = (1,domain[3]-domain[2],domain[1]-domain[0])
+            else:
+                #self.crop = slice(domain[0],domain[1]),slice(domain[2],domain[3]),slice(domain[4],domain[5])
+                self.dims = (domain[5]-domain[4],domain[3]-domain[2],domain[1]-domain[0])
+                
+    def rotationals():
+        if self.dim == 2:
+            self.centre = 0.5*np.array([self.crop[0]+self.crop[1],self.crop[2]+self.crop[3]])
+
+
 class Network():
-    """Generic SGT graph class: a specialised case of the igraph Graph object with 
+    """
+    Generic SGT graph class: a specialised case of the igraph Graph object with 
     additional attributes defining geometric features, associated images,
     dimensionality etc.
     
@@ -88,10 +137,8 @@ class Network():
         """Writes a .gsd file from the object's directory.
         The name of the written .gsd is set as an attribute so it may be easily matched with its Graph object 
         Running this also sets the positions, shape attributes
-        
-        For 2D graphs, the first element of the 3D position list is all 0s. So the gsd y corresponds to the graph
-        x and the gsd z corresponds to the graph y.
         """
+        if crop is None and rotate is not None: raise ValueError('If rotating a graph, crop must be specified')
         start = time.time()
         self.type = 'rectangular'
         if name[0] == '/':
@@ -100,12 +147,11 @@ class Network():
             self.gsd_name = self.stack_dir + '/' + name
         self.gsd_dir = os.path.split(self.gsd_name)[0]       
         
-        
         if rotate is not None:
             #Calculate outer crop
             #(i.e. that which could contain any rotation of the inner crop)
             #Use it to write the unrotated skel.gsd
-            centre = 0.5*np.array([crop[0]+crop[1],crop[2]+crop[3]])
+            centre = (crop[0]+0.5*crop[1],crop[2]+0.5*crop[3])
             diagonal = ((crop[1]-crop[0])**2+(crop[3]-crop[2])**2)**0.5
 
             outer_crop = np.array([centre[0]-diagonal*0.5,
@@ -115,28 +161,18 @@ class Network():
             inner_crop = crop
             self.inner_crop = inner_crop
             crop = outer_crop
-            
+        print(crop)
+        cropper = _crop(self, domain=crop)
+        
         #Initilise i such that it starts at the lowest number belonging to the images in the stack_dir
         #First require boolean mask to filter out non image files
-        if self._2d:
-            img_bin = np.zeros((1, crop[3]-crop[2],crop[1]-crop[0]))
-        else:
-            img_bin = np.zeros((crop[5]-crop[4],crop[3]-crop[2],crop[1]-crop[0]))
-        
-        olist = np.asarray(sorted(os.listdir(self.stack_dir)))
-        mask = list(base.Q_img(olist[i]) for i in range(len(olist)))
-        if len(mask) == 0:
-            raise error.ImageDirectoryError(self.stack_dir)
-        fname = sorted(olist[mask])[0] #First name
-        i = int(os.path.splitext(fname)[0][5:]) #Strip file type and 'slice' then convert to int
-        if self._2d: depth = 1
-        else: depth = crop[5]-crop[4]
-            
-        
+        img_bin = np.zeros(cropper.dims)
+        print(img_bin.shape)
         #Generate 3d (or 2d) array from stack
+        i = cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
-            if base.Q_img(fname) and i<depth:
-                img_bin[i] = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)[crop[2]:crop[3],crop[0]:crop[1]]/255
+            if base.Q_img(fname) and i<cropper.depth:
+                img_bin[i] = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)[cropper.crop]/255
                 i=i+1
             else:
                 continue
@@ -144,15 +180,6 @@ class Network():
         #For 2D images, img_bin_3d.shape[0] == 1
         self.img_bin_3d = img_bin
         self.img_bin = img_bin
-
-        #Note that numpy array slicing operations are carried out in reverse order!
-        #(...hence crop 2 and 3 before 0 and 1)
-        #if crop and self._2d:
-            #self.img_bin = self.img_bin[:, outer_crop[2]:outer_crop[3], outer_crop[0]:outer_crop[1]]
-            #img_bin = img_bin[crop[0]:crop[1], crop[2]:crop[3]]
-        #elif crop:
-            #TODO figure tf this bit out
-            #self.img_bin = self.img_bin[crop[4]:crop[5], crop[2]:crop[3], crop[0]:crop[1]]
 
         assert self.img_bin_3d.shape[1] > 1
         assert self.img_bin_3d.shape[2] > 1
@@ -200,6 +227,9 @@ class Network():
             self.rotate = r.as_matrix()
             self.crop = np.asarray(outer_crop) - min(outer_crop)
             
+        self.cropper = cropper
+        
+           
     def stack_to_circular_gsd(self, radius, name='circle.gsd', rotate=None, debubble=None, skeleton=True):
         """Writes a cicular .gsd file from the object's directory.
         Currently only capable of 2D graphs
@@ -578,4 +608,3 @@ class StructuralNetwork(Network):
         if Betweenness: self.Betweenness = self.Gr.betweenness()
         if Closeness: self.Closeness = self.Gr.closeness()
         if Degree: self.Degree = self.Gr.degree()
-
