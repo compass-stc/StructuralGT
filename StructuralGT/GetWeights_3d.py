@@ -138,7 +138,6 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
     # img_bin: the binary image that the graph is derived from
 
     # check to see if ge is an empty or unity list, if so, set wt to 1
-    print(weight_type)
     if(len(ge)<2):
         pix_width = 10
         wt = 1
