@@ -65,6 +65,33 @@ def oshift(points, _shift=None):
     points = points - _shift 
     return points
 
+def Q_inside(points, crop):
+    """
+    If points is a single point:
+        Function returns True if point inside region defined by crop
+    If points is a collection of points:
+        Function returns True if all points inside region defined by crop
+    """
+    
+    if points.T.shape[0] == 2:
+        for point in points:
+            if (point[0] < crop[0] or
+                point[0] > crop[1] or
+                point[1] < crop[2] or
+                point[1] > crop[3]):
+                return False
+            return True
+    else:
+        for point in points:
+            if (point[0] < crop[0] or
+                point[0] > crop[1] or
+                point[1] < crop[2] or
+                point[1] > crop[3] or
+                point[2] < crop[4] or
+                point[2] > crop[5]):
+                return False
+            return True
+   
 #For lists of positions where all elements along one axis have the same value, this returns the same list of positions but with the redundant dimension(s) removed
 def dim_red(positions):
     unique_positions = np.asarray(list(len(np.unique(positions.T[i])) for i in range(len(positions.T))))
@@ -185,6 +212,10 @@ def gsd_to_G(gsd_name, sub=False, _2d=False):#crop=None):
     
     if _2d:
         positions = dim_red(positions)
+        new_pos = np.zeros((positions.T.shape))
+        new_pos[0] = positions.T[0]
+        new_pos[1] = positions.T[1]
+        positions=new_pos.T.astype(int)
     canvas = np.zeros(list((max(positions.T[i])+1) for i in list(range(min(positions.shape)))))
     canvas[tuple(list(positions.T))] = 1
     canvas = canvas.astype(int)
@@ -557,14 +588,16 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
     print('Ran stack_to_gsd() in ', end-start, 'for gsd with ', len(positions), 'particles')
 
 def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
+    if not isinstance(weight_type,list): raise TypeError('weight_type must be list, even if single element')
     start = time.time()
-    for i,edge in enumerate(g.Gr.es()):
-        ge = edge['pts']
-        pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin, weight_type=weight_type, R_j=R_j, rho_dim=rho_dim)
-        edge['pixel width'] = pix_width
-        edge[weight_type] = wt
+    for _type in weight_type:
+        for i,edge in enumerate(g.Gr.es()):
+            ge = edge['pts']
+            pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin, weight_type=_type, R_j=R_j, rho_dim=rho_dim)
+            edge['pixel width'] = pix_width
+            edge[_type] = wt
+            
     end = time.time()
-    
     return g.Gr
 
 def stack_analysis(stack_directory, suffix, ANC=False, crop=None):
@@ -804,6 +837,39 @@ def gyration_moments_2(G, weighted=True, sampling=1):
             Ay = Ay + (Ay_term)
 
     return Ax, Ay
+
+def gyration_moments_3(G, sampling=1, weighted=True):
+    Ax=0
+    Ay=0
+    Axy=0
+    node_count = np.asarray(list(range(G.vcount())))
+    mask = np.random.rand(G.vcount()) > (1-sampling)
+    trimmed_node_count = node_count[mask]
+    for i in trimmed_node_count:
+        for j in trimmed_node_count:
+            if i >= j:    #Symetric matrix
+                continue
+            
+            if weighted:
+                path = G.get_shortest_paths(i,to=j, weights='Resistance')
+            else:
+                path = G.get_shortest_paths(i,to=j)
+            Ax_term  = 0
+            Ay_term  = 0
+            Axy_term = 0
+            for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
+                if weighted:
+                    weight = G.es[G.get_eid(hop_s,hop_t)]['Conductance']
+                else:
+                    weight = 1
+                Ax_term  = Ax_term  + weight*(((int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
+                Ay_term  = Ay_term  + weight*(((int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))**2)
+                Axy_term = Axy_term + weight*(((int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))*((int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0]))))
+            Ax  = Ax  + (Ax_term)
+            Ay  = Ay  + (Ay_term)
+            Axy = Axy + (Axy_term)
+            A = np.array([[Ax,Axy,0],[Axy,Ay,0],[0,0,0]])
+    return A
 
 def parallel_gyration(G):
         #Parallel implementation
