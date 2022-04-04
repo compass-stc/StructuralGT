@@ -83,28 +83,18 @@ class Network():
         self.child_dir = child_dir
         self.stack_dir = self.dir + self.child_dir
         self.rotate = None
-<<<<<<< HEAD
         self.Q = None
-
-=======
         self.crop = None
 
+        shape = []
         self.img = []
         i=0
         for fname in sorted(os.listdir(self.dir)):
             if base.Q_img(fname):
                 self.img.append(cv.imread(self.dir+'/'+fname))
                 i=i+1
-            else:
-                continue
-        
->>>>>>> 3534afdb6ad51b15b12c89af35e3376aa5cc5ca5
-        shape = []
-        for name in sorted(os.listdir(self.dir)):
-            if not base.Q_img(name):
-                continue
-            shape.append(cv.imread(self.dir+'/'+name,cv.IMREAD_GRAYSCALE).shape)
-        
+                shape.append(cv.imread(self.dir+'/'+name,cv.IMREAD_GRAYSCALE).shape)
+
         if len(set(shape)) == len(shape):
             self._2d = True
             self.dim = 2
@@ -461,9 +451,6 @@ class Network():
                 j+=1
 
         f.append(s)
-        
-<<<<<<< HEAD
-=======
      
     def recon(self, axis, surface, depth):
 
@@ -476,8 +463,6 @@ class Network():
         axis_0 = abs(axis-2)
 
         display_img = np.swapaxes(self.img_bin_3d, 0, axis_0)[surface]
->>>>>>> 3534afdb6ad51b15b12c89af35e3376aa5cc5ca5
-
         drop_list=[]
         for i in range(self.Gr.vcount()):
             if self.Gr.vs[i]['o'][axis_0] < surface or self.Gr.vs[i]['o'][axis_0] > surface+depth:
