@@ -33,7 +33,8 @@ class Network():
         self.child_dir = child_dir
         self.stack_dir = self.dir + self.child_dir
         self.rotate = None
-        
+        self.Q = None
+
         shape = []
         for name in sorted(os.listdir(self.dir)):
             if not base.Q_img(name):
@@ -341,6 +342,8 @@ class Network():
         #s.configuration.box = [L[0]/2, L[1]/2, L[2]/2, 0, 0, 0]
         s.configuration.box = [1,1,1,0,0,0]
         s.log['particles/'+attribute_name] = [np.NaN]*N
+        s.log['Laplacian'] = self.Gr.laplacian()
+        if self.Q is not None: s.log['InvLaplacian'] = self.Q
         start = time.time()
 
         j=0
@@ -354,6 +357,7 @@ class Network():
                 j+=1
 
         f.append(s)
+        
 
 class ResistiveNetwork(Network):
     """Child of generic SGT Network class.
