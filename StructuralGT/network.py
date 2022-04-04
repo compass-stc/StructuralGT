@@ -88,12 +88,11 @@ class Network():
 
         shape = []
         self.img = []
-        i=0
         for fname in sorted(os.listdir(self.dir)):
             if base.Q_img(fname):
-                self.img.append(cv.imread(self.dir+'/'+fname))
-                i=i+1
-                shape.append(cv.imread(self.dir+'/'+name,cv.IMREAD_GRAYSCALE).shape)
+                _slice = cv.imread(self.dir+'/'+fname,cv.IMREAD_GRAYSCALE)
+                self.img.append(_slice)
+                shape.append(_slice.shape)
 
         if len(set(shape)) == len(shape):
             self._2d = True
