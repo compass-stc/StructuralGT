@@ -138,7 +138,6 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
     # img_bin: the binary image that the graph is derived from
 
     # check to see if ge is an empty or unity list, if so, set wt to 1
-    print(weight_type)
     if(len(ge)<2):
         pix_width = 10
         wt = 1
@@ -172,6 +171,8 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
             wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal, rendering flow problems underdetermined
         else:
             wt = pix_width**2
+    else:
+        raise TypeError('Invalid weight type')
     
     # returns the width in pixels; the weight which
     return pix_width, wt
