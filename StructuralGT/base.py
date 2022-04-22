@@ -13,7 +13,7 @@ import matplotlib.cm as cm
 import csv
 
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing
-from StructuralGT import process_image, GetWeights_3d, error
+from StructuralGT import process_image, GetWeights_3d, error, network
 
 #Function returns true for names of images
 def Q_img(name):
@@ -285,58 +285,6 @@ def sub_G(G):
     
     return G
 
-#Function takes a gsd name, generates a graph with gsd_to_G() and resaves a new .gsd file which has some nodewise indices saved to the file
-def G_labelling(gsd_name, graph=None, _2d=False):
-
-    positions = gsd.hoomd.open(name=gsd_name, mode='rb')[0].particles.position
-    if graph is None:
-         start = time.time()
-         G = gsd_to_G(gsd_name)
-         end = time.time()
-    else:
-         G = graph
-
-    operations = [G.degree, G.betweenness, G.closeness]
-    names = ['Degree', 'Betweenness_Centrality', 'Closeness_Centrality']
-    node_positions = np.asarray(G.vs['o'])
-    
-    save_name = os.path.join(os.path.split(gsd_name)[0],'labelled_'+os.path.split(gsd_name)[1]) #REFERENCE CONCATENATOR
-    node_positions = shift(node_positions).astype(int)
-    positions = shift(positions).astype(int)
-    
-    node_origin_shift =(np.full((np.shape(node_positions)[0],3),[np.max(positions.T[0])/2,np.max(positions.T[1])/2,np.max(positions.T[2])/2])) 
-    position_origin_shift = (np.full((np.shape(positions)[0],3),[np.max(positions.T[0])/2,np.max(positions.T[1])/2,np.max(positions.T[2])/2]))
-
-    #node_positions = node_positions - node_origin_shift
-    #positions = positions - position_origin_shift
-    s = gsd.hoomd.Snapshot()
-    N = len(positions)
-    s.particles.N = N
-    s.particles.position = positions
-    s.particles.types = ['Edge', 'Node']
-    s.particles.typeid = [0]*N
-    L = list(max(positions.T[i])*2 for i in (0,1,2))
-    s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
-    for name,operation in zip(names,operations):
-        s.log['particles/'+name] = [np.NaN]*N
-        start = time.time()
-        index_list = operation()
-
-        end = time.time()
-        print('Ran ', operation, ' in ', end-start)
-    
-        j=0
-        for i,particle in enumerate(positions):
-            node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[0]
-            if len(node_id) == 0: 
-                continue
-            else:
-                s.log['particles/'+name][i] = index_list[node_id[0]]
-                s.particles.typeid[i] = 1
-                j+=1
-    with gsd.hoomd.open(name=save_name, mode='wb') as f:
-        f.append(s)
-    
 #GT_Params_noGUI is a modified copy of the original SGT .py file, with the GUI modules removed    
 def write_averaged(gsd_name):
     import GT_Params_noGUI
@@ -619,225 +567,6 @@ def stack_analysis(stack_directory, suffix, ANC=False, crop=None):
      if ANC:
          igraph_ANC(stack_directory, ig.Graph.from_networkx(G)) 
 
-##The following function is a special case of the above G_labelling which takes a weighted graph and returns the weighted Laplacian.
-##This operation is important for solving the Kirchhoff equation for electrical networks whose edge is weighted by resistance
-##Currently, only igraph is implemented
-def weighted_Laplacian(G):
-    
-    L=np.asarray(G.laplacian(weights='weight'))
-    np.save('weighted_laplacian.npy', L)
-    return L
-
-#The 'plane' arguement defines the /axis/ which along which the boundary arguements refer to
-#Weighted=False enables the unusual case of all edges having the same resistance and can be used to establish the relative effects of geometry and topology
-def voltage_distribution(g, plane, boundary1, boundary2, crop=None, I_dim =1,  R_j=0, rho_dim=1):
-
-    print('pre sub has ', g.Gr.vcount(), ' nodes')
-    g.Gr = sub_G(g.Gr)
-    print('post sub has ', g.Gr.vcount(), ' nodes')
-    if R_j != 'infinity':
-        g = add_weights(g, crop=crop, weight_type='Conductance', R_j=R_j, rho_dim=rho_dim)
-        weight_array = np.asarray(g.Gr.es['weight']).astype(float)
-        weight_array = weight_array[~np.isnan(weight_array)]
-        g.edge_weights = weight_array
-        weight_avg =np.mean(weight_array)
-    else:
-        g.Gr.es['weight'] = np.ones(g.Gr.ecount())
-        weight_avg = 1
-  
-
-#Add source and sink nodes:
-    source_id = max(g.Gr.vs).index + 1
-    sink_id = source_id + 1
-    g.Gr.add_vertices(2)
-#Add coords for plotting
-    #positions = []
-    #for i in range(G.vcount()):
-    #    if g.G.vs[i]['o'] is None:
-    #        pass
-    #    else:
-    #        positions.append(g.G.vs[i]['o'].ravel())
-    
-    #positions = np.concatenate(np.asarray(positions)).reshape((len(positions),len(positions[0])))
-    
-    positions = g.positions
-    dims = g.shape
-    dim = g.dim
-    #dim = len(positions[0])
-    #dims = list(max(positions.T[i]) for i in (range(dim)))
-    #dims = list(max(np.stack(list(G.vs[i]['o'] for i in range(G.vcount()))).T[j]) for j in (0,1,2)) 
-    #mins = list(min(np.asarray(list(G.vs[i]['o'] for i in range(G.vcount())), dtype=object).T[j]) for j in (0,1,2))
-    #print(np.asarray(list(G.vs[i]['o'] for i in range(G.vcount()))).T)
-    print('Graph has max ', dims)
-    axes = np.array([0,1,2])[0:dim]
-    indices = axes[axes!=plane]
-    plane_centre1 = np.zeros(dim, dtype=int)
-    delta = np.zeros(dim, dtype=int)
-    delta[plane] = 10 #Arbitrary. Standardize?
-    for i in indices: plane_centre1[i] = dims[i]/2
-    plane_centre2 = np.copy(plane_centre1)
-    plane_centre2[plane] = dims[plane]
-    source_coord = plane_centre1 - delta 
-    sink_coord = plane_centre2 + delta
-    print('source coord is ', source_coord)
-    print('sink coord is ', sink_coord)
-    g.Gr.vs[source_id]['o'] = source_coord
-    g.Gr.vs[sink_id]['o'] = sink_coord
-
-#Connect nodes on a given boundary to the external current nodes
-    print('Before connecting external nodes, G has vcount ', g.Gr.vcount())
-    for node in g.Gr.vs:
-        if node['o'][plane] > boundary1[0] and node['o'][plane] < boundary1[1]:
-            g.Gr.add_edges([(node.index, source_id)])
-            g.Gr.es[g.Gr.get_eid(node.index,source_id)]['weight'] = weight_avg
-            g.Gr.es[g.Gr.get_eid(node.index,source_id)]['pts'] = connector(source_coord,node['o'])
-        if node['o'][plane] > boundary2[0] and node['o'][plane] < boundary2[1]:
-            g.Gr.add_edges([(node.index, sink_id)])
-            g.Gr.es[g.Gr.get_eid(node.index,sink_id)]['weight'] = weight_avg 
-            g.Gr.es[g.Gr.get_eid(node.index,sink_id)]['pts'] = connector(sink_coord,node['o'])
-
-#Write skeleton connected to external node
-    print(g.Gr.is_connected(), ' connected')
-    print('After connecting external nodes, G has vcount ', g.Gr.vcount())
-    connected_name = os.path.split(g.gsd_name)[0] + '/connected_' + os.path.split(g.gsd_name)[1] 
-    #connected_name = g.stack_directory + '/connected_' + g.gsd_name 
-    G_to_gsd(g.Gr, connected_name)
-
-    L = weighted_Laplacian(g.Gr)
-    I = np.zeros(sink_id+1)
-    print(I.shape,'I')
-    print(L.shape, 'L')
-    I[source_id] = I_dim
-    I[sink_id] = -I_dim
-    np.save(g.stack_dir+'/L.npy',L)
-    np.save(g.stack_dir+'/I.npy',I)
-    V = np.matmul(np.linalg.pinv(L, hermitian=True),I)
-    #VC =np.linalg.solve(L,I)
-    np.save(g.stack_dir+'/V.npy',V)
-    
-    g.L = L
-    g.V = V
-    g.I = I
-
-    return g
-
-""" 
-MOVED TO NETWORK METHOD
-#Labelling function which takes a graph object, node attribute and writes their values to a new .gsd file. 
-def Node_labelling(g, attribute, attribute_name, filename):
-    #Function saves a new .gsd which has the graph in g.Gr labelled with the node attributes in attribute
-
-    assert g.Gr.vcount() == len(attribute)
-    
-    #save_name = os.path.split(prefix)[0] + '/'+attribute_name + os.path.split(prefix)[1]
-    if filename[0] == '/':
-        save_name = filename
-    else:
-        save_name = g.stack_dir + '/' + filename
-    if os.path.exists(save_name):
-        mode = 'rb+'
-    else:
-        mode = 'wb'
-
-    f = gsd.hoomd.open(name=save_name, mode=mode)
-    
-    #Must segregate position list into a node_position section and edge_position
-    node_positions = np.asarray(list(g.Gr.vs()[i]['o'] for i in range(g.Gr.vcount())))
-    positions = node_positions
-    for edge in g.Gr.es():
-        positions=np.vstack((positions,edge['pts']))
-    positions = np.unique(positions, axis=0)
-    if g._2d:
-        node_positions = np.hstack((np.zeros((len(node_positions),1)),node_positions))
-        positions = np.hstack((np.zeros((len(positions),1)),positions))
-
-    #node_positions = base.shift(node_positions)
-    #positions = base.shift(positions)
-    s = gsd.hoomd.Snapshot()
-    N = len(positions)
-    s.particles.N = N
-    s.particles.position = positions
-    s.particles.types = ['Edge', 'Node']
-    s.particles.typeid = [0]*N
-    L = list(max(positions.T[i])*2 for i in (0,1,2))
-    #s.configuration.box = [L[0]/2, L[1]/2, L[2]/2, 0, 0, 0]
-    s.configuration.box = [1,1,1,0,0,0]
-    s.log['particles/'+attribute_name] = [np.NaN]*N
-    start = time.time()
-
-    j=0
-    for i,particle in enumerate(positions):
-        node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[0]
-        if len(node_id) == 0: 
-            continue
-        else:
-            s.log['particles/'+attribute_name][i] = attribute[node_id[0]]
-            s.particles.typeid[i] = 1
-            j+=1
-    
-    f.append(s)
-"""
-
-#Function returns the principal moments of the given network's gyration tensor.
-#Components in the sum forming the components of the gyration tensor are defined by shortest paths between pairs of nodes, not node pairs.
-#sampling arguement allows moments to be estimated from a subset of node pairs
-###NOTES ON TIMING###
-#Node subset/Node total    Time
-#~500/3000                 ~20 s
-#~1800/5500                ~10 min
-
-def gyration_moments(G, weighted=True, sampling=1):
-#Serial implementation
-    Ax=0
-    Ay=0
-    node_count = np.asarray(list(range(G.vcount())))
-    mask = np.random.rand(G.vcount()) > (1-sampling)
-    trimmed_node_count = node_count[mask]
-    for i in trimmed_node_count:
-        for j in trimmed_node_count:
-            if i >= j:    #Symetric matrix
-                continue
-            path = G.get_shortest_paths(i,to=j, weights='Resistance')
-            Ax_term = 0
-            Ay_term = 0
-            for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
-                if weighted:
-                    weight = G.es[G.get_eid(hop_s,hop_t)]['Conductance']
-                else:
-                    weight = 1
-                Ax_term = Ax_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
-                Ay_term = Ay_term + ((weight*(int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))**2)
-            Ax = Ax + (Ax_term)
-            Ay = Ay + (Ay_term)
-    
-    return Ax, Ay
-
-def gyration_moments_2(G, weighted=True, sampling=1):
-#Serial implementation
-    Ax=0
-    Ay=0
-    node_count = np.asarray(list(range(G.vcount())))
-    mask = np.random.rand(G.vcount()) > (1-sampling)
-    trimmed_node_count = node_count[mask]
-    for i in trimmed_node_count:
-        for j in trimmed_node_count:
-            if i >= j:    #Symetric matrix
-                continue
-            path = G.get_shortest_paths(i,to=j)
-            Ax_term = 0
-            Ay_term = 0
-            for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
-                if weighted:
-                    weight = G.es[G.get_eid(hop_s,hop_t)]['weight']
-                else:
-                    weight = 1
-                Ax_term = Ax_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0]))))
-                Ay_term = Ay_term + ((weight*(int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1]))))
-            Ax = Ax + (Ax_term)
-            Ay = Ay + (Ay_term)
-
-    return Ax, Ay
-
 def gyration_moments_3(G, sampling=1, weighted=True):
     Ax=0
     Ay=0
@@ -945,3 +674,30 @@ def parallel_gyration(G):
         print(Ax_sum/Ay_sum)
         return Ax_sum, Ay_sum
 
+def from_gsd(filename, frame=0):
+    """
+    Function returns a Network object stored in a given .gsd file
+    Assigns parent directory to filename, dropping last 2 subdirectories.
+    I.e. assumes filename given as ../...../dir/Binarized/name.gsd
+    
+    Currently only assigns node positions as attributes.
+    TODO: Assign edge position attributes if neccessary
+    """
+
+    _dir = os.path.split(os.path.split(filename)[0])[0]
+    N = network.Network(_dir)
+    f = gsd.hoomd.open(name=filename, mode='rb')[frame]
+    print(-f.log['Laplacian'])
+    A = np.asarray(-f.log['Laplacian']) #not A yet
+    np.fill_diagonal(A,0)
+    print(A)
+    G = ig.Graph()
+    N.Gr = G.Weighted_Adjacency(A)
+
+    node_pos = f.particles.position[f.particles.typeid == 1]
+
+    assert len(node_pos) == N.Gr.vcount()
+
+    N.Gr.vs['o'] = node_pos
+
+    return N

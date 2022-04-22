@@ -147,7 +147,7 @@ class Network():
             #Calculate outer crop
             #(i.e. that which could contain any rotation of the inner crop)
             #Use it to write the unrotated skel.gsd
-            centre = (crop[0]+0.5*crop[1],crop[2]+0.5*crop[3])
+            centre = (crop[0]+0.5*(crop[1]-crop[0]),crop[2]+0.5*(crop[3]-crop[2]))
             diagonal = ((crop[1]-crop[0])**2+(crop[3]-crop[2])**2)**0.5
 
             outer_crop = np.array([centre[0]-diagonal*0.5,
@@ -157,14 +157,11 @@ class Network():
             inner_crop = crop
             self.inner_crop = inner_crop
             crop = outer_crop
-        print(crop)
         cropper = _crop(self, domain=crop)
         
         #Initilise i such that it starts at the lowest number belonging to the images in the stack_dir
         #First require boolean mask to filter out non image files
         img_bin = np.zeros(cropper.dims)
-        print(img_bin.shape)
-        #Generate 3d (or 2d) array from stack
         i = cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
             if base.Q_img(fname) and i<cropper.depth:
@@ -302,7 +299,6 @@ class Network():
         else:
             self.img_bin = np.asarray(self.img_bin)
         
-        print(np.unique(self.skeleton_3d))
         positions = np.asarray(np.where(np.asarray(self.skeleton_3d) != 0)).T
         self.shape = np.asarray(list(max(positions.T[i])+1 for i in (0,1,2)[0:self.dim]))
         self.positions = positions
@@ -341,13 +337,11 @@ class Network():
         #self.Gr_copy = copy.deepcopy(G)
         
         if len(kwargs)!=0:
-            print('calling add weights')
             self.Gr = base.add_weights(self, **kwargs)
 
         self.shape = list(max(list(self.Gr.vs[i]['o'][j] for i in range(self.Gr.vcount()))) for j in (0,1,2)[0:self.dim])
 
         if self.rotate is not None:
-            print(self.shape)
             centre = np.asarray(self.shape)/2
             inner_length = (self.inner_crop[1]-self.inner_crop[0])*0.5
             inner_crop = np.array([centre[0]-inner_length,
@@ -395,7 +389,8 @@ class Network():
     #Labelling function which takes a graph object, node attribute and writes their values to a new .gsd file. 
     def Node_labelling(self, attribute, attribute_name, filename):
         """
-        Function saves a new .gsd which has the graph in self.Gr labelled with the node attributes in attribute
+        Method saves a new .gsd which has the graph in self.Gr labelled with the node attributes in attribute
+        Method saves all the main attributes of a Network object in the .gsd such that the network object may be loaded from the file
         """
 
         assert self.Gr.vcount() == len(attribute)
@@ -435,8 +430,14 @@ class Network():
         #s.configuration.box = [L[0]/2, L[1]/2, L[2]/2, 0, 0, 0]
         s.configuration.box = [1,1,1,0,0,0]
         s.log['particles/'+attribute_name] = [np.NaN]*N
+        
+        #Store essential Network attributes
         s.log['Laplacian'] = self.Gr.laplacian()
+        #s.log['img_options'] = self.options
+        
+        #Store optional Network attributes
         if self.Q is not None: s.log['InvLaplacian'] = self.Q
+
         start = time.time()
 
         j=0
