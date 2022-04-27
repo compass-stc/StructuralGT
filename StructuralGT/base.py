@@ -13,7 +13,7 @@ import matplotlib.cm as cm
 import csv
 
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing
-from StructuralGT import process_image, GetWeights_3d, error, network
+from StructuralGT import process_image, GetWeights_3d, error, network, convert
 
 #import convert
 
@@ -681,18 +681,18 @@ def from_gsd(filename, frame=0):
     Function returns a Network object stored in a given .gsd file
     Assigns parent directory to filename, dropping last 2 subdirectories.
     I.e. assumes filename given as ../...../dir/Binarized/name.gsd
-    
+    This is why the Network object never calls its .binarize() method in this function
+
     Currently only assigns node positions as attributes.
     TODO: Assign edge position attributes if neccessary
     """
-
     _dir = os.path.split(os.path.split(filename)[0])[0]
     N = network.Network(_dir)
     f = gsd.hoomd.open(name=filename, mode='rb')[frame]
-    print(-f.log['Laplacian'])
-    A = np.asarray(-f.log['Laplacian']) #not A yet
-    np.fill_diagonal(A,0)
-    print(A)
+    rows =   f.log['Adj_rows']
+    cols =   f.log['Adj_cols']
+    values = f.log['Adj_values']
+    A = convert.to_sparse(rows, cols, values)
     G = ig.Graph()
     N.Gr = G.Weighted_Adjacency(A)
 
