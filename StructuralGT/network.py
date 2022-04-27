@@ -514,6 +514,7 @@ class ResistiveNetwork(Network):
         """
         #self.G_u(weight_type=['Conductance'], R_j=R_j, rho_dim=rho_dim) #Assign weighted graph attribute
         #self.Gr = base.sub_G(self.Gr)
+
         if R_j != 'infinity':
             weight_array = np.asarray(self.Gr.es['Conductance']).astype(float)
             weight_array = weight_array[~np.isnan(weight_array)]
