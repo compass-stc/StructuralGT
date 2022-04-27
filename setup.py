@@ -1,5 +1,6 @@
-from setuptools import setup, find_packages
-
+from setuptools import find_packages
+from distutils.core import setup
+from distutils.extension import Extension
 descr = """StructuralGT: An automated python package for graph theory analysis of structural networks.\n
 Designed for processing digital micrographs of complex network materials.\n
 For example, analyzing SEM images of polymer network.\n
@@ -57,5 +58,10 @@ setup(
         'sknwEdits',
         'Pillow',
         'pandas',
+        'cython'
     ],
+    ext_modules=[Extension("StructuralGT/convert",["StructuralGT/convert.c"])],
+    zip_safe=False,
+    package_dir={'StructuralGT':'StructuralGT'},
+    package_data={'StructuralGT':['pytest/data/*/*']},
 )
