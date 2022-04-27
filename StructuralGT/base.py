@@ -15,6 +15,8 @@ import csv
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing
 from StructuralGT import process_image, GetWeights_3d, error, network
 
+#import convert
+
 #Function returns true for names of images
 def Q_img(name):
     if (name.endswith('.tiff') or 
@@ -537,15 +539,15 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
 
 def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
     if not isinstance(weight_type,list): raise TypeError('weight_type must be list, even if single element')
-    start = time.time()
     for _type in weight_type:
         for i,edge in enumerate(g.Gr.es()):
             ge = edge['pts']
             pix_width, wt = GetWeights_3d.assignweights(ge, g.img_bin, weight_type=_type, R_j=R_j, rho_dim=rho_dim)
             edge['pixel width'] = pix_width
-            edge[_type] = wt
+            if _type == 'VariableWidthConductance' or _type == 'FixedWidthConductance': _type_name = 'Conductance'
+            else: _type_name = _type
+            edge[_type_name] = wt
             
-    end = time.time()
     return g.Gr
 
 def stack_analysis(stack_directory, suffix, ANC=False, crop=None):

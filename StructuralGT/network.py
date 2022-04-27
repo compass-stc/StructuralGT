@@ -3,7 +3,7 @@ import numpy as np
 import igraph as ig
 import os
 import cv2 as cv
-from StructuralGT import error, base, process_image
+from StructuralGT import error, base, process_image, convert
 import json
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
@@ -14,6 +14,10 @@ import gsd.hoomd
 from skimage.morphology import skeletonize_3d, disk, ball
 import pandas as pd
 import copy
+
+import StructuralGT
+
+#import convert
 
 class _crop():
     """
@@ -330,13 +334,14 @@ class Network():
         """
         Sets igraph object as an attribute
         """
-        print('name is ',self.gsd_name)
-        G =  base.gsd_to_G(self.gsd_name, _2d = self._2d)
+        if 'sub' not in kwargs: kwargs['sub'] = True
+        G =  base.gsd_to_G(self.gsd_name, _2d = self._2d, sub=kwargs['sub'])
         
         self.Gr = G
         #self.Gr_copy = copy.deepcopy(G)
         
         if len(kwargs)!=0:
+            if 'sub' in kwargs: kwargs.pop('sub')
             self.Gr = base.add_weights(self, **kwargs)
 
         self.shape = list(max(list(self.Gr.vs[i]['o'][j] for i in range(self.Gr.vcount()))) for j in (0,1,2)[0:self.dim])
@@ -387,7 +392,7 @@ class Network():
         self.L = L
 
     #Labelling function which takes a graph object, node attribute and writes their values to a new .gsd file. 
-    def Node_labelling(self, attribute, attribute_name, filename):
+    def Node_labelling(self, attribute, attribute_name, filename, edge_weight=None):
         """
         Method saves a new .gsd which has the graph in self.Gr labelled with the node attributes in attribute
         Method saves all the main attributes of a Network object in the .gsd such that the network object may be loaded from the file
@@ -431,12 +436,15 @@ class Network():
         s.configuration.box = [1,1,1,0,0,0]
         s.log['particles/'+attribute_name] = [np.NaN]*N
         
-        #Store essential Network attributes
-        s.log['Laplacian'] = self.Gr.laplacian()
+        #To store graph, must first convert sparse adjacency matrix as 3 dense matrices
+        rows, columns, values = convert.to_dense(np.array(self.Gr.get_adjacency(attribute=edge_weight).data,dtype=np.single))
+        s.log['Adj_rows'] = rows
+        s.log['Adj_cols'] = columns
+        s.log['Adj_values'] = values
         #s.log['img_options'] = self.options
         
         #Store optional Network attributes
-        if self.Q is not None: s.log['InvLaplacian'] = self.Q
+        #if self.Q is not None: s.log['InvLaplacian'] = self.Q
 
         start = time.time()
 
@@ -504,20 +512,19 @@ class ResistiveNetwork(Network):
         NOTE: Critical that self.G_u() is called before every self.potential_distribution() call
         TODO: Remove this requirement or add an error to warn
         """
-        self.G_u(weight_type=['Conductance'], R_j=R_j, rho_dim=rho_dim) #Assign weighted graph attribute
-        self.Gr = base.sub_G(self.Gr)
-        self.Gr_connected = self.Gr
-        print('post sub has ', self.Gr.vcount(), ' nodes')
+        #self.G_u(weight_type=['Conductance'], R_j=R_j, rho_dim=rho_dim) #Assign weighted graph attribute
+        #self.Gr = base.sub_G(self.Gr)
         if R_j != 'infinity':
-            weight_array = np.asarray(self.Gr_connected.es['Conductance']).astype(float)
+            weight_array = np.asarray(self.Gr.es['Conductance']).astype(float)
             weight_array = weight_array[~np.isnan(weight_array)]
             self.edge_weights = weight_array
             weight_avg =np.mean(weight_array)
         else:
-            self.Gr_connected.es['Conductance'] = np.ones(self.Gr_connected.ecount())
+            self.Gr_connected.es['Conductance'] = np.ones(self.Gr.ecount())
             weight_avg = 1
 
         #Add source and sink nodes:
+        self.Gr_connected = self.Gr
         source_id = max(self.Gr_connected.vs).index + 1
         sink_id = source_id + 1
         self.Gr_connected.add_vertices(2)
