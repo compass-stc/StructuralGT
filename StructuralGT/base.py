@@ -593,9 +593,9 @@ def gyration_moments_3(G, sampling=1, weighted=True):
                     weight = G.es[G.get_eid(hop_s,hop_t)]['Conductance']
                 else:
                     weight = 1
-                Ax_term  = Ax_term  + weight*(((int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
-                Ay_term  = Ay_term  + weight*(((int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))**2)
-                Axy_term = Axy_term + weight*(((int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))*((int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0]))))
+                Ax_term  = Ax_term  + weight*(((G.vs[hop_s]['o'][0]).astype(float) - (G.vs[hop_t]['o'][0]).astype(float))**2)
+                Ay_term  = Ay_term  + weight*(((G.vs[hop_s]['o'][1]).astype(float) - (G.vs[hop_t]['o'][1]).astype(float))**2)
+                Axy_term = Axy_term + weight*(((G.vs[hop_s]['o'][1]).astype(float) - (G.vs[hop_t]['o'][1].astype(float))) * ((G.vs[hop_s]['o'][0]).astype(float) - (G.vs[hop_t]['o'][0]).astype(float)))
             Ax  = Ax  + (Ax_term)
             Ay  = Ay  + (Ay_term)
             Axy = Axy + (Axy_term)
