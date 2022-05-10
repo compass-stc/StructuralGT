@@ -599,7 +599,7 @@ def gyration_moments_3(G, sampling=1, weighted=True):
             Ax  = Ax  + (Ax_term)
             Ay  = Ay  + (Ay_term)
             Axy = Axy + (Axy_term)
-            A = np.array([[Ax,Axy,0],[Axy,Ay,0],[0,0,0]])
+            A = np.array([[Ax,Axy,0],[Axy,Ay,0],[0,0,0]])/(len(trimmed_node_count)**2)
     return A
 
 def parallel_gyration(G):
