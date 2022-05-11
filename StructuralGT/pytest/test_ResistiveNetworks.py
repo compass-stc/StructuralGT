@@ -1,4 +1,4 @@
-from StructuralGT import network, base
+#from StructuralGT import network, base
 import StructuralGT
 import pytest
 import os
@@ -12,7 +12,7 @@ def binarize(request):
     _dir = request.param
     if os.path.isdir(_dir+'/Binarized'): shutil.rmtree(_dir+'/Binarized')
 
-    N = network.ResistiveNetwork(_dir)
+    N = StructuralGT.network.ResistiveNetwork(_dir)
     N.binarize()
 
     #assert N.img_bin.shape == N.img.shape
