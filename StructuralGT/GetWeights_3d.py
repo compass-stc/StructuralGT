@@ -138,7 +138,6 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
     # img_bin: the binary image that the graph is derived from
 
     # check to see if ge is an empty or unity list, if so, set wt to 1
-    print(weight_type)
     if(len(ge)<2):
         pix_width = 10
         wt = 1
@@ -154,12 +153,22 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
         pix_width = int(lengthtoedge(m, orth, img_bin)) 
     if(weight_type==None):
         wt = pix_width/10
-    elif(weight_type=='Conductance'): #This is electrical conductance; not graph conductance
+    elif(weight_type=='VariableWidthConductance'):
+        #This is electrical conductance; not graph conductance.
+        #This conductance is based on both width and length of edge, as measured from the raw data. rho_dim is resistivity (i.e. ohm pixels)
         length = len(ge)
         if pix_width == 0 or length == 0:
             wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal, rendering flow problems underdetermined
         else:
             wt = ((length*rho_dim/pix_width**2) + R_j*2)**-1
+    elif(weight_type=='FixedWidthConductance'):
+        #This conductance is based on length of edge, as measured from data whereas width is supplied as part of rho_dim.
+        #rho_dim should be equal resistivity/cross_secitonal area
+        length = len(ge)
+        if pix_width == 0 or length == 0:
+            wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal, rendering flow problems underdetermined
+        else:
+            wt = ((length*rho_dim) + R_j*2)**-1
     elif(weight_type=='Resistance'): #Reciprocal of conductance
         length = len(ge)
         if pix_width == 0 or length == 0:
@@ -172,6 +181,8 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
             wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal, rendering flow problems underdetermined
         else:
             wt = pix_width**2
+    else:
+        raise TypeError('Invalid weight type')
     
     # returns the width in pixels; the weight which
     return pix_width, wt

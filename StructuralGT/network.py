@@ -3,7 +3,7 @@ import numpy as np
 import igraph as ig
 import os
 import cv2 as cv
-from StructuralGT import error, base, process_image
+from StructuralGT import error, base, process_image, convert
 import json
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
@@ -15,8 +15,61 @@ from skimage.morphology import skeletonize_3d, disk, ball
 import pandas as pd
 import copy
 
+import StructuralGT
+
+#import convert
+
+class _crop():
+    """
+    Crop object
+    dim is dimensions: 2 or 3
+    dims is lengths: eg (500,1500,10)
+    crop is crop point locations eg (200,300,200,300)
+    """
+    
+    def __init__(self, Network, domain=None):
+        self.dim = Network.dim
+        
+        ## Find depth and surface of network and assign to _crop.depth; _crop.surface ##
+        olist = np.asarray(sorted(os.listdir(Network.stack_dir)))
+        mask = list(base.Q_img(olist[i]) for i in range(len(olist)))
+        fname = sorted(olist[mask])[0] #First name
+        self.surface = int(os.path.splitext(fname)[0][5:]) #Strip file type and 'slice' then convert to int
+        if Network._2d:
+            self.depth = 1
+        else:
+            if domain == None:
+                self.depth = sum(mask)
+            else:
+                self.depth = domain[5]-domain[4]
+            if self.depth == 0:
+                raise error.ImageDirectoryError(Network.stack_dir)
+        
+        ## Assign dims and crop ##
+        if domain is None:
+            self.crop = slice(None)
+            planar_dims = cv.imread(Network.stack_dir+'/slice'+str(0)+'.tiff',cv.IMREAD_GRAYSCALE).shape
+            if self.dim == 2:
+                self.dims = (1,) + planar_dims
+            else:
+                self.dims = (self.depth,) + planar_dims 
+                
+        else:
+            self.crop = slice(domain[2],domain[3]),slice(domain[0],domain[1])
+            if self.dim == 2: 
+                self.dims = (1,domain[3]-domain[2],domain[1]-domain[0])
+            else:
+                #self.crop = slice(domain[0],domain[1]),slice(domain[2],domain[3]),slice(domain[4],domain[5])
+                self.dims = (domain[5]-domain[4],domain[3]-domain[2],domain[1]-domain[0])
+                
+    def rotationals():
+        if self.dim == 2:
+            self.centre = 0.5*np.array([self.crop[0]+self.crop[1],self.crop[2]+self.crop[3]])
+
+
 class Network():
-    """Generic SGT graph class: a specialised case of the igraph Graph object with 
+    """
+    Generic SGT graph class: a specialised case of the igraph Graph object with 
     additional attributes defining geometric features, associated images,
     dimensionality etc.
     
@@ -34,23 +87,17 @@ class Network():
         self.child_dir = child_dir
         self.stack_dir = self.dir + self.child_dir
         self.rotate = None
+        self.Q = None
         self.crop = None
 
+        shape = []
         self.img = []
-        i=0
         for fname in sorted(os.listdir(self.dir)):
             if base.Q_img(fname):
-                self.img.append(cv.imread(self.dir+'/'+fname))
-                i=i+1
-            else:
-                continue
-        
-        shape = []
-        for name in sorted(os.listdir(self.dir)):
-            if not base.Q_img(name):
-                continue
-            shape.append(cv.imread(self.dir+'/'+name,cv.IMREAD_GRAYSCALE).shape)
-        
+                _slice = cv.imread(self.dir+'/'+fname,cv.IMREAD_GRAYSCALE)
+                self.img.append(_slice)
+                shape.append(_slice.shape)
+
         if len(set(shape)) == len(shape):
             self._2d = True
             self.dim = 2
@@ -83,15 +130,15 @@ class Network():
                 _, img_bin, _ = process_image.binarize(img_exp, options_dict)
                 plt.imsave(self.dir+self.child_dir+'/slice'+str(i)+'.tiff', img_bin, cmap=cm.gray)
                 i+=1
-        
+
+        self.options = options_dict
+
     def stack_to_gsd(self, name='skel.gsd', crop=None, skeleton=True, rotate=None, debubble=None):
         """Writes a .gsd file from the object's directory.
         The name of the written .gsd is set as an attribute so it may be easily matched with its Graph object 
         Running this also sets the positions, shape attributes
-        
-        For 2D graphs, the first element of the 3D position list is all 0s. So the gsd y corresponds to the graph
-        x and the gsd z corresponds to the graph y.
         """
+        if crop is None and rotate is not None: raise ValueError('If rotating a graph, crop must be specified')
         start = time.time()
         self.type = 'rectangular'
         if name[0] == '/':
@@ -100,12 +147,11 @@ class Network():
             self.gsd_name = self.stack_dir + '/' + name
         self.gsd_dir = os.path.split(self.gsd_name)[0]       
         
-        
         if rotate is not None:
             #Calculate outer crop
             #(i.e. that which could contain any rotation of the inner crop)
             #Use it to write the unrotated skel.gsd
-            centre = 0.5*np.array([crop[0]+crop[1],crop[2]+crop[3]])
+            centre = (crop[0]+0.5*(crop[1]-crop[0]),crop[2]+0.5*(crop[3]-crop[2]))
             diagonal = ((crop[1]-crop[0])**2+(crop[3]-crop[2])**2)**0.5
 
             outer_crop = np.array([centre[0]-diagonal*0.5,
@@ -115,28 +161,15 @@ class Network():
             inner_crop = crop
             self.inner_crop = inner_crop
             crop = outer_crop
-            
+        cropper = _crop(self, domain=crop)
+        
         #Initilise i such that it starts at the lowest number belonging to the images in the stack_dir
         #First require boolean mask to filter out non image files
-        if self._2d:
-            img_bin = np.zeros((1, crop[3]-crop[2],crop[1]-crop[0]))
-        else:
-            img_bin = np.zeros((crop[5]-crop[4],crop[3]-crop[2],crop[1]-crop[0]))
-        
-        olist = np.asarray(sorted(os.listdir(self.stack_dir)))
-        mask = list(base.Q_img(olist[i]) for i in range(len(olist)))
-        if len(mask) == 0:
-            raise error.ImageDirectoryError(self.stack_dir)
-        fname = sorted(olist[mask])[0] #First name
-        i = int(os.path.splitext(fname)[0][5:]) #Strip file type and 'slice' then convert to int
-        if self._2d: depth = 1
-        else: depth = crop[5]-crop[4]
-            
-        
-        #Generate 3d (or 2d) array from stack
+        img_bin = np.zeros(cropper.dims)
+        i = cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
-            if base.Q_img(fname) and i<depth:
-                img_bin[i] = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)[crop[2]:crop[3],crop[0]:crop[1]]/255
+            if base.Q_img(fname) and i<cropper.depth:
+                img_bin[i] = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)[cropper.crop]/255
                 i=i+1
             else:
                 continue
@@ -144,15 +177,6 @@ class Network():
         #For 2D images, img_bin_3d.shape[0] == 1
         self.img_bin_3d = img_bin
         self.img_bin = img_bin
-
-        #Note that numpy array slicing operations are carried out in reverse order!
-        #(...hence crop 2 and 3 before 0 and 1)
-        #if crop and self._2d:
-            #self.img_bin = self.img_bin[:, outer_crop[2]:outer_crop[3], outer_crop[0]:outer_crop[1]]
-            #img_bin = img_bin[crop[0]:crop[1], crop[2]:crop[3]]
-        #elif crop:
-            #TODO figure tf this bit out
-            #self.img_bin = self.img_bin[crop[4]:crop[5], crop[2]:crop[3], crop[0]:crop[1]]
 
         assert self.img_bin_3d.shape[1] > 1
         assert self.img_bin_3d.shape[2] > 1
@@ -200,6 +224,9 @@ class Network():
             self.rotate = r.as_matrix()
             self.crop = np.asarray(outer_crop) - min(outer_crop)
             
+        self.cropper = cropper
+        
+           
     def stack_to_circular_gsd(self, radius, name='circle.gsd', rotate=None, debubble=None, skeleton=True):
         """Writes a cicular .gsd file from the object's directory.
         Currently only capable of 2D graphs
@@ -276,7 +303,6 @@ class Network():
         else:
             self.img_bin = np.asarray(self.img_bin)
         
-        print(np.unique(self.skeleton_3d))
         positions = np.asarray(np.where(np.asarray(self.skeleton_3d) != 0)).T
         self.shape = np.asarray(list(max(positions.T[i])+1 for i in (0,1,2)[0:self.dim]))
         self.positions = positions
@@ -308,20 +334,19 @@ class Network():
         """
         Sets igraph object as an attribute
         """
-        print('name is ',self.gsd_name)
-        G =  base.gsd_to_G(self.gsd_name, _2d = self._2d)
+        if 'sub' not in kwargs: kwargs['sub'] = True
+        G =  base.gsd_to_G(self.gsd_name, _2d = self._2d, sub=kwargs['sub'])
         
         self.Gr = G
         #self.Gr_copy = copy.deepcopy(G)
         
         if len(kwargs)!=0:
-            print('calling add weights')
+            if 'sub' in kwargs: kwargs.pop('sub')
             self.Gr = base.add_weights(self, **kwargs)
 
         self.shape = list(max(list(self.Gr.vs[i]['o'][j] for i in range(self.Gr.vcount()))) for j in (0,1,2)[0:self.dim])
 
         if self.rotate is not None:
-            print(self.shape)
             centre = np.asarray(self.shape)/2
             inner_length = (self.inner_crop[1]-self.inner_crop[0])*0.5
             inner_crop = np.array([centre[0]-inner_length,
@@ -367,9 +392,10 @@ class Network():
         self.L = L
 
     #Labelling function which takes a graph object, node attribute and writes their values to a new .gsd file. 
-    def Node_labelling(self, attribute, attribute_name, filename):
+    def Node_labelling(self, attribute, attribute_name, filename, edge_weight=None):
         """
-        Function saves a new .gsd which has the graph in self.Gr labelled with the node attributes in attribute
+        Method saves a new .gsd which has the graph in self.Gr labelled with the node attributes in attribute
+        Method saves all the main attributes of a Network object in the .gsd such that the network object may be loaded from the file
         """
 
         assert self.Gr.vcount() == len(attribute)
@@ -409,6 +435,17 @@ class Network():
         #s.configuration.box = [L[0]/2, L[1]/2, L[2]/2, 0, 0, 0]
         s.configuration.box = [1,1,1,0,0,0]
         s.log['particles/'+attribute_name] = [np.NaN]*N
+        
+        #To store graph, must first convert sparse adjacency matrix as 3 dense matrices
+        rows, columns, values = convert.to_dense(np.array(self.Gr.get_adjacency(attribute=edge_weight).data,dtype=np.single))
+        s.log['Adj_rows'] = rows
+        s.log['Adj_cols'] = columns
+        s.log['Adj_values'] = values
+        #s.log['img_options'] = self.options
+        
+        #Store optional Network attributes
+        #if self.Q is not None: s.log['InvLaplacian'] = self.Q
+
         start = time.time()
 
         j=0
@@ -422,7 +459,6 @@ class Network():
                 j+=1
 
         f.append(s)
-        
      
     def recon(self, axis, surface, depth):
 
@@ -435,7 +471,6 @@ class Network():
         axis_0 = abs(axis-2)
 
         display_img = np.swapaxes(self.img_bin_3d, 0, axis_0)[surface]
-
         drop_list=[]
         for i in range(self.Gr.vcount()):
             if self.Gr.vs[i]['o'][axis_0] < surface or self.Gr.vs[i]['o'][axis_0] > surface+depth:
@@ -477,20 +512,20 @@ class ResistiveNetwork(Network):
         NOTE: Critical that self.G_u() is called before every self.potential_distribution() call
         TODO: Remove this requirement or add an error to warn
         """
-        self.G_u(weight_type=['Conductance'], R_j=R_j, rho_dim=rho_dim) #Assign weighted graph attribute
-        self.Gr = base.sub_G(self.Gr)
-        self.Gr_connected = self.Gr
-        print('post sub has ', self.Gr.vcount(), ' nodes')
+        #self.G_u(weight_type=['Conductance'], R_j=R_j, rho_dim=rho_dim) #Assign weighted graph attribute
+        #self.Gr = base.sub_G(self.Gr)
+
         if R_j != 'infinity':
-            weight_array = np.asarray(self.Gr_connected.es['Conductance']).astype(float)
+            weight_array = np.asarray(self.Gr.es['Conductance']).astype(float)
             weight_array = weight_array[~np.isnan(weight_array)]
             self.edge_weights = weight_array
             weight_avg =np.mean(weight_array)
         else:
-            self.Gr_connected.es['Conductance'] = np.ones(self.Gr_connected.ecount())
+            self.Gr_connected.es['Conductance'] = np.ones(self.Gr.ecount())
             weight_avg = 1
 
         #Add source and sink nodes:
+        self.Gr_connected = self.Gr
         source_id = max(self.Gr_connected.vs).index + 1
         sink_id = source_id + 1
         self.Gr_connected.add_vertices(2)
@@ -578,4 +613,3 @@ class StructuralNetwork(Network):
         if Betweenness: self.Betweenness = self.Gr.betweenness()
         if Closeness: self.Closeness = self.Gr.closeness()
         if Degree: self.Degree = self.Gr.degree()
-
