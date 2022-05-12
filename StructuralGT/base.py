@@ -538,7 +538,7 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
     print('Ran stack_to_gsd() in ', end-start, 'for gsd with ', len(positions), 'particles')
 
 def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
-    if not isinstance(weight_type,list): raise TypeError('weight_type must be list, even if single element')
+    if not isinstance(weight_type,list) and weight_type is not None: raise TypeError('weight_type must be list, even if single element')
     for _type in weight_type:
         for i,edge in enumerate(g.Gr.es()):
             ge = edge['pts']

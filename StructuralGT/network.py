@@ -200,6 +200,7 @@ class Network():
         positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
         self.shape = np.asarray(list(max(positions.T[i])+1 for i in (0,1,2)[0:self.dim]))
         self.positions = positions
+        self.img = self.img[0]
 
         with gsd.hoomd.open(name=self.gsd_name, mode='wb') as f:
             s = gsd.hoomd.Snapshot()
@@ -342,7 +343,7 @@ class Network():
         
         if len(kwargs)!=0:
             if 'sub' in kwargs: kwargs.pop('sub')
-            self.Gr = base.add_weights(self, **kwargs)
+            if 'weight_type' in kwargs: self.Gr = base.add_weights(self, **kwargs)
 
         self.shape = list(max(list(self.Gr.vs[i]['o'][j] for i in range(self.Gr.vcount()))) for j in (0,1,2)[0:self.dim])
 
