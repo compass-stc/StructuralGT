@@ -60,6 +60,7 @@ setup(
         'cython',
         'gsd',
         'python-igraph'
+        'pytest'
     ],
     ext_modules=[Extension("StructuralGT/convert",["StructuralGT/convert.c"])],
     zip_safe=False,
