@@ -55,10 +55,11 @@ setup(
         'matplotlib',
         'networkx',
         'opencv-python',
-        'sknwEdits',
         'Pillow',
         'pandas',
-        'cython'
+        'cython',
+        'gsd',
+        'python-igraph'
     ],
     ext_modules=[Extension("StructuralGT/convert",["StructuralGT/convert.c"])],
     zip_safe=False,
