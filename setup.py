@@ -59,7 +59,7 @@ setup(
         'pandas',
         'cython',
         'gsd',
-        'python-igraph'
+        'python-igraph',
         'pytest'
     ],
     ext_modules=[Extension("StructuralGT/convert",["StructuralGT/convert.c"])],
