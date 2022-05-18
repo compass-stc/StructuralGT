@@ -15,8 +15,6 @@ import csv
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing
 from StructuralGT import process_image, GetWeights_3d, error, network, convert
 
-#import convert
-
 #Function returns true for names of images
 def Q_img(name):
     if (name.endswith('.tiff') or 
@@ -703,3 +701,8 @@ def from_gsd(filename, frame=0):
     N.Gr.vs['o'] = node_pos
 
     return N
+
+def get_ORC(G):
+    G = G.to_networkx()
+
+

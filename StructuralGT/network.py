@@ -6,18 +6,12 @@ import cv2 as cv
 from StructuralGT import error, base, process_image, convert
 import json
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import figure
 import matplotlib.cm as cm
 import time
-import functools
 import gsd.hoomd
 from skimage.morphology import skeletonize_3d, disk, ball
 import pandas as pd
 import copy
-
-import StructuralGT
-
-#import convert
 
 class _crop():
     """
@@ -516,6 +510,7 @@ class ResistiveNetwork(Network):
         #self.G_u(weight_type=['Conductance'], R_j=R_j, rho_dim=rho_dim) #Assign weighted graph attribute
         #self.Gr = base.sub_G(self.Gr)
 
+        self.Gr_connected = self.Gr
         if R_j != 'infinity':
             weight_array = np.asarray(self.Gr.es['Conductance']).astype(float)
             weight_array = weight_array[~np.isnan(weight_array)]
@@ -526,7 +521,6 @@ class ResistiveNetwork(Network):
             weight_avg = 1
 
         #Add source and sink nodes:
-        self.Gr_connected = self.Gr
         source_id = max(self.Gr_connected.vs).index + 1
         sink_id = source_id + 1
         self.Gr_connected.add_vertices(2)
@@ -550,11 +544,11 @@ class ResistiveNetwork(Network):
     #Connect nodes on a given boundary to the external current nodes
         print('Before connecting external nodes, G has vcount ', self.Gr_connected.vcount())
         for node in self.Gr_connected.vs:
-            if node['o'][plane] > boundary1[0] and node['o'][plane] < boundary1[1]:
+            if node['o'][plane] >= boundary1[0] and node['o'][plane] <= boundary1[1]:
                 self.Gr_connected.add_edges([(node.index, source_id)])
                 self.Gr_connected.es[self.Gr_connected.get_eid(node.index,source_id)]['Conductance'] = weight_avg
                 self.Gr_connected.es[self.Gr_connected.get_eid(node.index,source_id)]['pts'] = base.connector(source_coord,node['o'])
-            if node['o'][plane] > boundary2[0] and node['o'][plane] < boundary2[1]:
+            if node['o'][plane] >= boundary2[0] and node['o'][plane] <= boundary2[1]:
                 self.Gr_connected.add_edges([(node.index, sink_id)])
                 self.Gr_connected.es[self.Gr_connected.get_eid(node.index,sink_id)]['Conductance'] = weight_avg 
                 self.Gr_connected.es[self.Gr_connected.get_eid(node.index,sink_id)]['pts'] = base.connector(sink_coord,node['o'])
