@@ -1,4 +1,4 @@
-from StructuralGT import network, base
+from StructuralGTEdits import network, base
 import pytest
 
 def test_find_node():

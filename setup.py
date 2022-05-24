@@ -39,7 +39,7 @@ Contact email: vecdrew@umich.edu
 """
 
 setup(
-    name='StructuralGT',
+    name='StructuralGTEdits',
     version='1.0.1b2',
     packages=find_packages(),
     url='https://github.com/drewvecchio/StructuralGT',
@@ -62,8 +62,8 @@ setup(
         'python-igraph',
         'pytest'
     ],
-    ext_modules=[Extension("StructuralGT/convert",["StructuralGT/convert.c"])],
+    ext_modules=[Extension("StructuralGTEdits/convert",["StructuralGTEdits/convert.c"])],
     zip_safe=False,
-    package_dir={'StructuralGT':'StructuralGT'},
-    package_data={'StructuralGT':['pytest/data/*/*']},
+    package_dir={'StructuralGTEdits':'StructuralGTEdits'},
+    package_data={'StructuralGTEdits':['pytest/data/*/*']},
 )

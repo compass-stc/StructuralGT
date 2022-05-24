@@ -3,7 +3,7 @@ import numpy as np
 import igraph as ig
 import os
 import cv2 as cv
-from StructuralGT import error, base, process_image, convert
+from StructuralGTEdits import error, base, process_image, convert
 import json
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm

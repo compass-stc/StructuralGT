@@ -13,7 +13,7 @@ import matplotlib.cm as cm
 import csv
 
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing
-from StructuralGT import process_image, GetWeights_3d, error, network, convert
+from StructuralGTEdits import process_image, GetWeights_3d, error, network, convert
 
 #Function returns true for names of images
 def Q_img(name):

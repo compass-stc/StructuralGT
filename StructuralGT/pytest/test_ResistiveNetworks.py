@@ -1,5 +1,5 @@
 #from StructuralGT import network, base
-import StructuralGT
+import StructuralGTEdits
 import pytest
 import os
 import shutil
