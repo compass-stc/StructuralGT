@@ -387,7 +387,7 @@ class Network():
         self.L = L
 
     #Labelling function which takes a graph object, node attribute and writes their values to a new .gsd file. 
-    def Node_labelling(self, attribute, attribute_name, filename, edge_weight=None):
+    def Node_labelling(self, attribute, attribute_name, filename, edge_weight=None, mode='rb+'):
         """
         Method saves a new .gsd which has the graph in self.Gr labelled with the node attributes in attribute
         Method saves all the main attributes of a Network object in the .gsd such that the network object may be loaded from the file
@@ -400,12 +400,12 @@ class Network():
             save_name = filename
         else:
             save_name = self.stack_dir + '/' + filename
-        if os.path.exists(save_name):
-            mode = 'rb+'
+        if mode=='rb+' and os.path.exists(save_name):
+            _mode = 'rb+'
         else:
-            mode = 'wb'
+            _mode = 'wb'
 
-        f = gsd.hoomd.open(name=save_name, mode=mode)
+        f = gsd.hoomd.open(name=save_name, mode=_mode)
         self.labelled_name = save_name
         
         #Must segregate position list into a node_position section and edge_position
