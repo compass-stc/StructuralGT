@@ -1,0 +1,12 @@
+numpy
+scipy
+scikit-image
+matplotlib
+networkx
+opencv-python
+Pillow
+pandas
+cython
+gsd
+python-igraph
+pytest
