@@ -1,6 +1,7 @@
 from setuptools import find_packages
 from distutils.core import setup
 from distutils.extension import Extension
+from Cython.Build import cythonize
 descr = """StructuralGT: An automated python package for graph theory analysis of structural networks.\n
 Designed for processing digital micrographs of complex network materials.\n
 For example, analyzing SEM images of polymer network.\n
@@ -62,8 +63,9 @@ setup(
         'python-igraph',
         'pytest'
     ],
-    ext_modules=[Extension("StructuralGTEdits/convert",["StructuralGTEdits/convert.c"])],
+    ext_modules=cythonize("convert.pyx"),
+    #ext_modules=[Extension("StructuralGT/convert",["StructuralGT/convert.c"])],
     zip_safe=False,
-    package_dir={'StructuralGTEdits':'StructuralGTEdits'},
+    #package_dir={'':'StructuralGT'},
     package_data={'StructuralGTEdits':['pytest/data/*/*']},
 )
