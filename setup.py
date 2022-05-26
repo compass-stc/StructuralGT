@@ -66,6 +66,6 @@ setup(
     ext_modules=cythonize("convert.pyx"),
     #ext_modules=[Extension("StructuralGT/convert",["StructuralGT/convert.c"])],
     zip_safe=False,
-    #package_dir={'':'StructuralGT'},
+    #package_dir={'StructuralGTEdits':''},
     package_data={'StructuralGTEdits':['pytest/data/*/*']},
 )
