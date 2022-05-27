@@ -192,7 +192,7 @@ class Network():
             self.img_bin = np.asarray(self.img_bin)
 
         positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
-        self.shape = np.asarray(list(max(positions.T[i])+1 for i in (0,1,2)[0:self.dim]))
+        self.shape = np.asarray(list(max(positions.T[i])+1 for i in (2,1,0)[0:self.dim]))
         self.positions = positions
         self.img = self.img[0]
 
@@ -339,15 +339,14 @@ class Network():
             if 'sub' in kwargs: kwargs.pop('sub')
             if 'weight_type' in kwargs: self.Gr = base.add_weights(self, **kwargs)
 
-        self.shape = list(max(list(self.Gr.vs[i]['o'][j] for i in range(self.Gr.vcount()))) for j in (0,1,2)[0:self.dim])
-
         if self.rotate is not None:
             centre = np.asarray(self.shape)/2
-            inner_length = (self.inner_crop[1]-self.inner_crop[0])*0.5
-            inner_crop = np.array([centre[0]-inner_length,
-                                   centre[0]+inner_length,
-                                   centre[1]-inner_length,
-                                   centre[1]+inner_length], dtype=int)
+            inner_length_x = (self.inner_crop[1]-self.inner_crop[0])*0.5
+            inner_length_y =(self.inner_crop[3]-self.inner_crop[2])*0.5
+            inner_crop = np.array([centre[0]-inner_length_x,
+                                   centre[0]+inner_length_x,
+                                   centre[1]-inner_length_y,
+                                   centre[1]+inner_length_y], dtype=int)
             
             node_positions = np.asarray(list(self.Gr.vs[i]['o'] for i in range(self.Gr.vcount())))
             node_positions = base.oshift(node_positions, _shift=centre)
@@ -365,7 +364,7 @@ class Network():
             self.Gr.delete_vertices(drop_list)
 
             node_positions = np.asarray(list(self.Gr.vs[i]['o'] for i in range(self.Gr.vcount())))
-            final_shift = np.min(list(node_positions.T[i] for i in range(self.dim)))
+            final_shift = np.asarray(list(min(node_positions.T[i]) for i in (0,1,2)[0:self.dim]))
             edge_positions_list = np.asarray(list(base.oshift(self.Gr.es[i]['pts'], _shift=centre) for i in range(self.Gr.ecount())))
             for i, edge in enumerate(edge_positions_list):
                 edge_position = np.vstack((edge.T, np.zeros(len(edge)))).T
