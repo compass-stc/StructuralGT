@@ -1,4 +1,4 @@
-#Draft
+
 import numpy as np
 import igraph as ig
 import os
@@ -92,6 +92,7 @@ class Network():
                 self.img.append(_slice)
                 shape.append(_slice.shape)
 
+        self.img = self.img[0]
         if len(set(shape)) == len(shape):
             self._2d = True
             self.dim = 2
@@ -194,7 +195,7 @@ class Network():
         positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
         self.shape = np.asarray(list(max(positions.T[i])+1 for i in (2,1,0)[0:self.dim]))
         self.positions = positions
-        self.img = self.img[0]
+
 
         with gsd.hoomd.open(name=self.gsd_name, mode='wb') as f:
             s = gsd.hoomd.Snapshot()
