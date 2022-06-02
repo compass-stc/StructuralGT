@@ -1,4 +1,4 @@
-
+import sknwEdits as sknw
 import numpy as np
 import igraph as ig
 import os
@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import time
 import gsd.hoomd
-from skimage.morphology import skeletonize_3d, disk, ball
+from skimage.morphology import skeletonize_3d, disk, ball, binary_dilation
 import pandas as pd
 import copy
 
@@ -49,13 +49,29 @@ class _crop():
                 self.dims = (self.depth,) + planar_dims 
                 
         else:
-            self.crop = slice(domain[2],domain[3]),slice(domain[0],domain[1])
-            if self.dim == 2: 
+            if self.dim == 2:
+                self.crop = slice(domain[2],domain[3]),slice(domain[0],domain[1])
                 self.dims = (1,domain[3]-domain[2],domain[1]-domain[0])
+
             else:
-                #self.crop = slice(domain[0],domain[1]),slice(domain[2],domain[3]),slice(domain[4],domain[5])
+                self.crop = slice(domain[0],domain[1]),slice(domain[2],domain[3]),slice(domain[4],domain[5])
                 self.dims = (domain[5]-domain[4],domain[3]-domain[2],domain[1]-domain[0])
                 
+    def intergerise(self):
+        first_x = np.floor(self.crop[0].start).astype(int)
+        last_x  =  np.ceil(self.crop[0].stop).astype(int)
+        
+        first_y = np.floor(self.crop[1].start).astype(int)
+        last_y  =  np.ceil(self.crop[1].stop).astype(int)
+
+        if self.dim == 2:
+            self.crop = slice(first_x,last_x),slice(first_y,last_y)
+            self.dims = (1,last_x-first_x,last_y-first_y)
+        else:        
+            first_z = np.floor(self.crop[2].start).astype(int)
+            last_z  =  np.ceil(self.crop[2].stop).astype(int)
+            self.crop = slice(first_x,last_x),slice(first_y,last_y),slice(first_z,last_z)
+
     def rotationals():
         if self.dim == 2:
             self.centre = 0.5*np.array([self.crop[0]+self.crop[1],self.crop[2]+self.crop[3]])
@@ -154,7 +170,7 @@ class Network():
                                    centre[1]-diagonal*0.5,
                                    centre[1]+diagonal*0.5], dtype=int)
             inner_crop = crop
-            self.inner_crop = inner_crop
+            self.inner_cropper = _crop(self, domain=inner_crop)
             crop = outer_crop
         cropper = _crop(self, domain=crop)
         
@@ -329,21 +345,19 @@ class Network():
     def G_u(self, **kwargs):
         """
         Sets igraph object as an attribute
+        When rotate!=None, the initial graph is the outer crop, obtained from the written .gsd
         """
+        if 'merge_size' not in kwargs: kwargs['merge_size'] = None
         if 'sub' not in kwargs: kwargs['sub'] = True
-        G =  base.gsd_to_G(self.gsd_name, _2d = self._2d, sub=kwargs['sub'])
+
+        G = base.gsd_to_G(self.gsd_name, _2d = self._2d, sub=kwargs['sub'])
         
         self.Gr = G
-        #self.Gr_copy = copy.deepcopy(G)
-        
-        if len(kwargs)!=0:
-            if 'sub' in kwargs: kwargs.pop('sub')
-            if 'weight_type' in kwargs: self.Gr = base.add_weights(self, **kwargs)
 
         if self.rotate is not None:
             centre = np.asarray(self.shape)/2
-            inner_length_x = (self.inner_crop[1]-self.inner_crop[0])*0.5
-            inner_length_y =(self.inner_crop[3]-self.inner_crop[2])*0.5
+            inner_length_x = (self.inner_cropper.dims[2])*0.5
+            inner_length_y = (self.inner_cropper.dims[1])*0.5
             inner_crop = np.array([centre[0]-inner_length_x,
                                    centre[0]+inner_length_x,
                                    centre[1]-inner_length_y,
@@ -378,8 +392,18 @@ class Network():
             for i in range(self.Gr.vcount()): 
                 self.Gr.vs[i]['o'] = node_positions[i]
                 self.Gr.vs[i]['pts'] = node_positions[i]
-                
-            self.shape = list(max(list(self.Gr.vs[i]['o'][j] for i in range(self.Gr.vcount()))) for j in (0,1,2)[0:self.dim])
+         
+        if 'merge_size' in kwargs:
+            print('Calling self.merge()')
+            G = self.merge_nodes(kwargs['merge_size'])
+            self.Gr = base.sub_G(G)
+
+        if len(kwargs)!=0:
+            if 'sub' in kwargs: kwargs.pop('sub')
+            if 'merge_size' in kwargs: kwargs.pop('merge_size')
+            if 'weight_type' in kwargs: self.Gr = base.add_weights(self, **kwargs)
+
+        self.shape = list(max(list(self.Gr.vs[i]['o'][j] for i in range(self.Gr.vcount()))) for j in (0,1,2)[0:self.dim])
 
     def weighted_Laplacian(self, weights='weight'):
 
@@ -488,7 +512,26 @@ class Network():
 
         self.Gr = Gr_copy
 
-    
+    def merge_nodes(self, merge_size):
+        """
+        Currently deos not rewrite merged .gsd
+        Also does not reset skeleton attribute
+        Should it?
+        """
+        if self.rotate is None: cropper = self.cropper
+        else: cropper = self.inner_cropper
+        cropper.intergerise()
+        canvas = np.zeros(np.ceil(cropper.dims[1:3]).astype(int)+(1,)*self.dim, dtype=int)
+        pos=np.asarray(list(self.Gr.vs[i]['o'] for i in range(self.Gr.vcount())), dtype=int)
+        canvas[pos.T[0],pos.T[1]]=1
+        canvas = binary_dilation(canvas, merge_size)
+
+        binary = np.ceil((self.skeleton[0:cropper.dims[1],0:cropper.dims[2]] + canvas[0:cropper.dims[1],0:cropper.dims[2]])/2).astype(int)
+        new_skel = skeletonize_3d(binary)
+        G = sknw.build_sknw(new_skel.astype(int))
+
+        return G
+
 class ResistiveNetwork(Network):
     """Child of generic SGT Network class.
     Equipped with methods for analysing resistive flow networks
