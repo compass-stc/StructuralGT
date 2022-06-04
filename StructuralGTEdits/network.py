@@ -155,15 +155,15 @@ class Network():
             inner_crop = crop
             self.inner_crop = inner_crop
             crop = outer_crop
-        cropper = _crop(self, domain=crop)
+        self.cropper = _crop(self, domain=crop)
         
         #Initilise i such that it starts at the lowest number belonging to the images in the stack_dir
         #First require boolean mask to filter out non image files
-        img_bin = np.zeros(cropper.dims)
-        i = cropper.surface
+        img_bin = np.zeros(self.cropper.dims)
+        i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
-            if base.Q_img(fname) and i<cropper.depth:
-                img_bin[i] = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)[cropper.crop]/255
+            if base.Q_img(fname) and i<self.cropper.depth:
+                img_bin[i] = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)[self.cropper.crop]/255
                 i=i+1
             else:
                 continue
@@ -219,8 +219,6 @@ class Network():
             self.rotate = r.as_matrix()
             self.crop = np.asarray(outer_crop) - min(outer_crop)
             
-        self.cropper = cropper
-        
            
     def stack_to_circular_gsd(self, radius, name='circle.gsd', rotate=None, debubble=None, skeleton=True):
         """Writes a cicular .gsd file from the object's directory.
