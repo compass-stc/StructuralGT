@@ -55,7 +55,7 @@ class _crop():
 
             else:
                 self.crop = slice(domain[0],domain[1]),slice(domain[2],domain[3]),slice(domain[4],domain[5])
-                self.dims = (domain[5]-domain[4],domain[3]-domain[2],domain[1]-domain[0])
+                self.dims = (domain[1]-domain[0],domain[3]-domain[2],domain[5]-domain[4])
                 
     def intergerise(self):
         first_x = np.floor(self.crop[0].start).astype(int)
@@ -176,11 +176,12 @@ class Network():
         
         #Initilise i such that it starts at the lowest number belonging to the images in the stack_dir
         #First require boolean mask to filter out non image files
-        img_bin = np.zeros(self.cropper.dims)
+        img_bin = np.zeros(self.cropper.dims[::-1])
+        img_bin = np.swapaxes(img_bin,1,2)
         i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
             if base.Q_img(fname) and i<self.cropper.depth:
-                img_bin[i] = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)[self.cropper.crop]/255
+                img_bin[i] = cv.imread(self.stack_dir+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)[self.cropper.crop[0:2]]/255
                 i=i+1
             else:
                 continue
@@ -391,7 +392,7 @@ class Network():
                 self.Gr.vs[i]['o'] = node_positions[i]
                 self.Gr.vs[i]['pts'] = node_positions[i]
          
-        if 'merge_size' in kwargs:
+        if kwargs['merge_size']:
             print('Calling self.merge()')
             G = self.merge_nodes(kwargs['merge_size'])
             self.Gr = base.sub_G(G)
