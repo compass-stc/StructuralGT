@@ -120,7 +120,8 @@ class Network:
                 self.img.append(_slice)
                 shape.append(_slice.shape)
 
-        self.img = self.img[0]
+        self.img = np.asarray(self.img)
+        #self.img = self.img[0] why was this here?
         if len(set(shape)) == len(shape):
             self._2d = True
             self.dim = 2
@@ -204,12 +205,15 @@ class Network:
             self.inner_cropper = _crop(self, domain=inner_crop)
             crop = outer_crop
         self.cropper = _crop(self, domain=crop)
-
-        # Initilise i such that it starts at the lowest number belonging to
-        # the images in the stack_dir
-        # First require boolean mask to filter out non image files
-        img_bin = np.zeros(self.cropper.dims[::-1])
-        img_bin = np.swapaxes(img_bin, 1, 2)
+       
+        #Initilise i such that it starts at the lowest number belonging
+        #to the images in the stack_dir
+        #First require boolean mask to filter out non image files
+        if self._2d: img_bin = np.zeros(self.cropper.dims)
+        else:
+            img_bin = np.zeros(self.cropper.dims[::-1])
+            img_bin =  np.swapaxes(img_bin,1,2)
+        
         i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
             if base.Q_img(fname) and i < self.cropper.depth:

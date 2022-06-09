@@ -4,6 +4,9 @@ scikit-image
 matplotlib
 networkx
 opencv-python
-sknw
 Pillow
 pandas
+cython
+gsd
+python-igraph
+pytest
