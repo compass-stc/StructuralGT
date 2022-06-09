@@ -12,7 +12,7 @@ from skimage.morphology import skeletonize_3d, disk, binary_dilation
 import copy
 
 
-class _crop:
+class _crop():
     """Crop object
     dim is dimensions: 2 or 3
     dims is lengths: eg (500,1500,10)
@@ -21,7 +21,6 @@ class _crop:
 
     def __init__(self, Network, domain=None):
         self.dim = Network.dim
-
         olist = np.asarray(sorted(os.listdir(Network.stack_dir)))
         mask = list(base.Q_img(olist[i]) for i in range(len(olist)))
         fname = sorted(olist[mask])[0]  # First name
@@ -67,6 +66,10 @@ class _crop:
                     domain[5] - domain[4],
                 )
 
+    def _2d(self):
+        if self.crop == slice(None): return slice(None)
+        else: return self.crop[0:2]
+
     def intergerise(self):
         first_x = np.floor(self.crop[0].start).astype(int)
         last_x = np.ceil(self.crop[0].stop).astype(int)
@@ -87,7 +90,7 @@ class _crop:
             )
 
 
-class Network:
+class Network():
     """Generic SGT graph class: a specialised case of the igraph Graph object with
     additional attributes defining geometric features, associated images,
     dimensionality etc.
@@ -221,7 +224,7 @@ class Network:
                     cv.imread(
                         self.stack_dir + "/slice" + str(i) + ".tiff",
                         cv.IMREAD_GRAYSCALE,
-                    )[self.cropper.crop[0:2]]
+                    )[self.cropper._2d()]
                     / 255
                 )
                 i = i + 1
