@@ -52,7 +52,7 @@ def shift(points, _shift=None):
             _shift=(np.full((np.shape(points)[0],2),[np.min(points.T[0]),np.min(points.T[1])]))
             
     points = points - _shift
-    return points
+    return points, _shift
 
 #Shifts points to origin centre
 def oshift(points, _shift=None):
@@ -195,21 +195,19 @@ def gsd_to_pos(gsd_name, crop=None):
 
 #Function takes gsd rendering of a skeleton and returns the list of nodes and edges, as calculated by sknw. Optionally, it may crop. sub=True will reduce the returned graph to the largest connected induced subgraph, resetting node numbers to consecutive integers, starting from 0.
 #_2d=True ensures any additional redundant axes from the position list is removed. It does not guarantee a 3d graph
-def gsd_to_G(gsd_name, sub=False, _2d=False):#crop=None):
-    start = time.time()
+def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
     positions = frame.particles.position.astype(int)
-    if sum((positions<0).ravel()) != 0:
-        positions = shift(positions)
-    
-    """remove
+
     if crop != None:
         from numpy import logical_and as a
         p=positions.T
-        positions = p.T[a(a(a(a(a(p[0]>=crop[0],p[0]<=crop[1]),p[1]>=crop[2]),p[1]<=crop[3]),p[2]>=crop[4]),p[2]<=crop[5])]
-        positions = shift(positions)
-    """
-    
+        positions = p.T[a(a(a(p[1]>=crop[0],p[1]<=crop[1]),p[2]>=crop[2]),p[2]<=crop[3])]
+        positions = shift(positions)[0]
+        
+    if sum((positions<0).ravel()) != 0:
+        positions = shift(positions)[0]
+        
     if _2d:
         positions = dim_red(positions)
         new_pos = np.zeros((positions.T.shape))
@@ -223,10 +221,8 @@ def gsd_to_G(gsd_name, sub=False, _2d=False):#crop=None):
     G = sknw.build_sknw(canvas)
     if sub:
         G = sub_G(G)
-    end = time.time()
-    print('Ran gsd_to_G in ', end-start, 'for a graph with ', G.vcount(), 'nodes.')
     return G
-    
+   
 #Function reads, crops and rewrites gsd file. TODO write branch and endpoint data to new gsd file (currently this info is lost).
 def gsd_crop(gsd_name, save_name, crop):
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]

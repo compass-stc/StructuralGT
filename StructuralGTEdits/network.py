@@ -9,6 +9,7 @@ import matplotlib.cm as cm
 import time
 import gsd.hoomd
 from skimage.morphology import skeletonize_3d, disk, binary_dilation
+from skimage.measure import regionprops, label
 import copy
 
 
@@ -265,7 +266,7 @@ class Network():
         with gsd.hoomd.open(name=self.gsd_name, mode="wb") as f:
             s = gsd.hoomd.Snapshot()
             s.particles.N = len(positions)
-            s.particles.position = base.shift(positions)
+            s.particles.position, self.shift = base.shift(positions)
             s.particles.types = ["A"]
             s.particles.typeid = ["0"] * s.particles.N
             f.append(s)
@@ -456,7 +457,8 @@ class Network():
                 (node_positions.T, np.zeros(len(node_positions)))
             ).T
             node_positions = np.matmul(node_positions, self.rotate).T[0:2].T
-            node_positions = base.shift(node_positions, _shift=-centre)
+            node_positions = base.shift(node_positions, _shift=-centre)[0]
+
             drop_list = []
             for i in range(self.Gr.vcount()):
                 if not base.Q_inside(np.asarray([node_positions[i]]), inner_crop):
@@ -482,10 +484,10 @@ class Network():
             for i, edge in enumerate(edge_positions_list):
                 edge_position = np.vstack((edge.T, np.zeros(len(edge)))).T
                 edge_position = np.matmul(edge_position, self.rotate).T[0:2].T
-                edge_position = base.shift(edge_position, _shift=-centre + final_shift)
+                edge_position = base.shift(edge_position, _shift=-centre + final_shift)[0]
                 self.Gr.es[i]["pts"] = edge_position
 
-            node_positions = base.shift(node_positions, _shift=final_shift)
+            node_positions = base.shift(node_positions, _shift=final_shift)[0]
             for i in range(self.Gr.vcount()):
                 self.Gr.vs[i]["o"] = node_positions[i]
                 self.Gr.vs[i]["pts"] = node_positions[i]
@@ -807,9 +809,45 @@ class StructuralNetwork(Network):
         self.G_attributes = avg_indices
 
     def node_calc(self, Betweenness=True, Closeness=True, Degree=True):
-        if Betweenness:
-            self.Betweenness = self.Gr.betweenness()
-        if Closeness:
-            self.Closeness = self.Gr.closeness()
-        if Degree:
-            self.Degree = self.Gr.degree()
+        if not isinstance(self.Gr, list):
+            self.Gr = [self.Gr]
+
+        self.Betweenness = []
+        self.Closeness = []
+        self.Degree = []
+        for graph in self.Gr:
+            if Betweenness:
+                self.Betweenness.append(graph.betweenness())
+            if Closeness:
+                self.Closeness.append(graph.closeness())
+            if Degree:
+                self.Degree.append(graph.degree())
+
+class NetworkVector(StructuralNetwork):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+    def G_u(self, **kwargs):
+        
+        label_img = label(self.img_bin)
+        regions = regionprops(label_img)
+        
+        self.Gr = []
+        for props in regions:
+            minr, minc, maxr, maxc = props.bbox
+            crop = list(np.asarray([minr,maxr,minc,maxc]) - np.asarray([self.shift[0][1],self.shift[0][1],self.shift[0][2],self.shift[0][2]]))
+            self.Gr.append(base.gsd_to_G(self.gsd_name, _2d=self._2d, sub=False, crop=crop))
+            
+        if self.rotate is not None:
+            raise ValueError('NetworkVectors cannot be rotated')
+
+        if len(kwargs) != 0:
+            if "sub" in kwargs:
+                kwargs.pop("sub")
+            if "merge_size" in kwargs:
+                kwargs.pop("merge_size")
+            if "weight_type" in kwargs:
+                self.Gr = base.add_weights(self, **kwargs)
+        
+    def __len__(self):
+        return len(self.Gr)
