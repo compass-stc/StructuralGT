@@ -102,9 +102,11 @@ class Network():
 
     Image shrinking/cropping is carried out at the gsd stage in analysis.
     I.e. full images are binarized but cropping their graphs may come after
+
+    crop arguement for 3D networks only, (a,b)
     """
 
-    def __init__(self, directory, child_dir="/Binarized"):
+    def __init__(self, directory, child_dir="/Binarized", depth=None):
         if not isinstance(directory, str):
             raise TypeError
 
@@ -114,15 +116,22 @@ class Network():
         self.rotate = None
 
         self.Q = None
+        if depth is None:
+            depth = [-np.inf, np.inf]
+        self.depth = depth
+
         self.crop = None
 
         shape = []
         self.img = []
+        i = 0
         for fname in sorted(os.listdir(self.dir)):
-            if base.Q_img(fname):
-                _slice = cv.imread(self.dir + "/" + fname, cv.IMREAD_GRAYSCALE)
-                self.img.append(_slice)
-                shape.append(_slice.shape)
+            if i > depth[0] and i < depth[1]:
+                if base.Q_img(fname):
+                    _slice = cv.imread(self.dir + "/" + fname, cv.IMREAD_GRAYSCALE)
+                    self.img.append(_slice)
+                    shape.append(_slice.shape)
+            i += 1
 
         self.img = np.asarray(self.img)
         #self.img = self.img[0] why was this here?
@@ -149,12 +158,11 @@ class Network():
             os.mkdir(self.dir + self.child_dir)
 
         i = 0
+        shape = None
         for name in sorted(os.listdir(self.dir)):
-            if not base.Q_img(name):
-                continue
-            else:
+            if i > self.depth[0] and i < self.depth[1] and base.Q_img(name):
                 img_exp = cv.imread(self.dir + "/" + name, cv.IMREAD_GRAYSCALE)
-                if i == 0:
+                if shape is None:
                     shape = img_exp.shape
                 elif img_exp.shape != shape:
                     continue
@@ -164,7 +172,7 @@ class Network():
                     img_bin,
                     cmap=cm.gray,
                 )
-                i += 1
+            i += 1
 
         self.options = options_dict
 
@@ -785,8 +793,8 @@ class StructuralNetwork(Network):
     Equipped with methods for analysing structural networks
     """
 
-    def __init__(self, directory):
-        super().__init__(directory)
+    def __init__(self, directory, *args, **kwargs):
+        super().__init__(directory, *args, **kwargs)
 
     def G_calc(self):
         avg_indices = dict()
@@ -823,21 +831,24 @@ class StructuralNetwork(Network):
             if Degree:
                 self.Degree.append(graph.degree())
 
+
 class NetworkVector(StructuralNetwork):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
     def G_u(self, **kwargs):
-        
         label_img = label(self.img_bin)
         regions = regionprops(label_img)
-        
+
         self.Gr = []
         for props in regions:
             minr, minc, maxr, maxc = props.bbox
-            crop = list(np.asarray([minr,maxr,minc,maxc]) - np.asarray([self.shift[0][1],self.shift[0][1],self.shift[0][2],self.shift[0][2]]))
-            self.Gr.append(base.gsd_to_G(self.gsd_name, _2d=self._2d, sub=False, crop=crop))
-            
+            crop = list(np.asarray([minr, maxr, minc, maxc])
+                        - np.asarray([self.shift[0][1], self.shift[0][1],
+                                      self.shift[0][2], self.shift[0][2]]))
+            self.Gr.append(base.gsd_to_G(self.gsd_name, _2d=self._2d,
+                                         sub=False, crop=crop))
+
         if self.rotate is not None:
             raise ValueError('NetworkVectors cannot be rotated')
 
@@ -848,6 +859,6 @@ class NetworkVector(StructuralNetwork):
                 kwargs.pop("merge_size")
             if "weight_type" in kwargs:
                 self.Gr = base.add_weights(self, **kwargs)
-        
+
     def __len__(self):
         return len(self.Gr)
