@@ -562,16 +562,16 @@ class Network():
             )
             positions = np.hstack((np.zeros((len(positions), 1)), positions))
 
-        # node_positions = base.shift(node_positions)
-        # positions = base.shift(positions)
+        L = list(max(positions.T[i]) * 2 for i in (0, 1, 2))
+        node_positions = base.shift(node_positions, _shift=(L[0]/4, L[1]/4, L[2]/4))[0]
+        positions = base.shift(positions, _shift=(L[0]/4, L[1]/4, L[2]/4))[0]
         s = gsd.hoomd.Snapshot()
         N = len(positions)
         s.particles.N = N
         s.particles.position = positions
         s.particles.types = ["Edge", "Node"]
         s.particles.typeid = [0] * N
-        L = list(max(positions.T[i]) * 2 for i in (0, 1, 2))
-        s.configuration.box = [L[0]/2, L[1]/2, L[2]/2, 0, 0, 0]
+        s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
         # s.configuration.box = [1, 1, 1, 0, 0, 0]
         s.log["particles/" + attribute_name] = [np.NaN] * N
 
