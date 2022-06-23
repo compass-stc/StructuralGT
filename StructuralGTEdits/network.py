@@ -570,9 +570,9 @@ class Network():
         s.particles.position = positions
         s.particles.types = ["Edge", "Node"]
         s.particles.typeid = [0] * N
-        # L = list(max(positions.T[i]) * 2 for i in (0, 1, 2))
-        # s.configuration.box = [L[0]/2, L[1]/2, L[2]/2, 0, 0, 0]
-        s.configuration.box = [1, 1, 1, 0, 0, 0]
+        L = list(max(positions.T[i]) * 2 for i in (0, 1, 2))
+        s.configuration.box = [L[0]/2, L[1]/2, L[2]/2, 0, 0, 0]
+        # s.configuration.box = [1, 1, 1, 0, 0, 0]
         s.log["particles/" + attribute_name] = [np.NaN] * N
 
         # To store graph, must first convert sparse adjacency
