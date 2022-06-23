@@ -228,8 +228,8 @@ class Network():
         
         i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
-            if base.Q_img(fname) and i < self.cropper.depth:
-                img_bin[i] = (
+            if base.Q_img(fname) and i < self.cropper.depth + self.cropper.surface:
+                img_bin[i - self.cropper.surface] = (
                     cv.imread(
                         self.stack_dir + "/slice" + str(i) + ".tiff",
                         cv.IMREAD_GRAYSCALE,
@@ -531,6 +531,8 @@ class Network():
         attributes of a Network object in the .gsd such that the network
         object may be loaded from the file
         """
+        if isinstance(self.Gr, list):
+            self.Gr = self.Gr[0]
 
         assert self.Gr.vcount() == len(attribute)
 
