@@ -197,8 +197,7 @@ def gsd_to_pos(gsd_name, crop=None):
 #_2d=True ensures any additional redundant axes from the position list is removed. It does not guarantee a 3d graph
 def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
-    positions = frame.particles.position.astype(int)
-
+    positions = shift(frame.particles.position.astype(int))[0]
     if crop != None:
         from numpy import logical_and as a
         p=positions.T
