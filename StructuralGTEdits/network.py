@@ -128,11 +128,17 @@ class Network():
         if depth is None: a,b = -np.inf, np.inf
         else: a,b = depth[0],depth[1]
         for fname in sorted(os.listdir(self.dir)):
-            if not fname[-7:-4].isnumeric(): continue
-            num = int(fname[-7:-4]) # Assumes each file has 3 character number 
+            if ((not fname[-7:-4].isnumeric()) and 
+                (not fname[-8:-5].isnumeric())): continue
+            num = fname[-7:-4]      # Assumes each file has 3 character number 
                                     # Eg 053, followed by 3 character file
                                     # extension Eg .tif
-            if num>a and num<b:
+            num2 = fname[-8:-5]     # Assumes each file has 3 character number 
+                                    # Eg 053, followed by 4 character file
+                                    # extension Eg .tiff
+            if num.isnumeric(): cond=int(num)
+            if num2.isnumeric(): cond=int(num2)
+            if cond>a and cond<b:
                 if base.Q_img(fname):
                     _slice = cv.imread(self.dir + "/" + fname, cv.IMREAD_GRAYSCALE)
                     self.img.append(_slice)
@@ -165,22 +171,30 @@ class Network():
 
         i = 0
         shape = None
-        for name in sorted(os.listdir(self.dir)):
-            if not name[-7:-4].isnumeric(): continue
-            if self.depth is None: a,b = -np.inf, np.inf
-            else: a,b = self.depth[0],self.depth[1]
-            num = int(name[-7:-4])  # Assumes each file has 3 character number 
+        for fname in sorted(os.listdir(self.dir)):
+            if ((not fname[-7:-4].isnumeric()) and 
+                (not fname[-8:-5].isnumeric())): continue
+            num = fname[-7:-4]      # Assumes each file has 3 character number 
                                     # Eg 053, followed by 3 character file
                                     # extension Eg .tif
-            if num>=a and num<=b and base.Q_img(name):
-                img_exp = cv.imread(self.dir + "/" + name, cv.IMREAD_GRAYSCALE)
+            num2 = fname[-8:-5]     # Assumes each file has 3 character number 
+                                    # Eg 053, followed by 4 character file
+                                    # extension Eg .tiff
+            if num.isnumeric(): cond=int(num)
+            if num2.isnumeric(): cond=int(num2)
+            if self.depth is None: a,b = -np.inf, np.inf
+            else: a,b = self.depth[0],self.depth[1]
+            if cond>=a and cond<=b and base.Q_img(fname):
+                if self._2d: save_name_suff = '000'
+                else: save_name_suff = str(cond)
+                img_exp = cv.imread(self.dir + "/" + fname, cv.IMREAD_GRAYSCALE)
                 if shape is None:
                     shape = img_exp.shape
                 elif img_exp.shape != shape:
                     continue
                 _, img_bin, _ = process_image.binarize(img_exp, options_dict)
                 plt.imsave(
-                    self.dir + self.child_dir + "/slice" + str(num) + ".tiff",
+                    self.dir + self.child_dir + "/slice" + save_name_suff + ".tiff",
                     img_bin,
                     cmap=cm.gray,
                 )
@@ -244,12 +258,14 @@ class Network():
         i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
             if not fname[-8:-5].isnumeric(): continue
-            a,b = self.depth[0],self.depth[1]
+            if self.depth is None: a,b = -np.inf, np.inf
+            else: a,b = self.depth[0],self.depth[1]
             num = int(fname[-8:-5])
             if base.Q_img(fname) and num>a and num<b:
+                suff = base.tripletise(i)
                 img_bin[i - self.cropper.surface] = (
                     cv.imread(
-                        self.stack_dir + "/slice" + str(i) + ".tiff",
+                        self.stack_dir + "/slice" + suff + ".tiff",
                         cv.IMREAD_GRAYSCALE,
                     )[self.cropper._2d()]
                     / 255

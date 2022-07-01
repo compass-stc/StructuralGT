@@ -697,7 +697,9 @@ def from_gsd(filename, frame=0):
 
     return N
 
-def get_ORC(G):
-    G = G.to_networkx()
-
+def tripletise(i):
+    if len(str(i))==3: return str(i)
+    elif len(str(i))==2: return '0' + str(i)
+    elif len(str(i))==1: return '00' + str(i)
+    else: raise ValueError
 
