@@ -25,9 +25,12 @@ class _crop():
         olist = np.asarray(sorted(os.listdir(Network.stack_dir)))
         mask = list(base.Q_img(olist[i]) for i in range(len(olist)))
         fname = sorted(olist[mask])[0]  # First name
-        self.surface = int(
-            os.path.splitext(fname)[0][5:]
-        )  # Strip file type and 'slice' then convert to int
+        if domain is None or Network._2d:
+            self.surface = int(
+                os.path.splitext(fname)[0][5:]
+            ) # Strip file type and 'slice' then convert to int
+        else:
+            self.surface = domain[4]
         if Network._2d:
             self.depth = 1
         else:
@@ -116,22 +119,31 @@ class Network():
         self.rotate = None
 
         self.Q = None
-        if depth is None:
-            depth = [-np.inf, np.inf]
         self.depth = depth
-
         self.crop = None
 
         shape = []
         self.img = []
-        i = 0
+        # i = 0
+        if depth is None: a,b = -np.inf, np.inf
+        else: a,b = depth[0],depth[1]
         for fname in sorted(os.listdir(self.dir)):
-            if i > depth[0] and i < depth[1]:
+            if ((not fname[-7:-4].isnumeric()) and 
+                (not fname[-8:-5].isnumeric())): continue
+            num = fname[-7:-4]      # Assumes each file has 3 character number 
+                                    # Eg 053, followed by 3 character file
+                                    # extension Eg .tif
+            num2 = fname[-8:-5]     # Assumes each file has 3 character number 
+                                    # Eg 053, followed by 4 character file
+                                    # extension Eg .tiff
+            if num.isnumeric(): cond=int(num)
+            if num2.isnumeric(): cond=int(num2)
+            if cond>a and cond<b:
                 if base.Q_img(fname):
                     _slice = cv.imread(self.dir + "/" + fname, cv.IMREAD_GRAYSCALE)
                     self.img.append(_slice)
                     shape.append(_slice.shape)
-            i += 1
+            # i += 1
 
         self.img = np.asarray(self.img)
         #self.img = self.img[0] why was this here?
@@ -159,20 +171,34 @@ class Network():
 
         i = 0
         shape = None
-        for name in sorted(os.listdir(self.dir)):
-            if i > self.depth[0] and i < self.depth[1] and base.Q_img(name):
-                img_exp = cv.imread(self.dir + "/" + name, cv.IMREAD_GRAYSCALE)
+        for fname in sorted(os.listdir(self.dir)):
+            if ((not fname[-7:-4].isnumeric()) and 
+                (not fname[-8:-5].isnumeric())): continue
+            num = fname[-7:-4]      # Assumes each file has 3 character number 
+                                    # Eg 053, followed by 3 character file
+                                    # extension Eg .tif
+            num2 = fname[-8:-5]     # Assumes each file has 3 character number 
+                                    # Eg 053, followed by 4 character file
+                                    # extension Eg .tiff
+            if num.isnumeric(): cond=int(num)
+            if num2.isnumeric(): cond=int(num2)
+            if self.depth is None: a,b = -np.inf, np.inf
+            else: a,b = self.depth[0],self.depth[1]
+            if cond>=a and cond<=b and base.Q_img(fname):
+                if self._2d: save_name_suff = '000'
+                else: save_name_suff = str(cond)
+                img_exp = cv.imread(self.dir + "/" + fname, cv.IMREAD_GRAYSCALE)
                 if shape is None:
                     shape = img_exp.shape
                 elif img_exp.shape != shape:
                     continue
                 _, img_bin, _ = process_image.binarize(img_exp, options_dict)
                 plt.imsave(
-                    self.dir + self.child_dir + "/slice" + str(i) + ".tiff",
+                    self.dir + self.child_dir + "/slice" + save_name_suff + ".tiff",
                     img_bin,
                     cmap=cm.gray,
                 )
-            i += 1
+                i += 1
 
         self.options = options_dict
 
@@ -185,6 +211,9 @@ class Network():
         """
         if crop is None and rotate is not None:
             raise ValueError("If rotating a graph, crop must be specified")
+        if crop is not None and self.depth is not None:
+            if crop[4] < self.depth[0] or crop[5] > self.depth[1]:
+                raise ValueError("crop argument cannot be outwith the bounds of the network's depth")
         start = time.time()
         self.type = "rectangular"
         if name[0] == "/":
@@ -228,10 +257,15 @@ class Network():
         
         i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
-            if base.Q_img(fname) and i < self.cropper.depth + self.cropper.surface:
+            if not fname[-8:-5].isnumeric(): continue
+            if self.depth is None: a,b = -np.inf, np.inf
+            else: a,b = self.depth[0],self.depth[1]
+            num = int(fname[-8:-5])
+            if base.Q_img(fname) and num>a and num<b:
+                suff = base.tripletise(i)
                 img_bin[i - self.cropper.surface] = (
                     cv.imread(
-                        self.stack_dir + "/slice" + str(i) + ".tiff",
+                        self.stack_dir + "/slice" + suff + ".tiff",
                         cv.IMREAD_GRAYSCALE,
                     )[self.cropper._2d()]
                     / 255
