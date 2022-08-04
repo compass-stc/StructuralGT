@@ -177,7 +177,7 @@ class Network():
         self.options = options_dict
 
     def stack_to_gsd(self, name="skel.gsd", crop=None, skeleton=True,
-                     rotate=None, debubble=None):
+                     rotate=None, debubble=None, box=False):
         """Writes a .gsd file from the object's directory.
         The name of the written .gsd is set as an attribute so it may be
         easily matched with its Graph object
@@ -264,17 +264,24 @@ class Network():
                                               dtype=int))
         else:
             self.img_bin = np.asarray(self.img_bin)
+            self.skeleton_3d = self.img_bin_3d
+            self.skeleton = self.img_bin
 
         positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
         self.shape = np.asarray(
-            list(max(positions.T[i]) + 1 for i in (2, 1, 0)[0 : self.dim])
+            list(max(positions.T[i]) + 1 for i in (2, 1, 0)[0: self.dim])
         )
         self.positions = positions
 
         with gsd.hoomd.open(name=self.gsd_name, mode="wb") as f:
             s = gsd.hoomd.Snapshot()
             s.particles.N = len(positions)
-            s.particles.position, self.shift = base.shift(positions)
+            if box:
+                L = list(max(positions.T[i]) * 2 for i in (0, 1, 2))
+                s.particles.position, self.shift = base.shift(positions, _shift=(L[0]/4, L[1]/4, L[2]/4))
+                s.configuration.box = [L[0]/2, L[1]/2, L[2]/2, 0, 0, 0]
+            else:
+                s.particles.position, self.shift = base.shift(positions)
             s.particles.types = ["A"]
             s.particles.typeid = ["0"] * s.particles.N
             f.append(s)
