@@ -15,6 +15,14 @@ import csv
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing
 from StructuralGTEdits import process_image, GetWeights_3d, error, network, convert
 
+def read(name, read_type):
+    out = cv.imread(name, read_type)
+    if out is None:
+        raise ValueError(name + ' does not exist')
+    else:
+        return out
+
+
 #Function returns true for names of images
 def Q_img(name):
     if (name.endswith('.tiff') or 
@@ -346,94 +354,6 @@ def igraph_ANC(directory, I):
     print('ANC calculated as ', ANC, ' in ', end-start) 
     
     return ANC
-
-#Redundant if the GT_Params_noGUI is from the igraph branch 
-def igraph_avg_indices(I):
-    avg_indices = dict()
-    
-    operations = [I.diameter, I.density, I.transitivity_undirected, I.assortativity_degree]
-    names = ['Diameter', 'Density', 'Clustering', 'Assortativity by degree']
-
-    for operation,name in zip(operations,names):
-        start = time.time()
-        avg_indices[name] = operation()
-        end = time.time()
-        print('Calculated ', name, ' in ', end-start)
-
-    return avg_indices
-
-#Saves graph average indices and node indices to 2 separate files
-def igraph_calcs(directory, G):
-    G = sub_G(G)
-    I=ig.Graph.from_networkx(G)
-    operations = [I.betweenness, I.closeness, I.degree, I.vertex_connectivity] 
-    names = ['Betweeness', 'Closeness', 'Degree']
-
-    for operation,name in zip(operations,names):
-        start = time.time()
-        np.savetxt(directory+'/'+name+'.csv', operation())
-        end=time.time()
-        print('Saved ', operation, ' in ', end-start, ' for a graph with ', G.vcount(), ' nodes')
-    
-    avg_indices = igraph_avg_indices(I)
-    
-    with open(directory+'/graphwise.csv', 'w') as f:
-        for key in avg_indices:
-            f.write("%s,%s\n"%(key,avg_indices[key]))
-    
-
-
-"""
-REQUIRES GRAPH_TOOL - NOT IMPORTED BY DEFAULT
-def benchmark(gsd_name,skel_name):
-    start = time.time()
-#Generate NetworkX type graph object
-    G = gsd_to_G(gsd_name)
-    G=sub_G(G)
-    end = time.time()
-
-#Benchmark igraph
-    I=ig.Graph.from_networkx(G)
-    start = time.time()
-    print('Nodes are ', I.vcount())
-    print('Closeness = ', I.closeness())
-    print('Degrees = ', I.degree())
-    print('Betweenness = ', I.betweenness())
-    end = time.time()
-    print("igraph Clo/Deg/Bet calculated in ", end-start)
-
-#Write to .gml so that is can be read by graph-tool.
-#Vertex position attribute has to be mapped as three separate atttributes (x,y,z) as gml vertex attributes cannot be arrays
-#Other edge and vertex attributes should be deleted
-    start = time.time()
-    nodes = G.nodes()
-    positions = np.asarray(list(G.nodes()[i]['o'] for i in nodes))
-    for i,position in enumerate(positions):
-        del G.nodes[i]['pts']
-        del G.nodes[i]['o']
-        G.nodes[i]['x'] = position[0]
-        G.nodes[i]['y'] = position[1]
-        G.nodes[i]['z'] = position[2]
-
-    for i,j in G.edges():
-        del G.edges()[i,j]['pts']
-        del G.edges()[i,j]['weight']
-
-    nx.write_graphml(G, skel_name)
-
-    G = gt.load_graph(skel_name)
-    end = time.time()
-    print("Converted to graph-tool object in ", end-start)
-
-    start = time.time()
-    print('Nodes are ', G.vertices())
-    print('Closeness = ', gt.closeness(G))
-    print('Degrees = ', G.degree_property_map('total'))
-    print('Betweenness = ', gt.betweenness(G))
-    end = time.time()
-    print("graph-tool Clo/Deg/Bet calculated in ", end-start)
-"""
-
 
 #Binarizes stack of experimental images using a set of image processing parameters in options_dict.
 #Note this enforces that all images have the same shape as the first image encountered by the for loop.
