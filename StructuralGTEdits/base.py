@@ -623,3 +623,11 @@ def tripletise(i):
     elif len(str(i))==1: return '00' + str(i)
     else: raise ValueError
 
+#1-2-3 and 3-2-1 not double counted
+#but 1-2-3 and 1-3-2 are double counted
+def loops(Gr, n):
+    A = np.array(Gr.get_adjacency().data, dtype=np.single)
+    for _ in range(n):
+        A = np.power(A,A)
+
+    return np.trace(A)/2
