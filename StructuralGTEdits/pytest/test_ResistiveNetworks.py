@@ -1,5 +1,5 @@
-#from StructuralGT import network, base
-import StructuralGTEdits
+from StructuralGT import network, base
+import StructuralGT
 import pytest
 import os
 import shutil
@@ -25,7 +25,7 @@ def gsd(binarize):
     if N._2d:
         N.stack_to_gsd(crop=[408, 1127, 149, 868], rotate=45) 
     else:
-        N.stack_to_gsd(crop=[0,100,0,90,0,80])
+        N.stack_to_gsd(crop=[0,100,0,90,4,9])
 
     return N
 
