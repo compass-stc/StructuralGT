@@ -2,6 +2,7 @@ from setuptools import find_packages
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Build import cythonize
+import os
 descr = """StructuralGT: An automated python package for graph theory analysis of structural networks.\n
 Designed for processing digital micrographs of complex network materials.\n
 For example, analyzing SEM images of polymer network.\n
@@ -38,11 +39,17 @@ Contributers: Drew Vecchio, Samuel Mahler, Mark D. Hammig, Nicholas A. Kotov\n
 Contact email: vecdrew@umich.edu
 
 """
+#conda_dir = '/Users/alaink/miniconda3/envs/v3_env'
+#conda_dir = os.getenv('CONDA_PREFIX')
+#include_dir = conda_dir + '/include/c++/v1'
+
+ext = Extension("convert", ["convert.pyx"])
 
 setup(
     name='StructuralGTEdits',
     version='1.0.1b2',
-    packages=find_packages(),
+    packages = find_packages(),
+    #packages=['sknwEdits'],
     url='https://github.com/drewvecchio/StructuralGT',
     license='GNU General Public License v3',
     author='drewvecchio',
@@ -63,8 +70,8 @@ setup(
         'python-igraph',
         'pytest'
     ],
-    ext_modules=cythonize("convert.pyx"),
-    #ext_modules=[Extension("StructuralGT/convert",["StructuralGT/convert.c"])],
+    #ext_modules=(cythonize("convert.pyx")),
+    ext_modules=cythonize(ext),
     zip_safe=False,
     #package_dir={'StructuralGTEdits':''},
     package_data={'StructuralGTEdits':['pytest/data/*/*']},
