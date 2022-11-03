@@ -13,7 +13,8 @@ import matplotlib.cm as cm
 import csv
 
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing
-from StructuralGTEdits import process_image, GetWeights_3d, error, network, convert
+from StructuralGTEdits import process_image, GetWeights_3d, error, network, convert, skel_ID
+
 
 def read(name, read_type):
     out = cv.imread(name, read_type)
@@ -318,7 +319,6 @@ def debubble(g, elements):
     g.skeleton = skeletonize_3d(canvas)/255
 
     if g._2d:
-    #    g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 0, 1)
         g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
         g.skeleton_3d = np.asarray([g.skeleton])
     else:
@@ -335,6 +335,61 @@ def debubble(g, elements):
     end = time.time()
     print('Ran debubble in ', end-start, 'for an image with shape ', g.skeleton_3d.shape)
     
+    return g
+
+# Currently works for 2D only (Is just a reproduction of Drew's method)
+def merge_nodes(g, disk_size):
+
+    start = time.time()
+    g.gsd_name = g.gsd_dir + '/merged_' + os.path.split(g.gsd_name)[1]
+    
+    canvas = g.skeleton
+    g.skeleton = skel_ID.merge_nodes(canvas, disk_size)
+
+    if g._2d:
+        g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
+        g.skeleton_3d = np.asarray([g.skeleton])
+    else:
+        g.skeleton_3d = np.asarray(g.skeleton)
+    
+    positions = np.asarray(np.where(g.skeleton_3d!=0)).T
+    with gsd.hoomd.open(name=g.gsd_name, mode='wb') as f:
+        s = gsd.hoomd.Snapshot()
+        s.particles.N = int(sum(g.skeleton_3d.ravel()))
+        s.particles.position = positions 
+        s.particles.types = ['A']
+        s.particles.typeid = ['0']*s.particles.N
+        f.append(s)
+    end = time.time()
+    print('Ran merge in ', end-start, 'for an image with shape ', g.skeleton_3d.shape)
+
+    return g
+
+def prune(g, size):
+
+    start = time.time()
+    g.gsd_name = g.gsd_dir + '/pruned_' + os.path.split(g.gsd_name)[1]
+    
+    canvas = g.skeleton
+    g.skeleton = skel_ID.pruning(canvas, size)
+
+    if g._2d:
+        g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
+        g.skeleton_3d = np.asarray([g.skeleton])
+    else:
+        g.skeleton_3d = np.asarray(g.skeleton)
+    
+    positions = np.asarray(np.where(g.skeleton_3d!=0)).T
+    with gsd.hoomd.open(name=g.gsd_name, mode='wb') as f:
+        s = gsd.hoomd.Snapshot()
+        s.particles.N = int(sum(g.skeleton_3d.ravel()))
+        s.particles.position = positions 
+        s.particles.types = ['A']
+        s.particles.typeid = ['0']*s.particles.N
+        f.append(s)
+    end = time.time()
+    print('Ran merge in ', end-start, 'for an image with shape ', g.skeleton_3d.shape)
+
     return g
 
 def igraph_ANC(directory, I):

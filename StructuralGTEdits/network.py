@@ -266,7 +266,8 @@ class Network:
         self.options = options_dict
 
     def stack_to_gsd(self, name="skel.gsd", crop=None, skeleton=True,
-                     rotate=None, debubble=None, box=False):
+                     rotate=None, debubble=None, box=False, merge_nodes=None,
+                     prune=None):
 
         """Writes a .gsd file from the object's directory.
         The name of the written .gsd is set as an attribute so it may be
@@ -303,8 +304,8 @@ class Network:
         if self._2d:
             img_bin = np.zeros(self.cropper.dims)
         else:
-            img_bin = np.zeros(self.cropper.dims[::-1])
-            img_bin = np.swapaxes(img_bin, 1, 2)
+            img_bin = np.zeros(self.cropper.dims)
+            # img_bin = np.swapaxes(img_bin, 1, 2)
 
         i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
@@ -368,6 +369,12 @@ class Network:
 
         if debubble is not None:
             self = base.debubble(self, debubble)
+
+        if merge_nodes is not None:
+            self = base.merge_nodes(self, merge_nodes)
+
+        if prune is not None:
+            self = base.prune(self, prune)
 
         """Set rot matrix attribute for later"""
         if rotate is not None:
