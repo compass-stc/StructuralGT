@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import csv
 
-from skimage.morphology import skeletonize, skeletonize_3d, binary_closing
+from skimage.morphology import skeletonize, skeletonize_3d, binary_closing, remove_small_objects
 from StructuralGTEdits import process_image, GetWeights_3d, error, network, convert, skel_ID
 
 
@@ -388,9 +388,36 @@ def prune(g, size):
         s.particles.typeid = ['0']*s.particles.N
         f.append(s)
     end = time.time()
-    print('Ran merge in ', end-start, 'for an image with shape ', g.skeleton_3d.shape)
+    print('Ran prune in ', end-start, 'for an image with shape ', g.skeleton_3d.shape)
 
     return g
+
+def remove_objects(g, size):
+
+    start = time.time()
+    g.gsd_name = g.gsd_dir + '/cleaned_' + os.path.split(g.gsd_name)[1]
+    
+    canvas = g.skeleton
+    g.skeleton = remove_small_objects(canvas, size, connectivity=2)
+
+    if g._2d:
+        g.skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
+        g.skeleton_3d = np.asarray([g.skeleton])
+    else:
+        g.skeleton_3d = np.asarray(g.skeleton)
+    
+    positions = np.asarray(np.where(g.skeleton_3d!=0)).T
+    with gsd.hoomd.open(name=g.gsd_name, mode='wb') as f:
+        s = gsd.hoomd.Snapshot()
+        s.particles.N = int(sum(g.skeleton_3d.ravel()))
+        s.particles.position = positions 
+        s.particles.types = ['A']
+        s.particles.typeid = ['0']*s.particles.N
+        f.append(s)
+    end = time.time()
+    print('Ran remove objects in ', end-start, 'for an image with shape ', g.skeleton_3d.shape)
+
+
 
 def igraph_ANC(directory, I):
     start = time.time()

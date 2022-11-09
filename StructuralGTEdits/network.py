@@ -267,7 +267,7 @@ class Network:
 
     def stack_to_gsd(self, name="skel.gsd", crop=None, skeleton=True,
                      rotate=None, debubble=None, box=False, merge_nodes=None,
-                     prune=None):
+                     prune=None, remove_objects=None):
 
         """Writes a .gsd file from the object's directory.
         The name of the written .gsd is set as an attribute so it may be
@@ -375,6 +375,9 @@ class Network:
 
         if prune is not None:
             self = base.prune(self, prune)
+
+        if remove_objects is not None:
+            self = base.remove_objects(self, remove_objects)
 
         """Set rot matrix attribute for later"""
         if rotate is not None:
