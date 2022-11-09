@@ -21,17 +21,12 @@ Contributers: Drew Vecchio, Samuel Mahler, Mark D. Hammig, Nicholas A. Kotov
 Contact email: vecdrew@umich.edu
 """
 
-from __main__ import *
-
 import numpy as np
 from scipy import ndimage
 from skimage.morphology import skeletonize
 from skimage.morphology import disk, remove_small_objects
 from skimage.morphology import binary_dilation as dilate
 
-
-
-#This function returns a 2D array with zeros for all values except the central locations of branch points, where the value is 1
 def branchedPoints(skel):
 
     # defining branch shapes to locate nodes
@@ -181,7 +176,6 @@ def branchedPoints(skel):
          +br25+br26+br27+br28+br29+br30+br31+br32+br33+br34+br35+br36+br37+br38+br39+br40+br41+br42+br43+br44+br45+br46
     return br
 
-
 def endPoints(skel):
 
     # defining different types of endpoints
@@ -234,8 +228,8 @@ def endPoints(skel):
     ep = ep1 + ep2 + ep3 + ep4 + ep5 + ep6 + ep7 + ep8 + ep9
     return ep
 
-def pruning(skeleton, size, Bps):
-    branchpoints = Bps
+def pruning(skeleton, size):
+    branchpoints = branchedPoints(skeleton*1)
     #remove iteratively end points "size" times from the skeleton
     for i in range(0, size):
         endpoints = endPoints(skeleton)
@@ -243,15 +237,14 @@ def pruning(skeleton, size, Bps):
         endpoints = np.logical_xor(endpoints, points)
         endpoints = np.logical_not(endpoints)
         skeleton = np.logical_and(skeleton,endpoints)
+
     return skeleton
 
-
-def merge_nodes(skeleton):
+def merge_nodes(skeleton, disk_size):
 
     # overlay a disk over each branch point and find the overlaps to combine nodes
     skeleton_integer = 1 * skeleton
-    radius = 2
-    mask_elem = disk(radius)
+    mask_elem = disk(disk_size)
     BpSk = branchedPoints(skeleton_integer)
     BpSk = 1*(dilate(BpSk, mask_elem))
 
@@ -271,54 +264,3 @@ def merge_nodes(skeleton):
     # reskeletonzing widenodes and returning it, nearby nodes in radius 2 of each other should have been merged
     newskel = skeletonize(widenodes)
     return newskel
-
-def make_skel(img_bin, merge, prune, clean, r_size, _3d=False):
-    
-        #Change from master: img_bin is now a stack of 2D .tiffs
-    if _3d:
-        skeleton = []
-        skel_int = []
-        Bp=[]
-        Ep=[]
-        i=0
-        print('agd')
-        for plane in img_bin:
-            # making the initial skeleton image, then getting x and y coords of all branch points and endpoints
-            plane = (plane/255).astype(np.bool)
-            skeleton.append(skeletonize(plane))
-            skel_int.append(1*skeleton[i])
-            Bp.append(branchedPoints(skel_int[i]))
-            Ep.append(endPoints(skel_int[i]))
-            i+=1
-        print(np.where(Bp==1))
-        Bp_coord_z, Bp_coord_y, Bp_coord_x = np.arange(len(img_bin)), np.where(Bp == 1)[0], np.where(Bp == 1)[1]
-        Ep_coord_z, Ep_coord_y, Ep_coord_x = np.arange(len(img_bin)), np.where(Ep == 1)[0], np.where(Ep == 1)[1]
-    else:
-        img_bin = (img_bin/255).astype(np.bool)
-        skeleton = skeletonize(img_bin)
-        skel_int = 1*skeleton
-        Bp = branchedPoints(skel_int)
-        Ep = endPoints(skel_int)
-        Bp_coord_y, Bp_coord_x = np.where(Bp == 1)
-        Ep_coord_y, Ep_coord_x = np.where(Ep == 1)
-    
-    # calling the three functions for merging nodes, pruning edges, and removing disconnected segments
-    if(merge == 1):
-        skeleton = merge_nodes(skeleton)
-
-    if(clean == 1):
-        skeleton = remove_small_objects(skeleton, r_size, connectivity=2)
-
-    skel_int = 1*skeleton
-
-    Bps = branchedPoints(skel_int)
-
-    if(prune == 1):
-        skeleton = pruning(skeleton, 500, Bps)
-
-
-    clean_skel = skeleton
-    if _3d:
-        return clean_skel, skel_int, Bp_coord_x, Bp_coord_y, Bp_coord_z, Ep_coord_x, Ep_coord_y, Ep_coord_z
-    else:
-        return clean_skel, skel_int, Bp_coord_x, Bp_coord_y, Ep_coord_x, Ep_coord_y
