@@ -1,5 +1,5 @@
 import numpy as np
-import sknwEdits as sknw
+#import sknwEdits as sknw
 import igraph as ig
 import gsd.hoomd
 import pandas as pd
@@ -13,7 +13,7 @@ import matplotlib.cm as cm
 import csv
 
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing, remove_small_objects
-from StructuralGTEdits import process_image, GetWeights_3d, error, network, convert, skel_ID
+from StructuralGTEdits import process_image, GetWeights_3d, error, network, convert, skel_ID, sknwEdits
 
 
 def read(name, read_type):
@@ -51,7 +51,7 @@ def connector(point1, point2):
 def canvas_to_G(name):
 
     canvas = np.load(name)
-    G = sknw.build_sknw(canvas.astype(int))
+    G = sknwEdits.build_sknw(canvas.astype(int))
 
 def shift(points, _shift=None):
     if _shift is None:
@@ -182,7 +182,7 @@ def stack_to_G(stack_directory):
 
     img_bin = np.asarray(img_bin)
     skeleton = skeletonize_3d(img_bin)
-    G = sknw.build_sknw(skeleton)
+    G = sknwEdits.build_sknw(skeleton)
 
     return G
 
@@ -226,7 +226,7 @@ def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
     canvas[tuple(list(positions.T))] = 1
     canvas = canvas.astype(int)
     print('gsd_to_G canvas has shape ', canvas.shape)
-    G = sknw.build_sknw(canvas)
+    G = sknwEdits.build_sknw(canvas)
     if sub:
         G = sub_G(G)
     return G

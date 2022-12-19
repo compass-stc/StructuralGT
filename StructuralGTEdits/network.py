@@ -1,8 +1,8 @@
-import sknwEdits as sknw
+#import sknwEdits as sknw
 import numpy as np
 import os
 import cv2 as cv
-from StructuralGTEdits import error, base, process_image, convert
+from StructuralGTEdits import error, base, process_image, convert, sknwEdits
 import json
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -632,7 +632,7 @@ class Network:
             / 2
         ).astype(int)
         new_skel = skeletonize_3d(binary)
-        G = sknw.build_sknw(new_skel.astype(int))
+        G = sknwEdits.build_sknw(new_skel.astype(int))
 
         return G
 
