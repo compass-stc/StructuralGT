@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools",
+            "wheel",
+            "cython",
+            "numpy ~= 1.23.1"
+]
+
+[project]
+name = "StructuralGTEdits"
+version = "0.0.1"
+dynamic = ["dependencies"]
