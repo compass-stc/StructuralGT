@@ -159,7 +159,6 @@ class _fname():
     """
 
     def __init__(self, name, domain=_domain(None)):
-        print('running new')
         if not os.path.exists(name):
             raise ValueError('File does not exist')
         self.name = name
@@ -636,6 +635,23 @@ class Network:
 
         return G
 
+    def bounded_betweenness(self, sources, targets, weights=None):
+        from StructuralGTEdits import _bounded_betweenness_cast
+
+        num_edges = self.Gr.ecount()
+        _copy = copy.deepcopy(self.Gr)
+        
+        if weights is None:
+            weights = np.ones(num_edges, dtype=np.double)
+        else:
+            weights = np.array(_copy.es[weights])
+
+        cast = _bounded_betweenness_cast.PyCast(_copy._raw_pointer())
+
+        cast.bounded_betweenness_compute(np.array(sources), np.array(targets),
+                                         num_edges, weights)
+
+        return cast.bounded_betweenness
 
 class ResistiveNetwork(Network):
     """Child of generic SGT Network class.
@@ -794,7 +810,7 @@ class StructuralNetwork(Network):
             if Degree:
                 self.Degree.append(graph.degree())
 
-
+    
 class StructuralNetworkVector(StructuralNetwork):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
