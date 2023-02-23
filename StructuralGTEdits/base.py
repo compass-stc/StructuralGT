@@ -668,7 +668,6 @@ def parallel_gyration(G):
     comm.Reduce([Ay,MPI.DOUBLE],[Ay_sum,MPI.DOUBLE],root=0)
     #Collect Ai terms from all ranks and sum
     if comm.rank == 0:
-        print(Ax_sum/Ay_sum)
         return Ax_sum, Ay_sum
 
 def from_gsd(filename, frame=0):

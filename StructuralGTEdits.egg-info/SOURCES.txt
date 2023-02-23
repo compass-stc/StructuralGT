@@ -1,5 +1,5 @@
 LICENSE.txt
-README.md
+README.rst
 convert.cpp
 convert.pyx
 pyproject.toml
@@ -12,7 +12,7 @@ StructuralGTEdits/base.py
 StructuralGTEdits/error.py
 StructuralGTEdits/network.py
 StructuralGTEdits/process_image.py
-StructuralGTEdits/sbox.py
+StructuralGTEdits/sbox2.py
 StructuralGTEdits/skel_ID.py
 StructuralGTEdits/skel_features.py
 StructuralGTEdits/sknwEdits.py
