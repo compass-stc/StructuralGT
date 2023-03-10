@@ -9,6 +9,7 @@ import time
 import gsd.hoomd
 from skimage.morphology import skeletonize_3d, disk, binary_dilation
 from skimage.measure import regionprops, label
+from skimage.transform import rotate as image_rotation
 import copy
 
 
@@ -17,6 +18,56 @@ def _abs_path(network, name):
         return name
     else:
         return network.stack_dir + "/" + name
+
+
+class _image:
+    """Image object: Wrapper class for images. Should not be instantiated
+    directly. Only for 2D image data. Instantiate an _image_stack object
+    for 3D image data.
+
+    """
+
+    def __init__(self, arr): 
+        # By default, the given array is assumed to have been neither cropped
+        # nor rotated from its original
+        if len(arr.shape)!=2:
+            raise ValueError("Array must be 2D")
+        self.img = arr
+        #if (max(arr.ravel()) == 1
+        #        and len(np.unique(arr.ravel())) == 2):
+        #    self.binary = False
+        #else: self.binary = True
+
+class _image_stack:
+
+    def __init__(self):
+        self._images = []
+        self._slice_names = []
+        self._index = -1
+
+    def append(self, _slice, _slice_name):
+        self._images.append(_slice)
+        self._slice_names.append(_slice_name)
+
+    def __getitem__(self, key):
+        return (self._images[key], self._slice_names[key])
+
+    def package(self):
+        self._images = np.asarray(self._images)
+
+    def __len__(self):
+        return len(self._images)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self._index += 1
+        if self._index >= len(self):
+            self._index = -1
+            raise StopIteration
+        else:
+            return self._images[self._index], self._slice_names[self._index]
 
 
 class _cropper:
@@ -37,18 +88,18 @@ class _cropper:
         self.dim = Network.dim
         if domain is None or Network._2d:
             self.surface = int(
-                _fname(Network.dir + '/' + Network.slice_names[0]).num
+                _fname(Network.dir + '/' + Network.image_stack[0][1]).num
             )  # Strip file type and 'slice' then convert to int
         else:
             self.surface = domain[4]
         if Network._2d:
-            self.depth = 1
+            depth = 1
         else:
             if domain is None:
-                self.depth = len(Network.slice_names)
+                depth = len(Network.image_stack)
             else:
-                self.depth = domain[5] - domain[4]
-            if self.depth == 0:
+                depth = domain[5] - domain[4]
+            if depth == 0:
                 raise error.ImageDirectoryError(Network.stack_dir)
 
         if domain is None:
@@ -57,9 +108,11 @@ class _cropper:
                 Network.stack_dir + "/slice000.tiff",
                 cv.IMREAD_GRAYSCALE).shape
             if self.dim == 2:
-                self.dims = (1,) + planar_dims
+                #self.dims = (1,) + planar_dims
+                self.dims = planar_dims + (1,)
             else:
-                self.dims = (self.depth,) + planar_dims
+                #self.dims = (depth,) + planar_dims
+                self.dims = planar_dims + (depth,)
 
         else:
             if self.dim == 2:
@@ -121,18 +174,18 @@ class _cropper:
             (list): The outer crop
         """
 
-        if not self.dim != 2:
+        if self.dim != 2:
             raise ValueError('Only 2D crops are supported')
         if self.crop == slice(None):
             raise ValueError('No crop associated with this _cropper')
 
         centre = (
-            self.crop[0] + 0.5 * (self.crop[1] - self.crop[0]),
-            self.crop[2] + 0.5 * (self.crop[3] - self.crop[2]),
+            self.crop[0].start + 0.5 * (self.crop[0].stop - self.crop[0].start),
+            self.crop[1].start + 0.5 * (self.crop[1].stop - self.crop[1].start),
         )
 
-        diagonal = ((self.crop[1] - self.crop[0]) ** 2
-                    + (self.crop[3] - self.crop[2]) ** 2) ** 0.5
+        diagonal = ((self.crop[0].stop - self.crop[0].start) ** 2
+                    + (self.crop[1].stop - self.crop[1].start) ** 2) ** 0.5
 
         outer_crop = np.array(
             [
@@ -199,11 +252,11 @@ class _fname():
         """bool: Returns true iff the filename is numeric and within the
         spatial dimensions of the associated :class:`_domain` object.
         """
-        if not self.isnumeric():
+        if not self.isnumeric:
             return False
         else:
             return (int(self.num) > self.domain.domain[0]
-                    and int(self.num) < self.domain.domain[1])
+                and int(self.num) < self.domain.domain[1])
 
     @property
     def isimg(self):
@@ -242,18 +295,22 @@ class Network:
         self.stack_dir = self.dir + self.child_dir
         self.depth = depth
 
-        self.img, self.slice_names = [], []
+        #self.img, self.slice_names = [], []
+        image_stack = _image_stack()
         for slice_name in sorted(os.listdir(self.dir)):
             fname = _fname(self.dir + '/' + slice_name,
                            domain=_domain(depth))
             if (fname.isinrange and fname.isimg):
                 _slice = cv.imread(self.dir + "/" + slice_name,
                                    cv.IMREAD_GRAYSCALE)
-                self.img.append(_slice)
-                self.slice_names.append(slice_name)
+                image_stack.append(_slice, slice_name)
+                #self.img.append(_slice)
+                #self.slice_names.append(slice_name)
 
-        self.img = np.asarray(self.img)
-        if len(self.slice_names) == 1:
+        self.image_stack = image_stack
+        self.image_stack.package()
+        #self.img = np.asarray(self.img)
+        if len(self.image_stack)==1: 
             self._2d = True
             self.dim = 2
         else:
@@ -280,10 +337,10 @@ class Network:
         if not os.path.isdir(self.dir + self.child_dir):
             os.mkdir(self.dir + self.child_dir)
 
-        for name in self.slice_names:
+        for image,name in self.image_stack:
             fname = _fname(self.dir + '/' + name)
-            img_exp = cv.imread(self.dir + "/" + name, cv.IMREAD_GRAYSCALE)
-            _, img_bin, _ = process_image.binarize(img_exp, options_dict)
+            #img_exp = cv.imread(self.dir + "/" + name, cv.IMREAD_GRAYSCALE)
+            _, img_bin, _ = process_image.binarize(image, options_dict)
             plt.imsave(
                 self.stack_dir + "/slice" + fname.num + ".tiff",
                 img_bin,
@@ -344,6 +401,12 @@ class Network:
                     "crop argument cannot be outwith the bounds of \
                     the network's depth"
                 )
+        if crop is not None and self.depth is None and not self._2d:
+            if len(self.image_stack) < crop[5] - crop[4]:
+                raise ValueError("Crop too large for image stack")
+            else:
+                self.depth = [crop[4], crop[5]]
+
         start = time.time()
 
         self.gsd_name = _abs_path(self, name)
@@ -438,8 +501,17 @@ class Network:
         if remove_objects is not None:
             self = base.remove_objects(self, remove_objects)
 
-        # Set rotate attribute for later
+        # Until now, the rotation arguement has not been used; the image and
+        # writted .gsds are all unrotated. The final block of this method is
+        # for reassigning the image attribute, as well as setting the rotate
+        # attribute for later. Only the img_bin attribute is altered because 
+        # the image_stack attribute exists to expose the unprocessed image to
+        # the user.
+        # 
+        # Also note that this only applies to 2D graphs, because 3D graphs
+        # cannot be rotated.
         if rotate is not None:
+            # Set the rotate attribute
             from scipy.spatial.transform import Rotation as R
 
             r = R.from_rotvec(rotate / 180 * np.pi * np.array([0, 0, 1]))
@@ -524,9 +596,9 @@ class Network:
                 self.Gr.vs[i]["o"] = node_positions[i]
                 self.Gr.vs[i]["pts"] = node_positions[i]
 
-            if "weight_type" in kwargs:
-                self.Gr = base.add_weights(self, weight_type=weight_type,
-                                           **kwargs)
+        if weight_type is not None:
+            self.Gr = base.add_weights(self, weight_type=weight_type,
+                                       **kwargs)
 
         self.shape = list(
             max(list(self.Gr.vs[i]["o"][j] for i in range(self.Gr.vcount())))
