@@ -13,7 +13,7 @@ import matplotlib.cm as cm
 import csv
 
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing, remove_small_objects
-from StructuralGTEdits import process_image, GetWeights_3d, error, network, convert, skel_ID, sknwEdits
+from StructuralGTEdits import process_image, GetWeights_3d, error, convert, skel_ID, sknwEdits
 
 
 def read(name, read_type):

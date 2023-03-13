@@ -380,8 +380,8 @@ class PhysicalNetwork(util.Network):
         cast = _bounded_betweenness_cast.PyCast(_copy._raw_pointer())
 
         cast.bounded_betweenness_compute(
-            np.array(sources, dtype=np.double),
-            np.array(targets, dtype=np.double),
+            np.array(sources, dtype=np.int_),
+            np.array(targets, dtype=np.int_),
             num_edges,
             weights,
         )
@@ -399,16 +399,16 @@ class PhysicalNetwork(util.Network):
         else:
             weights = np.array(_copy.es[weights], dtype=np.double)
 
-        cast = _bounded_betweenness_cast.PyCast(_copy._raw_pointer())
+        cast = _random_betweenness_cast.PyCast(_copy._raw_pointer())
 
-        cast.bounded_betweenness_compute(
-            np.array(sources, dtype=np.double),
-            np.array(targets, dtype=np.double),
+        cast.random_betweenness_compute(
+            np.array(sources, dtype=np.int_),
+            np.array(targets, dtype=np.int_),
             num_edges,
             weights,
         )
 
-        return cast.bounded_betweenness
+        return cast.random_betweenness
 
 
 class ResistiveNetwork(PhysicalNetwork):

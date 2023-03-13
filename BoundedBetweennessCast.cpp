@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "BoundedBetweennessCast.h"
+#include "Util.h"
 
 namespace interface {
 
@@ -13,12 +14,14 @@ BoundedBetweennessCast::~BoundedBetweennessCast () {}
 //Casts an igraph vector to a std::vector. The assignemnet operator may not 
 //be overloaded for a class that had been defined elsewhere. Hence I am using 
 //<<= instead.
+/*
 std::vector<float>& operator<<=(std::vector<float>& V, igraph_vector_t& I) {
     for (int i=0; i<igraph_vector_size(&I); i++) {
         V.push_back(VECTOR(I)[i]);
     }
     return V;
 }
+*/
 
 void BoundedBetweennessCast::bounded_betweenness_compute () {
     igraph_t* g = (igraph_t*)this->G_ptr;
@@ -30,8 +33,9 @@ void BoundedBetweennessCast::bounded_betweenness_compute () {
     igraph_vector_init(&res, num_edges);
     igraph_vs_t sources, targets;
 
-    igraph_integer_t* sources_arr = (long *)sources_ptr;
-    igraph_integer_t* targets_arr = (long *)targets_ptr;
+    printf("Size is %lu\n", sizeof(IGRAPH_PRIu));
+    igraph_integer_t* sources_arr = (long long*)sources_ptr;
+    igraph_integer_t* targets_arr = (long long *)targets_ptr;
     igraph_vector_int_init_array(&sources_vec, sources_arr, sources_len);
     igraph_vector_int_init_array(&targets_vec, targets_arr, targets_len);
     igraph_vs_vector(&sources, &sources_vec);
