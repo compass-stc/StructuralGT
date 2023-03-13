@@ -17,6 +17,9 @@ from StructuralGTEdits import process_image, GetWeights_3d, error, network, conv
 
 
 def read(name, read_type):
+    """For raising an error when a file does not exist because cv.imread does
+    not do this.
+    """
     out = cv.imread(name, read_type)
     if out is None:
         raise ValueError(name + ' does not exist')
@@ -24,70 +27,133 @@ def read(name, read_type):
         return out
 
 
-#Function returns true for names of images
 def Q_img(name):
-    if (name.endswith('.tiff') or 
+    """Returns True if name is a supported image file type.
+
+    Args:
+        name (str):
+            Name of file.
+
+    Returns:
+        bool: Whether the extension type is a supported image file.
+    """
+    if (name.endswith('.tiff') or
         name.endswith('.tif') or
         name.endswith('.jpg') or
         name.endswith('.jpeg') or
         name.endswith('.png') or
-        name.endswith('.gif')):
+            name.endswith('.gif')):
         return True
     else:
         return False
 
-#Function returns lattice points joining 2 other points
+
 def connector(point1, point2):
+    """For 2 points on a lattice, this function returns the lattice points
+    which join them
+
+    Args:
+        point1 (list[int]):
+            Coordinates of the first point.
+        point2 (list[int]):
+            Coordinates of the second point.
+
+    Returns:
+        :class:`numpy.ndarray`: Array of lattice points connecting point1
+        and point2
+    """
     vec = point2 - point1
     edge = np.array([point1])
-    for i in np.linspace(0,1):
-        edge = np.append(edge, np.array([point1 + np.multiply(i,vec)]), axis=0)
-    
+    for i in np.linspace(0, 1):
+        edge = np.append(edge, np.array([point1 + np.multiply(i, vec)]),
+                         axis=0)
     edge = edge.astype(int)
     edge = np.unique(edge, axis=0)
 
     return edge
 
-def canvas_to_G(name):
 
-    canvas = np.load(name)
-    G = sknwEdits.build_sknw(canvas.astype(int))
+def shift(points, _2d, _shift=None):
+    """Translates all points such that the minimum coordinate in points is
+    the origin.
 
-def shift(points, _shift=None):
+    Args:
+        points (:class:`numpy.ndarray`):
+            The points to shift.
+        _2d (bool):
+            Whether the points are 2D coordinates.
+        _shift (:class:`numpy.ndarray`):
+            The shift to apply
+
+    Returns:
+        :class:`numpy.ndarray`: The shifted points.
+        :class:`numpy.ndarray`: The applied shift.
+    """
     if _shift is None:
-        if len(points[0]) == 3:
-            _shift=(np.full((np.shape(points)[0],3),[np.min(points.T[0]),np.min(points.T[1]),np.min(points.T[2])]))
-        else:   
-            _shift=(np.full((np.shape(points)[0],2),[np.min(points.T[0]),np.min(points.T[1])]))
-            
+        if _2d:
+            _shift = (np.full((np.shape(points)[0], 2),
+                              [np.min(points.T[0]), np.min(points.T[1])]))
+        else:
+            _shift = (np.full((np.shape(points)[0], 3),
+                              [np.min(points.T[0]),
+                               np.min(points.T[1]),
+                               np.min(points.T[2])]))
+
     points = points - _shift
+
     return points, _shift
 
-#Shifts points to origin centre
-def oshift(points, _shift=None):
-    if _shift is None:
-        if len(points[0]) == 3:
-            _shift = np.full((np.shape(points)[0],3),[np.max(points.T[0])/2,np.max(points.T[1])/2,np.max(points.T[2])/2])
-        else:
-            _shift = np.full((np.shape(points)[0],2),[np.max(points.T[0])/2,np.max(points.T[1])/2])
 
-    points = points - _shift 
+def oshift(points, _2d, _shift=None):
+    """Translates all points such that the points become approximately centred
+    at the origin.
+
+    Args:
+        points (:class:`numpy.ndarray`):
+            The points to shift.
+        _2d (bool):
+            Whether the points are 2D coordinates.
+        _shift (:class:`numpy.ndarray`):
+            The shift to apply.
+
+    Returns:
+        :class:`numpy.ndarray`: The shifted points.
+        :class:`numpy.ndarray`: The applied shift.
+    """
+    if _shift is None:
+        if _2d:
+            _shift = np.full((np.shape(points)[0], 2),
+                             [np.max(points.T[0])/2, np.max(points.T[1])/2])
+            _shift = np.full((np.shape(points)[0], 3),
+                             [np.max(points.T[0])/2,
+                              np.max(points.T[1])/2,
+                              np.max(points.T[2])/2])
+
+    points = points - _shift
+
     return points
 
-def Q_inside(points, crop):
+
+def isinside(points, crop):
+    """Determines whether the given points are all within the given crop.
+
+    Args:
+        points (:class:`numpy.ndarray`):
+            The points to check.
+        crop (list):
+            The x, y, and (optionally) z coordinates of the space to check
+            for membership.
+
+    Returns:
+        bool: Whether all the points are within the crop region.
     """
-    If points is a single point:
-        Function returns True if point inside region defined by crop
-    If points is a collection of points:
-        Function returns True if all points inside region defined by crop
-    """
-    
+
     if points.T.shape[0] == 2:
         for point in points:
             if (point[0] < crop[0] or
                 point[0] > crop[1] or
                 point[1] < crop[2] or
-                point[1] > crop[3]):
+                    point[1] > crop[3]):
                 return False
             return True
     else:
@@ -97,38 +163,34 @@ def Q_inside(points, crop):
                 point[1] < crop[2] or
                 point[1] > crop[3] or
                 point[2] < crop[4] or
-                point[2] > crop[5]):
+                    point[2] > crop[5]):
                 return False
             return True
-   
-#For lists of positions where all elements along one axis have the same value, this returns the same list of positions but with the redundant dimension(s) removed
+
+
 def dim_red(positions):
-    unique_positions = np.asarray(list(len(np.unique(positions.T[i])) for i in range(len(positions.T))))
+    """For lists of positions where all elements along one axis have the same
+    value, this returns the same list of positions but with the redundant
+    dimension(s) removed.
+
+    Args:
+        positions (:class:`numpy.ndarray`):
+            The positions to reduce.
+
+    Returns:
+        :class:`numpy.ndarray`: The reduced positions
+    """
+
+    unique_positions = np.asarray(list(len(np.unique(positions.T[i]))
+                                  for i in range(len(positions.T))))
     redundant = unique_positions == 1
     positions = positions.T[~redundant].T
+
     return positions
 
-def gsd_to_canvas(gsd_name):
-    frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
-    positions = frame.particles.position.astype(int)
-    dims = np.asarray(list(max(positions.T[i])+1 for i in (0,1,2)))
-    
-    canvas = np.zeros(dims)
-    canvas[positions.T[0], positions.T[1], positions.T[2]] = 1
-    return canvas
 
-def canvas_to_gsd(canvas, gsd_name):
-    positions = np.asarray(np.where(np.asarray(canvas)!=0)).T
-    s = gsd.hoomd.Snapshot()
-    s.particles.N = len(positions)
-    s.particles.types = ['A']
-    s.particles.typeid = ['0']*s.particles.N
-    s.particles.position = positions
-
-    with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
-        f.append(s)
-    
 def G_to_gsd(G, gsd_name):
+    """Remove?"""
     dim = len(G.vs[0]['o'])
 
     positions = np.asarray(list(G.vs[i]['o'] for i in range(G.vcount())))
@@ -147,136 +209,66 @@ def G_to_gsd(G, gsd_name):
 
     with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
         f.append(s)
-    
-def stack_to_canvas(stack_directory, crop=None):
-    img_bin = []
-    i=0
-    for name in sorted(os.listdir(stack_directory)):
-        if Q_img(name):
-            img_slice = cv.imread(stack_directory+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
-            img_bin.append(img_slice)
-            i=i+1
-        else:
-            pass
-    
-    img_bin = np.asarray(img_bin)
-    print('Uncropped img_bin has shape ', img_bin.shape)
-    if crop != None:
-        img_bin = img_bin[crop[0]:crop[1], crop[2]:crop[3], crop[4]:crop[5]]
-
-    img_bin = np.squeeze(img_bin)
-    return img_bin
 
 
-
-def stack_to_G(stack_directory):
-    img_bin = []
-    i=0
-    for name in sorted(os.listdir(stack_directory)):
-        if Q_img(name):
-            img_slice = cv.imread(stack_directory+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
-            img_bin.append(img_slice)
-            i=i+1
-        else:
-            pass
-
-    img_bin = np.asarray(img_bin)
-    skeleton = skeletonize_3d(img_bin)
-    G = sknwEdits.build_sknw(skeleton)
-
-    return G
-
-#Functions returns list of position from a given gsd file. Optionally, it may return a list of positions that only fall within a given set of dimensions, effectively cropping the domain. TODO replace cropping with array masking method
-def gsd_to_pos(gsd_name, crop=None):
-    frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
-    positions = frame.particles.position.astype(int)
-    
-    if crop != None:
-        canvas = np.zeros(list((max(positions.T[i])+1) for i in (0,1,2)))
-        canvas[tuple(list(positions.T))] = 1
-        canvas = canvas[crop[0]:crop[1],
-                          crop[2]:crop[3],
-                          crop[4]:crop[5]]
-       
-        positions = np.asarray(np.where(canvas==1)).T
-
-    return positions
-
-#Function takes gsd rendering of a skeleton and returns the list of nodes and edges, as calculated by sknw. Optionally, it may crop. sub=True will reduce the returned graph to the largest connected induced subgraph, resetting node numbers to consecutive integers, starting from 0.
-#_2d=True ensures any additional redundant axes from the position list is removed. It does not guarantee a 3d graph
 def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
+    """Function takes gsd rendering of a skeleton and returns the list of
+    nodes and edges, as calculated by sknw.
+
+    Args:
+        gsd_name (str):
+            The file name to write.
+        sub (optional, bool):
+            Whether to return only to largest connected component. If True, it
+            will reduce the returned graph to the largest connected induced
+            subgraph, resetting node numbers to consecutive integers,
+            starting from 0.
+        _2d (optional, bool):
+            Whether the skeleton is 2D. If True it only ensures additional
+            redundant axes from the position array is removed. It does not
+            guarantee a 3d graph.
+        crop (list):
+            The x, y and (optionally) z coordinates of the cuboid/shape
+            enclosing the skeleton from which a :class:`igraph.Graph` object
+            should be extracted.
+
+    Returns:
+        (:class:`igraph.Graph`): The extracted :class:`igraph.Graph` object.
+    """
     frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
     positions = shift(frame.particles.position.astype(int))[0]
-    if crop != None:
+    if crop is not None:
         from numpy import logical_and as a
-        p=positions.T
-        positions = p.T[a(a(a(p[1]>=crop[0],p[1]<=crop[1]),p[2]>=crop[2]),p[2]<=crop[3])]
+        p = positions.T
+        positions = p.T[a(a(a(p[1] >= crop[0],
+                              p[1] <= crop[1]),
+                            p[2] >= crop[2]),
+                        p[2] <= crop[3])]
         positions = shift(positions)[0]
-        
-    if sum((positions<0).ravel()) != 0:
+
+    if sum((positions < 0).ravel()) != 0:
         positions = shift(positions)[0]
-        
+
     if _2d:
         positions = dim_red(positions)
         new_pos = np.zeros((positions.T.shape))
         new_pos[0] = positions.T[0]
         new_pos[1] = positions.T[1]
-        positions=new_pos.T.astype(int)
-    canvas = np.zeros(list((max(positions.T[i])+1) for i in list(range(min(positions.shape)))))
+        positions = new_pos.T.astype(int)
+
+    canvas = np.zeros(list((max(positions.T[i])+1)
+                           for i in list(range(min(positions.shape)))))
     canvas[tuple(list(positions.T))] = 1
     canvas = canvas.astype(int)
     print('gsd_to_G canvas has shape ', canvas.shape)
+
     G = sknwEdits.build_sknw(canvas)
+
     if sub:
         G = sub_G(G)
+
     return G
-   
-#Function reads, crops and rewrites gsd file. TODO write branch and endpoint data to new gsd file (currently this info is lost).
-def gsd_crop(gsd_name, save_name, crop):
-    frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
-    positions = frame.particles.position.astype(int)
 
-    from numpy import logical_and as a
-    p=positions.T
-    positions = p.T[a(a(a(a(a(p[0]>crop[0],p[0]<crop[1]),p[1]>crop[2]),p[1]<crop[3]),p[2]>crop[4]),p[2]<crop[5])]
-    positions_T = positions.T
-    positions_T[0] = positions_T[0]
-    positions = positions_T.T
-    positions = shift(positions)
-    s = gsd.hoomd.Snapshot()
-    s.particles.N = len(positions)
-    s.particles.types = ['A']
-    s.particles.typeid = ['0']*s.particles.N
-    s.particles.position = positions
-
-    with gsd.hoomd.open(name=save_name, mode='wb') as f:
-        f.append(s)
-    
-
-#Performs and times compute light averaged GT calcs
-def G_analysis_lite(gsd_name):
-    from networkx.algorithms.centrality import betweenness_centrality, closeness_centrality, eigenvector_centrality
-    from networkx.algorithms import average_node_connectivity, global_efficiency, clustering, average_clustering
-    from networkx.algorithms import degree_assortativity_coefficient
-    from networkx.algorithms.flow import maximum_flow
-    from networkx.algorithms.distance_measures import diameter, periphery
-    from networkx.algorithms.wiener import wiener_index
-
-    start = time.time()
-    G = gsd_to_G(gsd_name)
-    end = time.time()
-#   Currently neglected eigenvector centrality as it doesnt easily converge (must change max iterations)
-
-    operations = [global_efficiency, average_clustering, degree_assortativity_coefficient, maximum_flow, diameter, periphery, wiener_index]
-
-    for operation in operations:
-        try:
-            start = time.time()
-            ans = operation(G)
-            end = time.time()
-            print(str(operation),'calculated as', ans, 'in', end-start)
-        except TypeError:
-            pass
 #Function generates largest connected induced subgraph. Node and edge numbers are reset such that they are consecutive integers, starting from 0
 def sub_G(G): 
     print('pre sub has ', G.vcount(), ' nodes')
@@ -518,24 +510,6 @@ def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
             
     return g.Gr
 
-def stack_analysis(stack_directory, suffix, ANC=False, crop=None):
-     ExpProcess(stack_directory)
-     
-     skel_name = stack_directory+'/skel_'+suffix+'.gsd'
-
-     start = time.time()
-     canvas = stack_to_canvas(stack_directory+'/Binarized', crop)
-     skeleton = skeletonize_3d(canvas)
-     canvas_to_gsd(skeleton,skel_name) 
-     debubble(skel_name)
-
-     debubble_name = os.path.split(skel_name)[0] + '/debubbled_' + os.path.split(skel_name)[1]
-
-     G = gsd_to_G(debubble_name) 
-     
-     igraph_calcs(stack_directory,G)
-     if ANC:
-         igraph_ANC(stack_directory, ig.Graph.from_networkx(G)) 
 
 def gyration_moments_3(G, sampling=1, weighted=True):
     Ax=0
