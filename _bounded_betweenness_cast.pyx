@@ -14,16 +14,16 @@ cdef class PyCast:
         self.c_cast = BoundedBetweennessCast()
         self.c_cast.G_ptr = PyLong_AsVoidPtr(ptr)
 
-    def bounded_betweenness_compute(self, long long[:] sources,
-                                    long long[:] targets, int num_edges,
+    def bounded_betweenness_compute(self, long[:] sources,
+                                    long[:] targets, int num_edges,
                                     double[:] weights):
         
-        cdef long long[:] sources_memview = sources
-        cdef long long[:] targets_memview = targets
+        cdef long[:] sources_memview = sources
+        cdef long[:] targets_memview = targets
         cdef double[:] weights_memview = weights
         
-        self.c_cast.sources_len = <long long>len(sources)
-        self.c_cast.targets_len = <long long>len(targets)
+        self.c_cast.sources_len = <long>len(sources)
+        self.c_cast.targets_len = <long>len(targets)
         
         self.c_cast.sources_ptr = &sources_memview[0]
         self.c_cast.targets_ptr = &targets_memview[0]

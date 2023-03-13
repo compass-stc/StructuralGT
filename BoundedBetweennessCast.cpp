@@ -30,8 +30,8 @@ void BoundedBetweennessCast::bounded_betweenness_compute () {
     igraph_vector_init(&res, num_edges);
     igraph_vs_t sources, targets;
 
-    igraph_integer_t* sources_arr = (long long *)sources_ptr;
-    igraph_integer_t* targets_arr = (long long *)targets_ptr;
+    igraph_integer_t* sources_arr = (long *)sources_ptr;
+    igraph_integer_t* targets_arr = (long *)targets_ptr;
     igraph_vector_int_init_array(&sources_vec, sources_arr, sources_len);
     igraph_vector_int_init_array(&targets_vec, targets_arr, targets_len);
     igraph_vs_vector(&sources, &sources_vec);
