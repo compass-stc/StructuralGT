@@ -1,11 +1,11 @@
-from StructuralGTEdits import physical_networks, base
+from StructuralGTEdits import interaction_networks, base
 import StructuralGTEdits
 import pytest
 
 _path = StructuralGTEdits.__path__[0]
 
 def test_find_node():
-    N = physical_networks.StructuralNetwork(_path + '/pytest/data/Rectangle1')
+    N = physical_networks.InteractionNetwork(_path + '/pytest/data/Rectangle1')
     N.binarize()
     N.stack_to_gsd()
     N.G_u()

@@ -1,4 +1,4 @@
-from StructuralGTEdits import network, base
+from StructuralGTEdits import physical_networks, base
 import StructuralGTEdits
 import pytest
 import os
@@ -6,13 +6,13 @@ import shutil
 
 _path = StructuralGTEdits.__path__[0]
 
-@pytest.fixture(params=[pytest.param(_path+'/pytest/data/AgNWN', marks=pytest.mark.TwoD),
-                        pytest.param(_path+'/pytest/data/ANF', marks=pytest.mark.ThreeD)])
+@pytest.fixture(params=[pytest.param(_path+'/pytest/data/AgNWN'),
+                        pytest.param(_path+'/pytest/data/ANF')])
 def binarize(request):
     _dir = request.param
     if os.path.isdir(_dir+'/Binarized'): shutil.rmtree(_dir+'/Binarized')
 
-    N = StructuralGTEdits.network.ResistiveNetwork(_dir)
+    N = StructuralGTEdits.physical_networks.ResistiveNetwork(_dir)
     N.binarize()
 
     #assert N.img_bin.shape == N.img.shape
@@ -23,7 +23,7 @@ def binarize(request):
 def gsd(binarize):
     N = binarize
     if N._2d:
-        N.stack_to_gsd(crop=[408, 1127, 149, 868], rotate=45) 
+        N.stack_to_gsd(crop=[149, 868, 408, 1127], rotate=45) 
     else:
         N.stack_to_gsd(crop=[0,100,0,90,4,9])
 
