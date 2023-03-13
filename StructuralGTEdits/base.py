@@ -104,7 +104,7 @@ def shift(points, _2d=False, _shift=None):
     return points, _shift
 
 
-def oshift(points, _2d, _shift=None):
+def oshift(points, _2d=False, _shift=None):
     """Translates all points such that the points become approximately centred
     at the origin.
 

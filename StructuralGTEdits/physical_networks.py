@@ -204,7 +204,7 @@ class PhysicalNetwork(util.Network):
 
             drop_list = []
             for i in range(self.Gr.vcount()):
-                if not base.Q_inside(np.asarray([node_positions[i]]), inner_crop):
+                if not base.isinside(np.asarray([node_positions[i]]), inner_crop):
                     drop_list.append(i)
                     continue
 
@@ -373,7 +373,29 @@ class PhysicalNetwork(util.Network):
         _copy = copy.deepcopy(self.Gr)
 
         if weights is None:
-            weights = np.ones(num_edges, dtype=np.double)
+            weights = np.array(_copy.es[weights], dtype=np.double)
+        else:
+            weights = np.array(_copy.es[weights], dtype=np.double)
+
+        cast = _bounded_betweenness_cast.PyCast(_copy._raw_pointer())
+
+        cast.bounded_betweenness_compute(
+            np.array(sources, dtype=np.double),
+            np.array(targets, dtype=np.double),
+            num_edges,
+            weights,
+        )
+
+        return cast.bounded_betweenness
+
+    def random_betweenness(self, sources, targets, weights=None):
+        from StructuralGTEdits import _random_betweenness_cast
+
+        num_edges = self.Gr.ecount()
+        _copy = copy.deepcopy(self.Gr)
+
+        if weights is None:
+            weights = np.array(_copy.es[weights], dtype=np.double)
         else:
             weights = np.array(_copy.es[weights], dtype=np.double)
 
@@ -562,7 +584,7 @@ class StructuralNetwork(PhysicalNetwork):
         self.Degree = []
         for graph in self.Gr:
             if Betweenness:
-                self.Betweenness.append(graph.betweenness())
+                self.Betweenness.append(graph.betweenness(directed=False))
             if Closeness:
                 self.Closeness.append(graph.closeness())
             if Degree:
