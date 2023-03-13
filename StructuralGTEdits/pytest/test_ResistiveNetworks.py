@@ -32,7 +32,7 @@ def gsd(binarize):
 @pytest.fixture
 def graph(gsd):
     N = gsd
-    N.G_u(weight_type=['FixedWidthConductance'], R_j=0, rho_dim=1, sub=True)
+    N.G_u(weight_type=['FixedWidthConductance'], sub=True)
 
     return N
 
@@ -40,9 +40,9 @@ def graph(gsd):
 def potential(graph):
     N = graph
     if N._2d:
-        N.potential_distribution(0,[0,20],[180,200],R_j=10,rho_dim=2)
+        N.potential_distribution(0,[0,20],[180,200],R_j=10)
     else:
-        N.potential_distribution(0,[0,20],[70,90],R_j=10,rho_dim=2)
+        N.potential_distribution(0,[0,20],[70,90],R_j=10)
 
     return N
 

@@ -294,7 +294,7 @@ class PhysicalNetwork(util.Network):
 
         L = list(max(positions.T[i]) * 2 for i in (0, 1, 2))
         node_positions = base.shift(
-            node_positions, shift=(L[0] / 4, L[1] / 4, L[2] / 4)
+            node_positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4)
         )[0]
         positions = base.shift(positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4))[0]
         s = gsd.hoomd.Snapshot()
