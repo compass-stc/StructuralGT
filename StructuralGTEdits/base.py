@@ -437,33 +437,6 @@ def igraph_ANC(directory, I):
     
     return ANC
 
-#Binarizes stack of experimental images using a set of image processing parameters in options_dict.
-#Note this enforces that all images have the same shape as the first image encountered by the for loop.
-#(i.e. the first alphanumeric titled image file)
-def ExpProcess(directory, options_dict=None):
-    
-    if options_dict is None:
-        options = directory + '/img_options.json'
-        with open(options) as f:
-            options_dict = json.load(f)
-    
-    #Check if directory exists
-    if not os.path.isdir(directory + '/Binarized'):
-        os.mkdir(directory+'/Binarized')
-
-    #Generate
-    i=0    
-    for name in sorted(os.listdir(directory)):
-        if Q_img(name)==False:
-            pass
-        else:
-            img_exp = cv.imread(directory+'/'+name,cv.IMREAD_GRAYSCALE)
-            if i == 0: shape = img_exp.shape
-            elif img_exp.shape != shape: continue
-            _, img_bin, _ = process_image.binarize(img_exp, options_dict)
-            plt.imsave(directory+'/'+'Binarized'+'/'+'slice'+str(i)+'.tiff', img_bin, cmap=cm.gray)
-            i+=1
-
 #Skeletonize=False enables unusual case of writing binary stack to gsd without skeletonizing. Effective for creating direct 3d reconstruction.
 #Takes directory where stack is located, and a gsd write filename
 #Note when rotate=None, the crop acts upon an origin cornered image but when rotate != None, the image is origin centred and so the crop may contain -ve elements
@@ -596,79 +569,6 @@ def gyration_moments_3(G, sampling=1, weighted=True):
             Axy = Axy + (Axy_term)
             A = np.array([[Ax,Axy,0],[Axy,Ay,0],[0,0,0]])/(len(trimmed_node_count)**2)
     return A
-
-def parallel_gyration(G):
-        #Parallel implementation
-    from mpi4py import MPI
-    import numpy as np
-    import argparse
-    comm = MPI.COMM_WORLD
-    rank = comm.rank
-    size = comm.size
-    
-    if comm.rank == 0:
-        #Function distributes nodes amongst cores such that each core has approximately equal number of shortest paths
-        #This doesn't imply equal number of nodes
-        def path_partition(node_count, core_count):
-            path_count = int(node_count*(node_count-1)/2)
-            path_per_core = np.floor(path_count/core_count)
-            NRI = dict()
-
-            first_node = 0
-            for i in range(core_count):
-                paths = 0 #Current length of path list
-                nodes = [] #List of nodes corresponding to this path list
-                for n in range(first_node, node_count):
-                    if paths >= (path_per_core): #If path list for a given core is full, move to next core
-                        continue
-                    nodes = nodes + [n]
-                    paths = paths + (node_count - n) #General formula for number of paths included by a given node
-                    first_node = n + 1
-                NRI[str(i)] = nodes
-            return NRI
-        
-        node_count = G.vcount()
-
-        G_NRI = [G,path_partition(node_count,size)]
-        Ax_sum = np.array([0])
-        Ay_sum = np.array([0])
-    else:
-        G_NRI = None
-        Ax_sum = None
-        Ay_sum = None
-
-    #Save global variables that are broadcasted by the root rank
-    #G_NRI is list of [G,NRI]
-    G_NRI = comm.bcast(G_NRI, root=(0))
-    G = G_NRI[0]
-    NRI = G_NRI[1]
-
-    Ax=0
-    Ay=0
-
-    node_count = G.vcount()
-    node_range = NRI[str(rank)]
-    for i in node_range:
-        for j in range(node_count):
-            if i >= j:    #Symetric matrix
-                continue
-            path = G.get_shortest_paths(i,to=j)
-            Ax_term = 0
-            Ay_term = 0
-            for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
-                weight = G.es[G.get_eid(hop_s,hop_t)]['weight']
-                Ax_term = Ax_term + ((weight*(int(G.vs[hop_s]['o'][0])-int(G.vs[hop_t]['o'][0])))**2)
-                Ay_term = Ay_term + ((weight*(int(G.vs[hop_s]['o'][1])-int(G.vs[hop_t]['o'][1])))**2)
-            Ax = Ax + (Ax_term)
-            Ay = Ay + (Ay_term)
-
-    Ax = np.array([Ax])
-    Ay = np.array([Ay])
-    comm.Reduce([Ax,MPI.DOUBLE],[Ax_sum,MPI.DOUBLE],root=0)
-    comm.Reduce([Ay,MPI.DOUBLE],[Ay_sum,MPI.DOUBLE],root=0)
-    #Collect Ai terms from all ranks and sum
-    if comm.rank == 0:
-        return Ax_sum, Ay_sum
 
 def from_gsd(filename, frame=0):
     """
