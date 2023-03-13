@@ -1,357 +1,31 @@
 import numpy as np
 import os
-import cv2 as cv
-from StructuralGTEdits import error, base, process_image, convert, sknwEdits
-import json
+from StructuralGTEdits import error, base, process_image, convert, sknwEdits, util
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import time
 import gsd.hoomd
-from skimage.morphology import skeletonize_3d, disk, binary_dilation
+from skimage.morphology import skeletonize_3d
 from skimage.measure import regionprops, label
-from skimage.transform import rotate as image_rotation
 import copy
 
 
-def _abs_path(network, name):
-    if name[0] == "/":
-        return name
-    else:
-        return network.stack_dir + "/" + name
+class PhysicalNetwork(util.Network):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-
-class _image:
-    """Image object: Wrapper class for images. Should not be instantiated
-    directly. Only for 2D image data. Instantiate an _image_stack object
-    for 3D image data.
-
-    """
-
-    def __init__(self, arr): 
-        # By default, the given array is assumed to have been neither cropped
-        # nor rotated from its original
-        if len(arr.shape)!=2:
-            raise ValueError("Array must be 2D")
-        self.img = arr
-        #if (max(arr.ravel()) == 1
-        #        and len(np.unique(arr.ravel())) == 2):
-        #    self.binary = False
-        #else: self.binary = True
-
-class _image_stack:
-
-    def __init__(self):
-        self._images = []
-        self._slice_names = []
-        self._index = -1
-
-    def append(self, _slice, _slice_name):
-        self._images.append(_slice)
-        self._slice_names.append(_slice_name)
-
-    def __getitem__(self, key):
-        return (self._images[key], self._slice_names[key])
-
-    def package(self):
-        self._images = np.asarray(self._images)
-
-    def __len__(self):
-        return len(self._images)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        self._index += 1
-        if self._index >= len(self):
-            self._index = -1
-            raise StopIteration
-        else:
-            return self._images[self._index], self._slice_names[self._index]
-
-
-class _cropper:
-    """Cropper class contains methods to deal with images of different
-    dimensions and their geometric modificaitons. Generally there is no need
-    for the user to instantiate this directly.
-
-    Args:
-        Network (:class:`Network`:):
-            The :class:`Network` object to which the cropper is associated
-            with
-        domain (list):
-            The corners of the cuboid/rectangle which enclose the network's
-            region of interest
-    """
-
-    def __init__(self, Network, domain=None):
-        self.dim = Network.dim
-        if domain is None or Network._2d:
-            self.surface = int(
-                _fname(Network.dir + '/' + Network.image_stack[0][1]).num
-            )  # Strip file type and 'slice' then convert to int
-        else:
-            self.surface = domain[4]
-        if Network._2d:
-            depth = 1
-        else:
-            if domain is None:
-                depth = len(Network.image_stack)
-            else:
-                depth = domain[5] - domain[4]
-            if depth == 0:
-                raise error.ImageDirectoryError(Network.stack_dir)
-
-        if domain is None:
-            self.crop = slice(None)
-            planar_dims = cv.imread(
-                Network.stack_dir + "/slice000.tiff",
-                cv.IMREAD_GRAYSCALE).shape
-            if self.dim == 2:
-                #self.dims = (1,) + planar_dims
-                self.dims = planar_dims + (1,)
-            else:
-                #self.dims = (depth,) + planar_dims
-                self.dims = planar_dims + (depth,)
-
-        else:
-            if self.dim == 2:
-                self.crop = (slice(domain[2], domain[3]),
-                             slice(domain[0], domain[1]))
-                self.dims = (1, domain[3] - domain[2], domain[1] - domain[0])
-
-            else:
-                self.crop = (
-                    slice(domain[0], domain[1]),
-                    slice(domain[2], domain[3]),
-                    slice(domain[4], domain[5]),
-                )
-                self.dims = (
-                    domain[1] - domain[0],
-                    domain[3] - domain[2],
-                    domain[5] - domain[4],
-                )
-
-    @property
-    def _2d(self):
-        """list: If a crop is associated with the object, return the component
-        which crops the square associated with the :class:`Network` space.
-        """
-        if self.crop == slice(None):
-            return slice(None)
-        else:
-            return self.crop[0:2]
-
-    def intergerise(self):
-        """Method casts decimal values in the _croppers crop attribute to
-        integers such that the new crop contains at least all of the space
-        enclosed by the old crop
-        """
-        first_x = np.floor(self.crop[0].start).astype(int)
-        last_x = np.ceil(self.crop[0].stop).astype(int)
-
-        first_y = np.floor(self.crop[1].start).astype(int)
-        last_y = np.ceil(self.crop[1].stop).astype(int)
-
-        if self.dim == 2:
-            self.crop = slice(first_x, last_x), slice(first_y, last_y)
-            self.dims = (1, last_x - first_x, last_y - first_y)
-        else:
-            first_z = np.floor(self.crop[2].start).astype(int)
-            last_z = np.ceil(self.crop[2].stop).astype(int)
-            self.crop = (
-                slice(first_x, last_x),
-                slice(first_y, last_y),
-                slice(first_z, last_z),
-            )
-
-    @property
-    def _outer_crop(self):
-        """Method supports square 2D crops only. It calculates the crop which
-        could contain any rotation of the _cropper's crop attribute.
-
-        Returns:
-            (list): The outer crop
-        """
-
-        if self.dim != 2:
-            raise ValueError('Only 2D crops are supported')
-        if self.crop == slice(None):
-            raise ValueError('No crop associated with this _cropper')
-
-        centre = (
-            self.crop[0].start + 0.5 * (self.crop[0].stop - self.crop[0].start),
-            self.crop[1].start + 0.5 * (self.crop[1].stop - self.crop[1].start),
-        )
-
-        diagonal = ((self.crop[0].stop - self.crop[0].start) ** 2
-                    + (self.crop[1].stop - self.crop[1].start) ** 2) ** 0.5
-
-        outer_crop = np.array(
-            [
-                centre[0] - diagonal * 0.5,
-                centre[0] + diagonal * 0.5,
-                centre[1] - diagonal * 0.5,
-                centre[1] + diagonal * 0.5,
-            ],
-            dtype=int,
-        )
-
-        return outer_crop
-
-
-class _domain():
-    """Helper class which returns an infinitely large space when no explicit
-    space is associated with the :class:`_domain`
-    """
-
-    def __init__(self, domain):
-        if domain is None:
-            self.domain = [-np.inf, np.inf]
-        else:
-            self.domain = domain
-
-
-class _fname():
-    """Class to represent file names of 2D image slices, with helper
-    functions.
-
-    Assumes each file has 3 character number, e.g. 053, followed by 3 or 4
-    character extension, e.g. .tif or .tiff.
-
-    Args:
-        name (str):
-            The name of the file.
-        domain (_domain):
-            The spatial dimensions of the associated Network object.
-    """
-
-    def __init__(self, name, domain=_domain(None)):
-        if not os.path.exists(name):
-            raise ValueError('File does not exist.')
-        self.name = name
-        self.domain = domain
-        num1 = name[-7:-4]
-        num2 = name[-8:-5]
-        if num1.isnumeric() and num2.isnumeric():
-            raise ValueError('Directory contents names ambiguous.')
-        elif num1.isnumeric():
-            self.num = num1
-        elif num2.isnumeric():
-            self.num = num2
-        else:
-            self.num = 'Non-numeric'
-
-    @property
-    def isnumeric(self):
-        """bool: Whether the filename is numeric."""
-        return self.num.isnumeric()
-
-    @property
-    def isinrange(self):
-        """bool: Returns true iff the filename is numeric and within the
-        spatial dimensions of the associated :class:`_domain` object.
-        """
-        if not self.isnumeric:
-            return False
-        else:
-            return (int(self.num) > self.domain.domain[0]
-                and int(self.num) < self.domain.domain[1])
-
-    @property
-    def isimg(self):
-        """bool: Returns true iff the filename suffix is a supported image
-        file type.
-        """
-        return base.Q_img(self.name)
-
-
-class Network:
-    """Generic class to represent networked image data.
-
-    This class holds and igraph :class:`Graph` object as an attribute and
-    holds additional attributes and methods for supporting geometric features
-    associated images,dimensionality etc.
-
-    Args:
-        directory (str):
-            The (absolute or relative) pathname for the stack of images to be
-            analysed. Where 2D analysis is concerned, the directory should
-            contain a single image.
-        child_dir (str):
-            The relative pathname for storing the binarized stack of images
-            and all subsequent results.
-        depth (tuple, optional):
-            The file range from which should be extracted from the directory
-            files. This is primarily used to analyse a subset of a very large
-            directory. Cropping can be carried out after, if this argument
-            is not specified.
-    """
-
-    def __init__(self, directory, child_dir="Binarized", depth=None):
-
-        self.dir = directory
-        self.child_dir = '/' + child_dir
-        self.stack_dir = self.dir + self.child_dir
-        self.depth = depth
-
-        #self.img, self.slice_names = [], []
-        image_stack = _image_stack()
-        for slice_name in sorted(os.listdir(self.dir)):
-            fname = _fname(self.dir + '/' + slice_name,
-                           domain=_domain(depth))
-            if (fname.isinrange and fname.isimg):
-                _slice = cv.imread(self.dir + "/" + slice_name,
-                                   cv.IMREAD_GRAYSCALE)
-                image_stack.append(_slice, slice_name)
-                #self.img.append(_slice)
-                #self.slice_names.append(slice_name)
-
-        self.image_stack = image_stack
-        self.image_stack.package()
-        #self.img = np.asarray(self.img)
-        if len(self.image_stack)==1: 
-            self._2d = True
-            self.dim = 2
-        else:
-            self._2d = False
-            self.dim = 3
-
-    def binarize(self, options_dict=None):
-        """Binarizes stack of experimental images using a set of image
-        processing parameters.
-
-        Args:
-            options_dict (dict, optional):
-                A dictionary of option-value pairs for image processing. All
-                options must be specified. When this arguement is not
-                specified, the network's parent directory will be searched for
-                a file called img_options.json, containing the options.
-        """
-
-        if options_dict is None:
-            options = self.dir + "/img_options.json"
-            with open(options) as f:
-                options_dict = json.load(f)
-
-        if not os.path.isdir(self.dir + self.child_dir):
-            os.mkdir(self.dir + self.child_dir)
-
-        for image,name in self.image_stack:
-            fname = _fname(self.dir + '/' + name)
-            #img_exp = cv.imread(self.dir + "/" + name, cv.IMREAD_GRAYSCALE)
-            _, img_bin, _ = process_image.binarize(image, options_dict)
-            plt.imsave(
-                self.stack_dir + "/slice" + fname.num + ".tiff",
-                img_bin,
-                cmap=cm.gray,
-            )
-
-        self.options = options_dict
-
-    def stack_to_gsd(self, name="skel.gsd", crop=None, skeleton=True,
-                     rotate=None, debubble=None, box=False, merge_nodes=None,
-                     prune=None, remove_objects=None):
+    def stack_to_gsd(
+        self,
+        name="skel.gsd",
+        crop=None,
+        skeleton=True,
+        rotate=None,
+        debubble=None,
+        box=False,
+        merge_nodes=None,
+        prune=None,
+        remove_objects=None,
+    ):
 
         """Writes a .gsd file from the object's directory. The name of the
         written .gsd is set as an attribute so it may be easily matched with
@@ -390,7 +64,7 @@ class Network:
             remove_objects (int):
                 The size of objects to remove from the skeleton, using the
                 algorithm in :cite:`Vecchio2021`.
-       """
+        """
         if not self._2d and rotate is not None:
             raise ValueError("Cannot rotate 3D graphs.")
         if crop is None and rotate is not None:
@@ -409,54 +83,18 @@ class Network:
 
         start = time.time()
 
-        self.gsd_name = _abs_path(self, name)
+        self.gsd_name = util._abs_path(self, name)
         self.gsd_dir = os.path.split(self.gsd_name)[0]
 
         if rotate is not None:
-            self.inner_cropper = _cropper(self, domain=crop)
+            self.inner_cropper = util._cropper(self, domain=crop)
             crop = self.inner_cropper._outer_crop
 
-        self.cropper = _cropper(self, domain=crop)
-
-        # Initilise i such that it starts at the lowest number belonging
-        # to the images in the stack_dir
-        # First require boolean mask to filter out non image files
-        if self._2d:
-            img_bin = np.zeros(self.cropper.dims)
-        else:
-            img_bin = np.zeros(self.cropper.dims)
-            img_bin = np.swapaxes(img_bin, 0, 2)
-            img_bin = np.swapaxes(img_bin, 1, 2)
-
-        i = self.cropper.surface
-        for fname in sorted(os.listdir(self.stack_dir)):
-            fname = _fname(self.stack_dir + '/' + fname, domain=_domain(self.depth))
-            if (fname.isimg and fname.isinrange):
-                suff = base.tripletise(i)
-                img_bin[i - self.cropper.surface] = (
-                    base.read(
-                        self.stack_dir + "/slice" + fname.num + ".tiff",
-                        cv.IMREAD_GRAYSCALE,
-                    )[self.cropper._2d]
-                    / 255
-                )
-                i = i + 1
-            else:
-                continue
-
-        # For 2D images, img_bin_3d.shape[0] == 1
-        self.img_bin_3d = img_bin
-        self.img_bin = img_bin
-
-        # Always 3d, even for 2d images
-        self.img_bin_3d = self.img_bin
-        # 3d for 3d images, 2d otherwise
-        self.img_bin = np.squeeze(self.img_bin)
-
+        self.set_img_bin(crop)
+        
         if skeleton:
             self.skeleton = skeletonize_3d(np.asarray(self.img_bin, dtype=int))
-            self.skeleton_3d = skeletonize_3d(np.asarray(self.img_bin_3d,
-                                                         dtype=int))
+            self.skeleton_3d = skeletonize_3d(np.asarray(self.img_bin_3d, dtype=int))
         else:
             self.img_bin = np.asarray(self.img_bin)
             self.skeleton_3d = self.img_bin_3d
@@ -464,7 +102,7 @@ class Network:
 
         positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
         self.shape = np.asarray(
-            list(max(positions.T[i]) + 1 for i in (2, 1, 0)[0: self.dim])
+            list(max(positions.T[i]) + 1 for i in (2, 1, 0)[0 : self.dim])
         )
         self.positions = positions
 
@@ -485,8 +123,11 @@ class Network:
 
         end = time.time()
         print(
-            "Ran stack_to_gsd() in ", end - start, "for gsd with ",
-            len(positions), "particles",
+            "Ran stack_to_gsd() in ",
+            end - start,
+            "for gsd with ",
+            len(positions),
+            "particles",
         )
 
         if debubble is not None:
@@ -504,10 +145,10 @@ class Network:
         # Until now, the rotation arguement has not been used; the image and
         # writted .gsds are all unrotated. The final block of this method is
         # for reassigning the image attribute, as well as setting the rotate
-        # attribute for later. Only the img_bin attribute is altered because 
+        # attribute for later. Only the img_bin attribute is altered because
         # the image_stack attribute exists to expose the unprocessed image to
         # the user.
-        # 
+        #
         # Also note that this only applies to 2D graphs, because 3D graphs
         # cannot be rotated.
         if rotate is not None:
@@ -563,8 +204,7 @@ class Network:
 
             drop_list = []
             for i in range(self.Gr.vcount()):
-                if not base.Q_inside(np.asarray([node_positions[i]]),
-                                     inner_crop):
+                if not base.Q_inside(np.asarray([node_positions[i]]), inner_crop):
                     drop_list.append(i)
                     continue
 
@@ -576,19 +216,20 @@ class Network:
                 list(self.Gr.vs[i]["o"] for i in range(self.Gr.vcount()))
             )
             final_shift = np.asarray(
-                list(min(node_positions.T[i]) for i in (0, 1, 2)[0: self.dim])
+                list(min(node_positions.T[i]) for i in (0, 1, 2)[0 : self.dim])
             )
             edge_positions_list = np.asarray(
                 list(
                     base.oshift(self.Gr.es[i]["pts"], _shift=centre)
                     for i in range(self.Gr.ecount())
-                )
+                ), dtype=object
             )
             for i, edge in enumerate(edge_positions_list):
                 edge_position = np.vstack((edge.T, np.zeros(len(edge)))).T
                 edge_position = np.matmul(edge_position, self.rotate).T[0:2].T
-                edge_position = base.shift(edge_position,
-                                           _shift=-centre + final_shift)[0]
+                edge_position = base.shift(edge_position, _shift=-centre + final_shift)[
+                    0
+                ]
                 self.Gr.es[i]["pts"] = edge_position
 
             node_positions = base.shift(node_positions, _shift=final_shift)[0]
@@ -597,16 +238,14 @@ class Network:
                 self.Gr.vs[i]["pts"] = node_positions[i]
 
         if weight_type is not None:
-            self.Gr = base.add_weights(self, weight_type=weight_type,
-                                       **kwargs)
+            self.Gr = base.add_weights(self, weight_type=weight_type, **kwargs)
 
         self.shape = list(
             max(list(self.Gr.vs[i]["o"][j] for i in range(self.Gr.vcount())))
-            for j in (0, 1, 2)[0: self.dim]
+            for j in (0, 1, 2)[0 : self.dim]
         )
 
-    def Node_labelling(self, attribute, label, filename, edge_weight=None,
-                       mode="rb+"):
+    def Node_labelling(self, attribute, label, filename, edge_weight=None, mode="rb+"):
         """Method saves a new .gsd which labels the :attr:`Gr` attribute with
         the given node attribute values. Method saves the
         :class:`igraph.Graph` in the .gsd.
@@ -669,8 +308,7 @@ class Network:
 
         # Store adjacency matrix in CSR format
         rows, columns, values = convert.to_dense(
-            np.array(self.Gr.get_adjacency(attribute=edge_weight).data,
-                     dtype=np.single)
+            np.array(self.Gr.get_adjacency(attribute=edge_weight).data, dtype=np.single)
         )
         s.log["Adj_rows"] = rows
         s.log["Adj_cols"] = columns
@@ -678,8 +316,9 @@ class Network:
 
         j = 0
         for i, particle in enumerate(positions):
-            node_id = np.where(np.all(positions[i] == node_positions,
-                               axis=1) == True)[0]
+            node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[
+                0
+            ]
             if len(node_id) == 0:
                 continue
             else:
@@ -740,14 +379,17 @@ class Network:
 
         cast = _bounded_betweenness_cast.PyCast(_copy._raw_pointer())
 
-        cast.bounded_betweenness_compute(np.array(sources, dtype=np.double),
-                                         np.array(targets, dtype=np.double),
-                                         num_edges, weights)
+        cast.bounded_betweenness_compute(
+            np.array(sources, dtype=np.double),
+            np.array(targets, dtype=np.double),
+            num_edges,
+            weights,
+        )
 
         return cast.bounded_betweenness
 
 
-class ResistiveNetwork(Network):
+class ResistiveNetwork(PhysicalNetwork):
     """A :class:`Network` class with methods for analyzing flow in networks
     with linearly driven flow.
     """
@@ -755,8 +397,7 @@ class ResistiveNetwork(Network):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def potential_distribution(self, axis, boundary1, boundary2, R_j=0,
-                               rho_dim=1):
+    def potential_distribution(self, axis, boundary1, boundary2, R_j=0):
         """Solves for the potential distribution in a (optionally, weighted)
         network. Source and sink nodes are connected according to a
         penetration boundary condition. After calling, the weighted Laplacian,
@@ -774,9 +415,6 @@ class ResistiveNetwork(Network):
                 connected to the sink.
             R_j (float, optional):
                 The constant resistance term associated with each edge.
-            rho_dim (float, optional):
-                The dimensionless resistivity used to calculate resistances
-                that scale according to Pouillet's Law.
 
         NOTE: Critical that :meth:`G_u()` is called before every
         :meth:`potential_distribution()` call
@@ -799,7 +437,7 @@ class ResistiveNetwork(Network):
         self.Gr_connected.add_vertices(2)
 
         print("Graph has max ", self.shape)
-        axes = np.array([0, 1, 2])[0: self.dim]
+        axes = np.array([0, 1, 2])[0 : self.dim]
         indices = axes[axes != axis]
         axis_centre1 = np.zeros(self.dim, dtype=int)
         delta = np.zeros(self.dim, dtype=int)
@@ -820,36 +458,27 @@ class ResistiveNetwork(Network):
             self.Gr_connected.vcount(),
         )
         for node in self.Gr_connected.vs:
-            if (node["o"][axis] >= boundary1[0] and
-                    node["o"][axis] <= boundary1[1]):
+            if node["o"][axis] >= boundary1[0] and node["o"][axis] <= boundary1[1]:
                 self.Gr_connected.add_edges([(node.index, source_id)])
-                self.Gr_connected.es[
-                    self.Gr_connected.get_eid(
-                        node.index,
-                        source_id)]["Conductance"] = weight_avg
-                self.Gr_connected.es[
-                    self.Gr_connected.get_eid(
-                        node.index,
-                        source_id)]["pts"] = base.connector(source_coord,
-                                                            node["o"])
-            if (node["o"][axis] >= boundary2[0] and
-                    node["o"][axis] <= boundary2[1]):
+                self.Gr_connected.es[self.Gr_connected.get_eid(node.index, source_id)][
+                    "Conductance"
+                ] = weight_avg
+                self.Gr_connected.es[self.Gr_connected.get_eid(node.index, source_id)][
+                    "pts"
+                ] = base.connector(source_coord, node["o"])
+            if node["o"][axis] >= boundary2[0] and node["o"][axis] <= boundary2[1]:
                 self.Gr_connected.add_edges([(node.index, sink_id)])
-                self.Gr_connected.es[
-                    self.Gr_connected.get_eid(
-                        node.index,
-                        sink_id)]["Conductance"] = weight_avg
-                self.Gr_connected.es[
-                    self.Gr_connected.get_eid(
-                        node.index,
-                        sink_id)]["pts"] = base.connector(sink_coord,
-                                                          node["o"])
+                self.Gr_connected.es[self.Gr_connected.get_eid(node.index, sink_id)][
+                    "Conductance"
+                ] = weight_avg
+                self.Gr_connected.es[self.Gr_connected.get_eid(node.index, sink_id)][
+                    "pts"
+                ] = base.connector(sink_coord, node["o"])
 
         # Write skeleton connected to external node
         print(self.Gr_connected.is_connected(), " connected")
         print(
-            "After connecting external nodes, G has vcount ",
-            self.Gr_connected.vcount()
+            "After connecting external nodes, G has vcount ", self.Gr_connected.vcount()
         )
         connected_name = (
             os.path.split(self.gsd_name)[0]
@@ -861,7 +490,7 @@ class ResistiveNetwork(Network):
         if R_j == "infinity":
             self.L = np.asarray(self.Gr.laplacian())
         else:
-            self.L = np.asarray(self.Gr.laplacian(weights='Conductance'))
+            self.L = np.asarray(self.Gr.laplacian(weights="Conductance"))
 
         F = np.zeros(sink_id + 1)
         F[source_id] = 1
@@ -881,7 +510,7 @@ class ResistiveNetwork(Network):
         return O_eff
 
 
-class StructuralNetwork(Network):
+class StructuralNetwork(PhysicalNetwork):
     """A :class:`Network` class with methods for analyzing classical network
     structural parameters.
     """
@@ -903,8 +532,7 @@ class StructuralNetwork(Network):
             self.Gr.transitivity_undirected,
             self.Gr.assortativity_degree,
         ]
-        names = ["Diameter", "Density", "Clustering",
-                 "Assortativity by degree"]
+        names = ["Diameter", "Density", "Clustering", "Assortativity by degree"]
 
         for operation, name in zip(operations, names):
             start = time.time()
@@ -970,8 +598,7 @@ class StructuralNetworkList(StructuralNetwork):
                 )
             )
             self.Gr.append(
-                base.gsd_to_G(self.gsd_name, _2d=self._2d,
-                              sub=False, crop=crop)
+                base.gsd_to_G(self.gsd_name, _2d=self._2d, sub=False, crop=crop)
             )
 
         if self.rotate is not None:
