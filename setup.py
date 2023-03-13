@@ -1,20 +1,8 @@
 from Cython.Build import cythonize
 from setuptools import find_packages, setup, Extension
 
-ext=cythonize(Extension(name="StructuralGTEdits._bounded_betweenness_cast",
-                        sources=["_bounded_betweenness_cast.pyx"],
-                        language="c++",
-                        include_dirs=["/usr/local/include/igraph",
-                                      "/usr/local/include",
-                                      "/Users/alaink/miniconda3/bin/../include/c++/v1",
-                                      "/Users/alaink/miniconda3/pkgs/numpy-1.24.1-py310h5d7c261_0/lib/python3.10/site-packages/numpy/core/include"],
-                        library_dirs=["/usr/local/lib",
-                                      "/Users/alaink/miniconda3/bin/../include/c++/v1",
-                                      "/Users/alaink/miniconda3/pkgs"],
-                        extra_objects=["-ligraph","-ligraph-scg"],
-                                libraries=['m'],
-                        )
-              )
+import numpy as np
+
 
 setup(
     name='StructuralGTEdits',
@@ -22,7 +10,7 @@ setup(
     install_requires=[
         'numpy',
         'scipy',
-        'scikit-image',
+#        'scikit-image',
         'matplotlib',
         'networkx',
         'opencv-python',
@@ -34,7 +22,37 @@ setup(
         'pytest',
         'cmake'
     ],
-    ext_modules=cythonize(ext),
+    setup_requires = ["cython"],
+    ext_modules=cythonize([
+                              Extension(name="StructuralGTEdits._bounded_betweenness_cast",
+                              sources=["_bounded_betweenness_cast.pyx"],
+                              language="c++",
+                              include_dirs=[np.get_include(),
+                                            "/usr/local/include/igraph",],
+                                            #"/Users/alaink/miniconda3/bin/../include/c++/v1",],
+                              library_dirs=["/usr/local/lib",],
+                                            #"/Users/alaink/miniconda3/bin/../include/c++/v1",],
+                              extra_objects=["-ligraph"]
+                                        ),
+
+                              Extension(name="StructuralGTEdits._random_betweenness_cast",
+                              sources=["_random_betweenness_cast.pyx"],
+                              language="c++",
+                              include_dirs=[np.get_include(),
+                                            "/usr/local/include/igraph",
+                                            "/usr/local/include/eigen3"],
+                                            #"/Users/alaink/miniconda3/bin/../include/c++/v1",],
+                              library_dirs=["/usr/local/lib",],
+                                            #"/Users/alaink/miniconda3/bin/../include/c++/v1",],
+                              extra_objects=["-ligraph"]
+                                        ),
+
+                              Extension(name="StructuralGTEdits.convert",
+                              sources=["convert.pyx"]),
+
+                            ]
+                          ),
     zip_safe=False,
-    package_data={'StructuralGTEdits':['pytest/data/*/*']},
+    package_data={'StructuralGTEdits':['pytest/data/*/*',]}#'_bounded_betweenness_cast.pyx'],}
+                  #'StructuralGTEdits._boundndess_betweenness_cast':['_bounded_betweenneess_cast.pyx']},
 )
