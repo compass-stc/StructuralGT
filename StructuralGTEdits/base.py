@@ -73,7 +73,7 @@ def connector(point1, point2):
     return edge
 
 
-def shift(points, _2d, _shift=None):
+def shift(points, _2d=False, _shift=None):
     """Translates all points such that the minimum coordinate in points is
     the origin.
 
