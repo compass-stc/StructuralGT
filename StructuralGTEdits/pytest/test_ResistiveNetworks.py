@@ -46,6 +46,7 @@ def test_potential(graph):
 
     return N
 
+@pytest.fixture
 def test_node_labelling(potential):
     N = potential
     N.Node_labelling(N.P,'P','test.gsd') 
