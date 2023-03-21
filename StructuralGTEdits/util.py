@@ -89,7 +89,7 @@ class _cropper:
                 Network.stack_dir + "/slice000.tiff",
                 cv.IMREAD_GRAYSCALE).shape
             if self.dim == 2:
-                self.dims = planar_dims + (1,)
+                self.dims = (1,) + planar_dims
             else:
                 self.dims = planar_dims + (depth,)
 

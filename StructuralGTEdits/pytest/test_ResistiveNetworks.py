@@ -8,7 +8,7 @@ _path = StructuralGTEdits.__path__[0]
 
 @pytest.fixture(params=[pytest.param(_path+'/pytest/data/AgNWN'),
                         pytest.param(_path+'/pytest/data/ANF')])
-def binarize(request):
+def test_binarize(request):
     _dir = request.param
     if os.path.isdir(_dir+'/Binarized'): shutil.rmtree(_dir+'/Binarized')
 
@@ -20,7 +20,7 @@ def binarize(request):
     return N
 
 @pytest.fixture
-def gsd(binarize):
+def test_gsd(binarize):
     N = binarize
     if N._2d:
         N.stack_to_gsd(crop=[149, 868, 408, 1127], rotate=45) 
@@ -30,14 +30,14 @@ def gsd(binarize):
     return N
 
 @pytest.fixture
-def graph(gsd):
+def test_graph(gsd):
     N = gsd
     N.G_u(weight_type=['FixedWidthConductance'], sub=True)
 
     return N
 
 @pytest.fixture
-def potential(graph):
+def test_potential(graph):
     N = graph
     if N._2d:
         N.potential_distribution(0,[0,20],[180,200],R_j=10)
