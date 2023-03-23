@@ -5,9 +5,9 @@
 #include "Util.h"
 
 #if IGRAPH_INTEGER_SIZE==64
-typedef long IG_LONG;
+typedef int64_t IG_LONG;
 #elif IGRAPH_INTEGER_SIZE==32
-typedef long IG_LONG;
+typedef int32_t IG_LONG;
 #endif
 
 namespace interface {
