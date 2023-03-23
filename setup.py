@@ -1,8 +1,9 @@
 from Cython.Build import cythonize
+import os
 from setuptools import find_packages, setup, Extension
 
-import numpy as np
-
+include_dirs = [os.getenv("CONDA_PREFIX") + '/include/igraph',
+                os.getenv("CONDA_PREFIX") + '/include/eigen3',]
 
 setup(
     name='StructuralGTEdits',
@@ -10,7 +11,7 @@ setup(
     install_requires=[
         'numpy',
         'scipy',
-#        'scikit-image',
+        'scikit-image',
         'matplotlib',
         'networkx',
         'opencv-python',
@@ -19,31 +20,25 @@ setup(
         'Cython',
         'gsd',
         'python-igraph',
+        'igraph',
+        'eigen',
         'pytest',
         'cmake'
     ],
     setup_requires = ["cython"],
+#    ext_modules=cythonize('convert.pyx'))
     ext_modules=cythonize([
                               Extension(name="StructuralGTEdits._bounded_betweenness_cast",
                               sources=["_bounded_betweenness_cast.pyx"],
+                              include_dirs=include_dirs,
                               language="c++",
-                              include_dirs=[np.get_include(),
-                                            "/usr/local/include/igraph",],
-                                            #"/Users/alaink/miniconda3/bin/../include/c++/v1",],
-                              library_dirs=["/usr/local/lib",],
-                                            #"/Users/alaink/miniconda3/bin/../include/c++/v1",],
                               extra_objects=["-ligraph"]
                                         ),
 
                               Extension(name="StructuralGTEdits._random_betweenness_cast",
                               sources=["_random_betweenness_cast.pyx"],
+                              include_dirs=include_dirs,
                               language="c++",
-                              include_dirs=[np.get_include(),
-                                            "/usr/local/include/igraph",
-                                            "/usr/local/include/eigen3"],
-                                            #"/Users/alaink/miniconda3/bin/../include/c++/v1",],
-                              library_dirs=["/usr/local/lib",],
-                                            #"/Users/alaink/miniconda3/bin/../include/c++/v1",],
                               extra_objects=["-ligraph"]
                                         ),
 
