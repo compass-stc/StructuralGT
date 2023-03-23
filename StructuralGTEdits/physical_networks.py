@@ -373,15 +373,15 @@ class PhysicalNetwork(util.Network):
         _copy = copy.deepcopy(self.Gr)
 
         if weights is None:
-            weights = np.array(_copy.es[weights], dtype=np.double)
+            weights = np.ones(num_edges, dtype=np.double)
         else:
             weights = np.array(_copy.es[weights], dtype=np.double)
 
         cast = _bounded_betweenness_cast.PyCast(_copy._raw_pointer())
 
         cast.bounded_betweenness_compute(
-            np.array(sources, dtype=np.int_),
-            np.array(targets, dtype=np.int_),
+            np.array(sources, dtype=np.longlong),
+            np.array(targets, dtype=np.longlong),
             num_edges,
             weights,
         )
@@ -395,15 +395,15 @@ class PhysicalNetwork(util.Network):
         _copy = copy.deepcopy(self.Gr)
 
         if weights is None:
-            weights = np.array(_copy.es[weights], dtype=np.double)
+            weights = np.ones(num_edges, dtype=np.double)
         else:
             weights = np.array(_copy.es[weights], dtype=np.double)
 
         cast = _random_betweenness_cast.PyCast(_copy._raw_pointer())
 
         cast.random_betweenness_compute(
-            np.array(sources, dtype=np.int_),
-            np.array(targets, dtype=np.int_),
+            np.array(sources, dtype=np.longlong),
+            np.array(targets, dtype=np.longlong),
             num_edges,
             weights,
         )

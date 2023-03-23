@@ -7,8 +7,10 @@ namespace interface {
     class BoundedBetweennessCast {
         public:
             void* G_ptr;
-            long* sources_ptr;
-            long* targets_ptr;
+            long long* sources_ptr;
+            long long* targets_ptr;
+            //std::vector<long long> sources;
+            //std::vector<long long> targets;
             double* weights_ptr;
             int sources_len;
             int targets_len;
