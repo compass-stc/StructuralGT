@@ -26,8 +26,8 @@ jobs:
         show-channel-urls: true
 
     - name: Build and install package
+      shell: bash -l {0}  # conda stetup requires this special shell
       run: |
-        shell: bash -l {0}  # conda stetup requires this special shell
         python setup.py install
     - name: Test with pytest
       run: |
