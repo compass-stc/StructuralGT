@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest, windows-latest]
     strategy:
       max-parallel: 5
 
@@ -31,5 +31,4 @@ jobs:
         python setup.py install
     - name: Test with pytest
       run: |
-        conda install pytest
         pytest
