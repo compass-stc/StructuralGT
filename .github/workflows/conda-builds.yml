@@ -3,6 +3,39 @@ name: Python Package using Conda
 on: [push]
 
 jobs:
+  test:
+    name: Test on ${{ matrix.os }}, Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # drop testing on macOS because of hours limits for private repos
+        os: [ubuntu-latest, windows-latest] #, macOS-latest]
+        python-version: ["3.11"]
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2.4.0
+
+    - name: Create Testing Environment
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        environment-file: .github/workflows/env.yml
+        channels: conda-forge,defaults
+        activate-environment: test
+        auto-update-conda: false
+        auto-activate-base: false
+        show-channel-urls: true
+
+    - name: Install package
+      shell: bash -l {0}  # conda stetup requires this special shell
+      run: |
+        python setup.py install
+    - name: Run tests
+      shell: bash -l {0}  # conda setup requires this special shell
+      run: |
+        pytest
+        
   build-linux:
     runs-on: [ubuntu-latest, windows-latest]
     strategy:
