@@ -30,7 +30,8 @@ setup(
         'igraph',
         'eigen',
         'pytest',
-        'cmake'
+        'cmake',
+        'freud'
     ],
     setup_requires = ["cython"],
 #    ext_modules=cythonize('convert.pyx'))
