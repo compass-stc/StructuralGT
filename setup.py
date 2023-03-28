@@ -5,8 +5,10 @@ import platform
 
 if platform.system() == 'Windows':
     PREFIX=os.path.join(os.getenv("CONDA_PREFIX"), 'Library')
+    extra_ob=os.path.join(PREFIX, 'lib', 'igraph.lib')
 else:
     PREFIX=os.getenv("CONDA_PREFIX")
+    extra_ob="-ligraph"
 include_dirs = [os.path.join(PREFIX, 'include', 'igraph'),
                 os.path.join(PREFIX, 'include', 'eigen3'),]
 
@@ -37,14 +39,14 @@ setup(
                               sources=["_bounded_betweenness_cast.pyx"],
                               include_dirs=include_dirs,
                               language="c++",
-                              extra_objects=["-ligraph"]
+                              extra_objects=[extra_obj]
                                         ),
 
                               Extension(name="StructuralGTEdits._random_betweenness_cast",
                               sources=["_random_betweenness_cast.pyx"],
                               include_dirs=include_dirs,
                               language="c++",
-                              extra_objects=["-ligraph"]
+                              extra_objects=[extra_obj]
                                         ),
 
                               Extension(name="StructuralGTEdits.convert",
