@@ -35,33 +35,3 @@ jobs:
       shell: bash -l {0}  # conda setup requires this special shell
       run: |
         pytest
-        
-  build-linux:
-    runs-on: [ubuntu-latest, windows-latest]
-    strategy:
-      max-parallel: 5
-
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.10'
-    - name: Create Testing Environment
-      uses: conda-incubator/setup-miniconda@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-        environment-file: .github/workflows/conda-envs/env.yml
-        channels: conda-forge,defaults
-        activate-environment: test
-        auto-update-conda: false
-        auto-activate-base: false
-        show-channel-urls: true
-
-    - name: Build and install package
-      shell: bash -l {0}  # conda stetup requires this special shell
-      run: |
-        python setup.py install
-    - name: Test with pytest
-      run: |
-        pytest
