@@ -15,8 +15,7 @@ To use, clone, build, and install from the `GitHub repository
 
    git clone https://github.com/AlainKadar/StructuralGTEdits
    cd StructuralGTEdits
-   python -m build
-   pip install dist/StructuralGTEdits-0.0.1.tar.gz
+   python setup.py install
 
 Example
 =======
