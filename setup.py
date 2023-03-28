@@ -5,10 +5,10 @@ import platform
 
 if platform.system() == 'Windows':
     PREFIX=os.path.join(os.getenv("CONDA_PREFIX"), 'Library')
-    extra_ob=os.path.join(PREFIX, 'lib', 'igraph.lib')
+    extra_obj=os.path.join(PREFIX, 'lib', 'igraph.lib')
 else:
     PREFIX=os.getenv("CONDA_PREFIX")
-    extra_ob="-ligraph"
+    extra_obj="-ligraph"
 include_dirs = [os.path.join(PREFIX, 'include', 'igraph'),
                 os.path.join(PREFIX, 'include', 'eigen3'),]
 
