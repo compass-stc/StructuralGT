@@ -1,8 +1,16 @@
 from Cython.Build import cythonize
+import os
 from setuptools import find_packages, setup, Extension
+import platform
 
-import numpy as np
-
+if platform.system() == 'Windows':
+    PREFIX=os.path.join(os.getenv("CONDA_PREFIX"), 'Library')
+    extra_obj=os.path.join(PREFIX, 'lib', 'igraph.lib')
+else:
+    PREFIX=os.getenv("CONDA_PREFIX")
+    extra_obj="-ligraph"
+include_dirs = [os.path.join(PREFIX, 'include', 'igraph'),
+                os.path.join(PREFIX, 'include', 'eigen3'),]
 
 setup(
     name='StructuralGTEdits',
@@ -10,7 +18,7 @@ setup(
     install_requires=[
         'numpy',
         'scipy',
-#        'scikit-image',
+        'scikit-image',
         'matplotlib',
         'networkx',
         'opencv-python',
@@ -19,32 +27,27 @@ setup(
         'Cython',
         'gsd',
         'python-igraph',
+        'igraph',
+        'eigen',
         'pytest',
-        'cmake'
+        'cmake',
+        'freud'
     ],
     setup_requires = ["cython"],
+#    ext_modules=cythonize('convert.pyx'))
     ext_modules=cythonize([
                               Extension(name="StructuralGTEdits._bounded_betweenness_cast",
                               sources=["_bounded_betweenness_cast.pyx"],
+                              include_dirs=include_dirs,
                               language="c++",
-                              include_dirs=[np.get_include(),
-                                            "/usr/local/include/igraph",],
-                                            #"/Users/alaink/miniconda3/bin/../include/c++/v1",],
-                              library_dirs=["/usr/local/lib",],
-                                            #"/Users/alaink/miniconda3/bin/../include/c++/v1",],
-                              extra_objects=["-ligraph"]
+                              extra_objects=[extra_obj]
                                         ),
 
                               Extension(name="StructuralGTEdits._random_betweenness_cast",
                               sources=["_random_betweenness_cast.pyx"],
+                              include_dirs=include_dirs,
                               language="c++",
-                              include_dirs=[np.get_include(),
-                                            "/usr/local/include/igraph",
-                                            "/usr/local/include/eigen3"],
-                                            #"/Users/alaink/miniconda3/bin/../include/c++/v1",],
-                              library_dirs=["/usr/local/lib",],
-                                            #"/Users/alaink/miniconda3/bin/../include/c++/v1",],
-                              extra_objects=["-ligraph"]
+                              extra_objects=[extra_obj]
                                         ),
 
                               Extension(name="StructuralGTEdits.convert",
