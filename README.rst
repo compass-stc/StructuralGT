@@ -23,9 +23,9 @@ The following minimal example shows how the package can be used to calculate the
 
 .. code:: python
 
-   from StructuralGTEdits import network
+   from StructuralGTEdits import physical_networks
 
-   Nanofibre3DNetwork = network.StructuralNetwork('Nanofibre_Image_Stack')
+   Nanofibre3DNetwork = physical_networks.StructuralNetwork('Nanofibre_Image_Stack')
    Nanofibre3DNetwork.binarize()
    Nanofibre3DNetwork.stack_to_gsd(crop=[0,500,0,500,0,500])
    Nanofibre3DNetwork.node_calc(betweenness=True)
