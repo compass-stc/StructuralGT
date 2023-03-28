@@ -2,8 +2,8 @@ from Cython.Build import cythonize
 import os
 from setuptools import find_packages, setup, Extension
 
-include_dirs = [os.getenv("CONDA_PREFIX") + '/include/igraph',
-                os.getenv("CONDA_PREFIX") + '/include/eigen3',]
+include_dirs = [os.path.join(os.getenv("CONDA_PREFIX"), 'include', 'igraph',
+                os.getenv("CONDA_PREFIX"), 'include', 'eigen3',]
 
 setup(
     name='StructuralGTEdits',
