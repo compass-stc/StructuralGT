@@ -86,7 +86,7 @@ class _cropper:
         if domain is None:
             self.crop = slice(None)
             planar_dims = cv.imread(
-                Network.stack_dir + "/slice000.tiff",
+                Network.stack_dir + "/slice0000.tiff",
                 cv.IMREAD_GRAYSCALE).shape
             if self.dim == 2:
                 self.dims = (1,) + planar_dims
@@ -195,7 +195,7 @@ class _fname():
     """Class to represent file names of 2D image slices, with helper
     functions.
 
-    Assumes each file has 3 character number, e.g. 053, followed by 3 or 4
+    Assumes each file has 4 character number, e.g. 0053, followed by 3 or 4
     character extension, e.g. .tif or .tiff.
 
     Args:
@@ -210,8 +210,8 @@ class _fname():
             raise ValueError('File does not exist.')
         self.name = name
         self.domain = domain
-        num1 = name[-7:-4]
-        num2 = name[-8:-5]
+        num1 = name[-8:-4]
+        num2 = name[-9:-5]
         if num1.isnumeric() and num2.isnumeric():
             raise ValueError('Directory contents names ambiguous.')
         elif num1.isnumeric():

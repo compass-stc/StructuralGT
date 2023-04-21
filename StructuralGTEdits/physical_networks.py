@@ -11,6 +11,11 @@ import copy
 
 
 class PhysicalNetwork(util.Network):
+    """A :class:`Network` class with methods for constructing networks from
+    images. This is the parent class for all classes for which edges
+    represent tangible links and should not be instantiated directly by the
+    user.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
