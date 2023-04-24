@@ -82,6 +82,7 @@ class _cropper:
                 depth = domain[5] - domain[4]
             if depth == 0:
                 raise error.ImageDirectoryError(Network.stack_dir)
+        self.depths = Network.depth
 
         if domain is None:
             self.crop = slice(None)
@@ -110,6 +111,15 @@ class _cropper:
                     domain[3] - domain[2],
                     domain[5] - domain[4],
                 )
+
+    @property
+    def _3d(self):
+        if self.dim == 2:
+            return None
+        elif self.crop == slice(None):
+            return self.depths
+        else:
+            return [self.crop[2].start, self.crop[2].stop]
 
     @property
     def _2d(self):
@@ -246,11 +256,12 @@ class _fname():
 
 
 class Network:
-    """Generic class to represent networked image data.
+    """Generic class to represent networked image data. Should not be
+    instantiated by the user.
 
     Children of this class will hold igraph :class:`Graph` attributes and
     holds additional attributes and methods for supporting geometric features
-    associated images,dimensionality etc.
+    associated images, dimensionality etc.
 
     Args:
         directory (str):
@@ -327,7 +338,6 @@ class Network:
 
         self.options = options_dict
 
-
     def set_img_bin(self, crop):
         
         self.cropper = _cropper(self, domain=crop)
@@ -343,9 +353,10 @@ class Network:
 
         i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
-            fname = _fname(self.stack_dir + "/" + fname, domain=_domain(self.depth))
+            #fname = _fname(self.stack_dir + "/" + fname, domain=_domain(self.depth))
+            fname = _fname(self.stack_dir + "/" + fname, domain=_domain(self.cropper._3d))
             if fname.isimg and fname.isinrange:
-                suff = base.tripletise(i)
+                suff = base.quadrupletise(i)
                 img_bin[i - self.cropper.surface] = (
                     base.read(
                         self.stack_dir + "/slice" + fname.num + ".tiff",

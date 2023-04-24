@@ -572,10 +572,11 @@ def from_gsd(filename, frame=0):
 
     return N
 
-def tripletise(i):
-    if len(str(i))==3: return str(i)
-    elif len(str(i))==2: return '0' + str(i)
-    elif len(str(i))==1: return '00' + str(i)
+def quadrupletise(i):
+    if len(str(i))==4: return str(i)
+    elif len(str(i))==3: return '0' + str(i)
+    elif len(str(i))==2: return '00' + str(i)
+    elif len(str(i))==1: return '000' + str(i)
     else: raise ValueError
 
 #1-2-3 and 3-2-1 not double counted
