@@ -312,9 +312,14 @@ class PhysicalNetwork(util.Network):
         s.log["particles/" + label] = [np.NaN] * N
 
         # Store adjacency matrix in CSR format
-        rows, columns, values = convert.to_dense(
-            np.array(self.Gr.get_adjacency(attribute=edge_weight).data, dtype=np.single)
-        )
+        matrix = self.Gr.get_adjacency_sparse(attribute=edge_weight)
+        rows, columns = matrix.nonzero()
+        values = matrix.data
+
+        #rows, columns, values = convert.to_dense(
+        #    np.array(self.Gr.get_adjacency(attribute=edge_weight).data, dtype=np.single)
+        #)
+
         s.log["Adj_rows"] = rows
         s.log["Adj_cols"] = columns
         s.log["Adj_values"] = values
