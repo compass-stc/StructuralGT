@@ -42,6 +42,7 @@ def Q_img(name):
         name.endswith('.jpg') or
         name.endswith('.jpeg') or
         name.endswith('.png') or
+        name.endswith('.bmp') or
             name.endswith('.gif')):
         return True
     else:
