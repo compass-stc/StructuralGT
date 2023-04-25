@@ -68,7 +68,6 @@ void RandomBetweennessCast::random_betweenness_compute () {
     /*Here, from/to refer to the edge endpoints; not the source/targets used
      * to calculate the betweenness subset.
      */
-    printf("Elem %f\n", igraph_sparsemat_get(&A,0,8));
     betweennesses.resize(num_edges);
     igraph_integer_t from, to;
     for (int i=0; i<num_edges; i++) {
