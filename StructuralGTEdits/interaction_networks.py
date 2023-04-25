@@ -88,9 +88,14 @@ class InteractionNetwork(util.Network):
         s.particles.typeid = [0] * N
         s.log["particles/" + label] = [np.NaN] * N
         s.configuration.box = self.box
-        rows, columns, values = convert.to_dense(
-            np.array(self.Gr.get_adjacency(attribute='Weight').data, dtype=np.single)
-        )
+        
+        matrix = self.Gr.get_adjacency_sparse(attribute='Weight')
+        rows, columns = matrix.nonzero()
+        values = matrix.data
+        
+        #rows, columns, values = convert.to_dense(
+        #    np.array(self.Gr.get_adjacency(attribute='Weight').data, dtype=np.single)
+        #)
         s.log["Adj_rows"] = rows
         s.log["Adj_cols"] = columns
         s.log["Adj_values"] = values
