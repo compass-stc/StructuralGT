@@ -36,7 +36,6 @@ cdef class PyCast:
             targets_vec.push_back(targets[i])
         self.c_cast.sources = sources_vec
         self.c_cast.targets = targets_vec
-        print(weights)
         if weights is None:
             weights = np.ones(num_edges+1, dtype=np.double)
 
