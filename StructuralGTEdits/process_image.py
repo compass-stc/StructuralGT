@@ -117,7 +117,7 @@ def binarize(source, options):
 
     # making a 5x5 array of all 1's for median filter, and a disk for the autolevel filter
     darray = np.zeros((5, 5)) + 1
-    selem = disk(bsize)
+    footprint = disk(bsize)
 
     # applying median filter
     if (md_filter == 1):
@@ -129,7 +129,7 @@ def binarize(source, options):
 
     # applying autolevel filter
     if (autolvl == 1):
-        img = autolevel(img, selem=selem)
+        img = autolevel(img, footprint=footprint)
 
     # applying a scharr filter, and then taking that image and weighting it 25% with the original
     # this should bring out the edges without separating each "edge" into two separate parallel ones

@@ -307,7 +307,7 @@ def debubble(g, elements):
     canvas = g.img_bin
     for elem in elements:
         canvas = skeletonize_3d(canvas)/255
-        canvas = binary_closing(canvas, selem=elem)
+        canvas = binary_closing(canvas, footprint=elem)
 
     g.skeleton = skeletonize_3d(canvas)/255
 
