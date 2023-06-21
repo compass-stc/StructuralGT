@@ -273,7 +273,7 @@ def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
 #Function generates largest connected induced subgraph. Node and edge numbers are reset such that they are consecutive integers, starting from 0
 def sub_G(G): 
     print('pre sub has ', G.vcount(), ' nodes')
-    components = G.clusters()
+    components = G.connected_components()
     G = components.giant() 
     print('post sub has ', G.vcount(), ' nodes')
    
