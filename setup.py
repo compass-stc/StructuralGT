@@ -50,6 +50,13 @@ setup(
                               extra_objects=[extra_obj]
                                         ),
 
+                              Extension(name="StructuralGTEdits._nonlinear_random_betweenness_cast",
+                              sources=["_nonlinear_random_betweenness_cast.pyx"],
+                              include_dirs=include_dirs,
+                              language="c++",
+                              extra_objects=[extra_obj]
+                                        ),
+
                               Extension(name="StructuralGTEdits.convert",
                               sources=["convert.pyx"]),
 
