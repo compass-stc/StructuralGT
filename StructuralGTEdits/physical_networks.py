@@ -98,8 +98,8 @@ class PhysicalNetwork(util.Network):
         self.set_img_bin(crop)
         
         if skeleton:
-            self.skeleton = skeletonize_3d(np.asarray(self.img_bin, dtype=int))
-            self.skeleton_3d = skeletonize_3d(np.asarray(self.img_bin_3d, dtype=int))
+            self.skeleton = skeletonize_3d(np.asarray(self.img_bin, dtype=np.dtype('uint8')))
+            self.skeleton_3d = skeletonize_3d(np.asarray(self.img_bin_3d, dtype=np.dtype('uint8')))
         else:
             self.img_bin = np.asarray(self.img_bin)
             self.skeleton_3d = self.img_bin_3d
