@@ -2,6 +2,7 @@
 requires = ["setuptools",
             "wheel",
             "Cython",
+            "numpy"
 ]
 
 [project]
