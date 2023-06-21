@@ -111,8 +111,8 @@ class PhysicalNetwork(util.Network):
         )
         self.positions = positions
 
-        with gsd.hoomd.open(name=self.gsd_name, mode="wb") as f:
-            s = gsd.hoomd.Snapshot()
+        with gsd.hoomd.open(name=self.gsd_name, mode="w") as f:
+            s = gsd.hoomd.Frame()
             s.particles.N = len(positions)
             if box:
                 L = list(max(positions.T[i]) for i in (0, 1, 2))
@@ -250,7 +250,7 @@ class PhysicalNetwork(util.Network):
             for j in (0, 1, 2)[0 : self.dim]
         )
 
-    def Node_labelling(self, attribute, label, filename, edge_weight=None, mode="rb+"):
+    def Node_labelling(self, attribute, label, filename, edge_weight=None, mode="r+"):
         """Method saves a new .gsd which labels the :attr:`Gr` attribute with
         the given node attribute values. Method saves the
         :class:`igraph.Graph` in the .gsd.
@@ -276,10 +276,10 @@ class PhysicalNetwork(util.Network):
             save_name = filename
         else:
             save_name = self.stack_dir + "/" + filename
-        if mode == "rb+" and os.path.exists(save_name):
-            _mode = "rb+"
+        if mode == "r+" and os.path.exists(save_name):
+            _mode = "r+"
         else:
-            _mode = "wb"
+            _mode = "w"
 
         f = gsd.hoomd.open(name=save_name, mode=_mode)
         self.labelled_name = save_name
@@ -302,7 +302,7 @@ class PhysicalNetwork(util.Network):
             node_positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4)
         )[0]
         positions = base.shift(positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4))[0]
-        s = gsd.hoomd.Snapshot()
+        s = gsd.hoomd.Frame()
         N = len(positions)
         s.particles.N = N
         s.particles.position = positions
@@ -419,6 +419,39 @@ class PhysicalNetwork(util.Network):
         )
 
         return cast.random_betweenness
+
+    def nonlinear_random_betweenness(self, sources, targets, incoming,
+                                     weights=None):
+        from StructuralGTEdits import _nonlinear_random_betweenness_cast
+        _copy = copy.deepcopy(self.Gr)
+
+        #Add ghost node and edges from targets to ghost
+        _copy.add_vertex(1)
+        for target in targets:
+            _copy.add_edge(self.Gr.vcount()-1,target)
+        num_edges = _copy.ecount()
+
+        #When passing weight vector, must add additional weights for edges
+        #between targets and ghost node (added in cpp file)
+        if weights is None:
+            weights = np.ones(num_edges, dtype=np.double)
+        else:
+            mean = np.mean(np.array(self.Gr.es[weights]))
+
+            weights = np.append(np.array(self.Gr.es[weights], dtype=np.double),
+                                np.full(len(targets), mean, dtype=np.double)).astype(np.double)
+            assert len(weights) == _copy.ecount()
+        cast = _nonlinear_random_betweenness_cast.PyCast(_copy._raw_pointer())
+
+        cast.nonlinear_random_betweenness_compute(
+            np.array(sources, dtype=np.longlong),
+            np.array(targets, dtype=np.longlong),
+            np.array(incoming, dtype=np.longlong),
+            num_edges,
+            weights,
+        )
+
+        return cast.nonlinear_random_betweenness
 
 
 class ResistiveNetwork(PhysicalNetwork):

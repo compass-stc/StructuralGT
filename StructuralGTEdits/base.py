@@ -202,13 +202,13 @@ def G_to_gsd(G, gsd_name):
     if dim==2:
         positions = np.append([np.zeros(N)],positions.T,axis=0).T
 
-    s = gsd.hoomd.Snapshot()
+    s = gsd.hoomd.Frame()
     s.particles.N = N
     s.particles.types = ['A']
     s.particles.typeid = ['0']*N
     s.particles.position = positions
 
-    with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
+    with gsd.hoomd.open(name=gsd_name, mode='w') as f:
         f.append(s)
 
 
@@ -236,7 +236,7 @@ def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
     Returns:
         (:class:`igraph.Graph`): The extracted :class:`igraph.Graph` object.
     """
-    frame = gsd.hoomd.open(name=gsd_name, mode='rb')[0]
+    frame = gsd.hoomd.open(name=gsd_name, mode='r')[0]
     positions = shift(frame.particles.position.astype(int))[0]
     if crop is not None:
         from numpy import logical_and as a
@@ -318,8 +318,8 @@ def debubble(g, elements):
         g.skeleton_3d = np.asarray(g.skeleton)
     
     positions = np.asarray(np.where(g.skeleton_3d!=0)).T
-    with gsd.hoomd.open(name=g.gsd_name, mode='wb') as f:
-        s = gsd.hoomd.Snapshot()
+    with gsd.hoomd.open(name=g.gsd_name, mode='w') as f:
+        s = gsd.hoomd.Frame()
         s.particles.N = int(sum(g.skeleton_3d.ravel()))
         s.particles.position = positions 
         s.particles.types = ['A']
@@ -346,8 +346,8 @@ def merge_nodes(g, disk_size):
         g.skeleton_3d = np.asarray(g.skeleton)
     
     positions = np.asarray(np.where(g.skeleton_3d!=0)).T
-    with gsd.hoomd.open(name=g.gsd_name, mode='wb') as f:
-        s = gsd.hoomd.Snapshot()
+    with gsd.hoomd.open(name=g.gsd_name, mode='w') as f:
+        s = gsd.hoomd.Frame()
         s.particles.N = int(sum(g.skeleton_3d.ravel()))
         s.particles.position = positions 
         s.particles.types = ['A']
@@ -373,8 +373,8 @@ def prune(g, size):
         g.skeleton_3d = np.asarray(g.skeleton)
     
     positions = np.asarray(np.where(g.skeleton_3d!=0)).T
-    with gsd.hoomd.open(name=g.gsd_name, mode='wb') as f:
-        s = gsd.hoomd.Snapshot()
+    with gsd.hoomd.open(name=g.gsd_name, mode='w') as f:
+        s = gsd.hoomd.Frame()
         s.particles.N = int(sum(g.skeleton_3d.ravel()))
         s.particles.position = positions 
         s.particles.types = ['A']
@@ -400,8 +400,8 @@ def remove_objects(g, size):
         g.skeleton_3d = np.asarray(g.skeleton)
     
     positions = np.asarray(np.where(g.skeleton_3d!=0)).T
-    with gsd.hoomd.open(name=g.gsd_name, mode='wb') as f:
-        s = gsd.hoomd.Snapshot()
+    with gsd.hoomd.open(name=g.gsd_name, mode='w') as f:
+        s = gsd.hoomd.Frame()
         s.particles.N = int(sum(g.skeleton_3d.ravel()))
         s.particles.position = positions 
         s.particles.types = ['A']
@@ -488,8 +488,8 @@ def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=Non
    
 
 
-    with gsd.hoomd.open(name=gsd_name, mode='wb') as f:
-        s = gsd.hoomd.Snapshot()
+    with gsd.hoomd.open(name=gsd_name, mode='w') as f:
+        s = gsd.hoomd.Frame()
         s.particles.N = len(positions)
         s.particles.position = shift(positions)
         s.particles.types = ['A']

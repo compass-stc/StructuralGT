@@ -55,17 +55,17 @@ class InteractionNetwork(util.Network):
         self.nlist = nlist
         self.points = points
 
-    def to_gsd(self, filename='skel.gsd', label='Degree', mode='rb+'):
+    def to_gsd(self, filename='skel.gsd', label='Degree', mode='r+'):
         
         if filename[0] == "/":
             save_name = filename
         else:
             save_name = self.stack_dir + "/" + filename
         
-        if mode == "rb+" and os.path.exists(save_name):
-            _mode = "rb+"
+        if mode == "r+" and os.path.exists(save_name):
+            _mode = "r+"
         else:
-            _mode = "wb"
+            _mode = "w"
 
         f = gsd.hoomd.open(name=save_name, mode=_mode)
         self.labelled_name = save_name
@@ -81,7 +81,7 @@ class InteractionNetwork(util.Network):
 
         positions = np.append(edge_positions, node_positions, axis=0)
         N = len(positions)
-        s = gsd.hoomd.Snapshot()
+        s = gsd.hoomd.Frame()
         s.particles.N = N
         s.particles.position = positions
         s.particles.types = ["Edge", "Node"]
