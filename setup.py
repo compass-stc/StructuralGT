@@ -6,9 +6,12 @@ import platform
 if platform.system() == 'Windows':
     PREFIX=os.path.join(os.getenv("CONDA_PREFIX"), 'Library')
     extra_obj=os.path.join(PREFIX, 'lib', 'igraph.lib')
+    freud='freud-analysis'
 else:
     PREFIX=os.getenv("CONDA_PREFIX")
     extra_obj="-ligraph"
+    freud='freud'
+
 include_dirs = [os.path.join(PREFIX, 'include', 'igraph'),
                 os.path.join(PREFIX, 'include', 'eigen3'),]
 
@@ -31,7 +34,7 @@ setup(
         'eigen',
         'pytest',
         'cmake',
-        'freud'
+        freud
     ],
     setup_requires = ["cython"],
 #    ext_modules=cythonize('convert.pyx'))
