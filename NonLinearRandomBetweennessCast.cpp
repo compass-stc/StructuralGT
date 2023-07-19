@@ -82,10 +82,10 @@ void NonLinearRandomBetweennessCast::nonlinear_random_betweenness_compute () {
         for (int s1=0; s1<sources_len; s1++) {
             for (int s2=0; s2<sources_len; s2++) {
                 //printf("%i,%i,%i,%i\n",s1,s2,int(from),int(to));
-                if (((int(from)==sources[s1] and int(to)==sources[s2]) 
-                 or (int(from)==sources[s2] and int(to)==sources[s1]))
-                        and !skip) {
-                    skip=true;
+                if (((int(from) == sources[s1] && int(to) == sources[s2]) ||
+                    (int(from) == sources[s2] && int(to) == sources[s1])) &&
+                    !skip) {
+                    skip = true;
                     break;
                 }
             }
@@ -94,8 +94,8 @@ void NonLinearRandomBetweennessCast::nonlinear_random_betweenness_compute () {
         for (int t1=0; t1<targets_len; t1++) {
             for (int t2=0; t2<targets_len; t2++) {
                 //printf("%i,%i,%i,%i\n",s1,s2,int(from),int(to));
-                if (((int(from) == sources[s1] && int(to) == sources[s2]) ||
-                    (int(from) == sources[s2] && int(to) == sources[s1])) &&
+                if (((int(from) == targets[t1] && int(to) == targets[t2]) ||
+                    (int(from) == targets[t2] && int(to) == targets[t1])) &&
                     !skip) {
                     skip = true;
                     break;
