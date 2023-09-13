@@ -9,10 +9,11 @@ A python package for the extraction and analysis of graphs from 2D and 3D experi
 Use
 ===
 To use, clone, build, and install from the `GitHub repository
-<https://github.com/AlainKadar/StructuralGTEdits>`__.
+<https://github.com/AlainKadar/StructuralGTEdits>`__. You will need to install the cython, igraph, and eigen with conda.
 
 .. code:: bash
 
+   conda install igraph eigen cython
    git clone https://github.com/AlainKadar/StructuralGTEdits
    cd StructuralGTEdits
    python setup.py install
