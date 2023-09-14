@@ -9,7 +9,6 @@ from skimage.morphology import skeletonize_3d
 from skimage.measure import regionprops, label
 import copy
 
-
 class PhysicalNetwork(util.Network):
     """A :class:`Network` class with methods for constructing networks from
     images. This is the parent class for all classes for which edges
@@ -453,6 +452,15 @@ class PhysicalNetwork(util.Network):
 
         return cast.nonlinear_random_betweenness
 
+    def average_nodal_connectivity(self):
+        from StructuralGTEdits import _average_nodal_connectivity_cast
+        _copy = copy.deepcopy(self.Gr)
+
+        cast = _average_nodal_connectivity_cast.PyCast(_copy._raw_pointer())
+
+        cast.average_nodal_connectivity_compute()
+
+        return cast.average_nodal_connectivity
 
 class ResistiveNetwork(PhysicalNetwork):
     """A :class:`Network` class with methods for analyzing flow in networks

@@ -60,6 +60,13 @@ setup(
                               extra_objects=[extra_obj]
                                         ),
 
+                              Extension(name="StructuralGTEdits._average_nodal_connectivity_cast",
+                              sources=["_average_nodal_connectivity_cast.pyx"],
+                              include_dirs=include_dirs,
+                              language="c++",
+                              extra_objects=[extra_obj]
+                                        ),
+
                               Extension(name="StructuralGTEdits.convert",
                               sources=["convert.pyx"]),
 
