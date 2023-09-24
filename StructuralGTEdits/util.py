@@ -291,15 +291,11 @@ class Network:
             fname = _fname(self.dir + '/' + slice_name,
                            domain=_domain(depth))
             if (fname.isinrange and fname.isimg):
-                _slice = cv.imread(self.dir + "/" + slice_name,
-                                   cv.IMREAD_GRAYSCALE)
+                _slice = cv.imread(self.dir + "/" + slice_name)
                 image_stack.append(_slice, slice_name)
-                #self.img.append(_slice)
-                #self.slice_names.append(slice_name)
 
         self.image_stack = image_stack
         self.image_stack.package()
-        #self.img = np.asarray(self.img)
         if len(self.image_stack)==1: 
             self._2d = True
             self.dim = 2
@@ -327,9 +323,10 @@ class Network:
         if not os.path.isdir(self.dir + self.child_dir):
             os.mkdir(self.dir + self.child_dir)
 
-        for image,name in self.image_stack:
+        for _,name in self.image_stack:
             fname = _fname(self.dir + '/' + name)
-            _, img_bin, _ = process_image.binarize(image, options_dict)
+            gray_image = cv.imread(self.dir + '/' + name, cv.IMREAD_GRAYSCALE)
+            _, img_bin, _ = process_image.binarize(gray_image, options_dict)
             plt.imsave(
                 self.stack_dir + "/slice" + fname.num + ".tiff",
                 img_bin,
@@ -376,4 +373,5 @@ class Network:
         self.img_bin_3d = self.img_bin
         # 3d for 3d images, 2d otherwise
         self.img_bin = np.squeeze(self.img_bin)
+
 
