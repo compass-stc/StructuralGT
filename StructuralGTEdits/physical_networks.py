@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from StructuralGTEdits import error, base, process_image, convert, sknwEdits, util
+from StructuralGTEdits import base, util
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import time
@@ -37,9 +37,10 @@ class PhysicalNetwork(util.Network):
         positions, shape attributes.
 
         Note: if the rotation argument is given, this writes the union of all
-        of the graph which can be obtained from cropping after rotation (i.e.
-        that which is returned by self.crop._outer_crop). The rotated skeleton
-        can be written after the :py:attr:`Gr` attribute has been set.
+        of the graph which can be obtained from cropping after rotation about 
+        the origin (i.e. that which is returned by self.crop._outer_crop). 
+        The rotated skeleton can be written after the :py:attr:`Gr` attribute
+        has been set.
 
         Args:
             name (str):
@@ -97,12 +98,12 @@ class PhysicalNetwork(util.Network):
         self.set_img_bin(crop)
         
         if skeleton:
-            self.skeleton = skeletonize_3d(np.asarray(self.img_bin, dtype=np.dtype('uint8')))
+            self._skeleton = skeletonize_3d(np.asarray(self.img_bin, dtype=np.dtype('uint8')))
             self.skeleton_3d = skeletonize_3d(np.asarray(self.img_bin_3d, dtype=np.dtype('uint8')))
         else:
             self.img_bin = np.asarray(self.img_bin)
             self.skeleton_3d = self.img_bin_3d
-            self.skeleton = self.img_bin
+            self._skeleton = self.img_bin
 
         positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
         self.shape = np.asarray(
@@ -165,7 +166,7 @@ class PhysicalNetwork(util.Network):
         else:
             self.rotate = None
 
-    def G_u(self, sub=True, weight_type=None, **kwargs):
+    def set_graph(self, sub=True, weight_type=None, **kwargs):
         """Sets :class:`igraph.Graph` object as an attribute by reading the
         skeleton file written by :meth:`stack_to_gsd`.
 
@@ -250,9 +251,9 @@ class PhysicalNetwork(util.Network):
         )
 
     def Node_labelling(self, attribute, label, filename, edge_weight=None, mode="r+"):
-        """Method saves a new .gsd which labels the :attr:`Gr` attribute with
-        the given node attribute values. Method saves the
-        :class:`igraph.Graph` in the .gsd.
+        """Method saves a new :code:`.gsd` which labels the :attr:`Gr` 
+        attribute with the given node attribute values. Method saves the
+        :class:`igraph.Graph` in the :code:`.gsd`.
 
         Args:
             attribute (:class:`numpy.ndarray`):
@@ -315,10 +316,6 @@ class PhysicalNetwork(util.Network):
         rows, columns = matrix.nonzero()
         values = matrix.data
 
-        #rows, columns, values = convert.to_dense(
-        #    np.array(self.Gr.get_adjacency(attribute=edge_weight).data, dtype=np.single)
-        #)
-
         s.log["Adj_rows"] = rows
         s.log["Adj_cols"] = columns
         s.log["Adj_values"] = values
@@ -375,92 +372,11 @@ class PhysicalNetwork(util.Network):
 
         self.Gr = Gr_copy
 
-    def bounded_betweenness(self, sources, targets, weights=None):
-        from StructuralGTEdits import _bounded_betweenness_cast
-
-        num_edges = self.Gr.ecount()
-        _copy = copy.deepcopy(self.Gr)
-
-        if weights is None:
-            weights = np.ones(num_edges, dtype=np.double)
-        else:
-            weights = np.array(_copy.es[weights], dtype=np.double)
-
-        cast = _bounded_betweenness_cast.PyCast(_copy._raw_pointer())
-
-        cast.bounded_betweenness_compute(
-            np.array(sources, dtype=np.longlong),
-            np.array(targets, dtype=np.longlong),
-            num_edges,
-            weights,
-        )
-
-        return cast.bounded_betweenness
-
-    def random_betweenness(self, sources, targets, weights=None):
-        from StructuralGTEdits import _random_betweenness_cast
-
-        num_edges = self.Gr.ecount()
-        _copy = copy.deepcopy(self.Gr)
-
-        if weights is None:
-            weights = np.ones(num_edges, dtype=np.double)
-        else:
-            weights = np.array(_copy.es[weights], dtype=np.double)
-
-        cast = _random_betweenness_cast.PyCast(_copy._raw_pointer())
-
-        cast.random_betweenness_compute(
-            np.array(sources, dtype=np.longlong),
-            np.array(targets, dtype=np.longlong),
-            num_edges,
-            weights,
-        )
-
-        return cast.random_betweenness
-
-    def nonlinear_random_betweenness(self, sources, targets, incoming,
-                                     weights=None):
-        from StructuralGTEdits import _nonlinear_random_betweenness_cast
-        _copy = copy.deepcopy(self.Gr)
-
-        #Add ghost node and edges from targets to ghost
-        _copy.add_vertex(1)
-        for target in targets:
-            _copy.add_edge(self.Gr.vcount()-1,target)
-        num_edges = _copy.ecount()
-
-        #When passing weight vector, must add additional weights for edges
-        #between targets and ghost node (added in cpp file)
-        if weights is None:
-            weights = np.ones(num_edges, dtype=np.double)
-        else:
-            mean = np.mean(np.array(self.Gr.es[weights]))
-
-            weights = np.append(np.array(self.Gr.es[weights], dtype=np.double),
-                                np.full(len(targets), mean, dtype=np.double)).astype(np.double)
-            assert len(weights) == _copy.ecount()
-        cast = _nonlinear_random_betweenness_cast.PyCast(_copy._raw_pointer())
-
-        cast.nonlinear_random_betweenness_compute(
-            np.array(sources, dtype=np.longlong),
-            np.array(targets, dtype=np.longlong),
-            np.array(incoming, dtype=np.longlong),
-            num_edges,
-            weights,
-        )
-
-        return cast.nonlinear_random_betweenness
-
-    def average_nodal_connectivity(self):
-        from StructuralGTEdits import _average_nodal_connectivity_cast
-        _copy = copy.deepcopy(self.Gr)
-
-        cast = _average_nodal_connectivity_cast.PyCast(_copy._raw_pointer())
-
-        cast.average_nodal_connectivity_compute()
-
-        return cast.average_nodal_connectivity
+    @property
+    def skeleton(self):
+        """:class:`np.ndarray`: The skeleton from which the graph was
+        extracted."""
+        return self._skeleton
 
 class ResistiveNetwork(PhysicalNetwork):
     """A :class:`Network` class with methods for analyzing flow in networks
@@ -475,7 +391,8 @@ class ResistiveNetwork(PhysicalNetwork):
         network. Source and sink nodes are connected according to a
         penetration boundary condition. After calling, the weighted Laplacian,
         Laplacian pseudoinverse, potential and flow attributes (:attr:`L`,
-        :attr:`Q`:, attr:`P`, :attr:`F`) are all set.
+        :attr:`Q`:, attr:`P`, :attr:`F`) are all set. Details of the
+        calculation can be found in :cite:`Newman2018`.
 
         Args:
             axis (int):
@@ -489,7 +406,7 @@ class ResistiveNetwork(PhysicalNetwork):
             R_j (float, optional):
                 The constant resistance term associated with each edge.
 
-        NOTE: Critical that :meth:`G_u()` is called before every
+        NOTE: Critical that :meth:`set_graph()` is called before every
         :meth:`potential_distribution()` call
         TODO: Remove this requirement or add an error to warn
         """
@@ -572,20 +489,47 @@ class ResistiveNetwork(PhysicalNetwork):
         Q = np.linalg.pinv(self.L, hermitian=True)
         P = np.matmul(Q, F)
 
-        self.P = P
-        self.F = F
-        self.Q = Q
+        self._P = P
+        self._Q = Q
 
     def effective_resistance(self, source=-1, sink=-2):
+        """Returns the effective resistance between a pair of nodes in the
+        graph, according to the method of :cite:`Klein1993`. If source and
+        sink arguements are not given, calculates effective resistance
+        between source and sink added when :meth:`potential_distribution` is
+        called.
 
-        O_eff = self.Q[source, source] + self.Q[sink, sink] - 2 * self.Q[source, sink]
+        Args:
+            source (int, optional):
+                Source node id.
+            sink (int, optional):
+                Sink node id.
+        """
 
-        return O_eff
+        return O_eff = self.Q[source, source] + self.Q[sink, sink]
+        - 2 * self.Q[source, sink]
 
+    @property
+    def P(self):
+        """:class:`np.ndarray`: The vector of potentials at each node."""
+        return self._P
+
+    @property
+    def Q(self):
+        """:class:`np.ndarray`: pseudoinverse of the graph Laplacian,
+        weighted by conductance. This property is immediately available if 
+        :meth:`potential_distribution` has been called. Otherwise it may be
+        calculated by inverting the graph Laplacian, accessed via the
+        :meth:`laplacian` method of the :attr:`graph` attribute."""
+
+        return self._Q
 
 class StructuralNetwork(PhysicalNetwork):
-    """A :class:`Network` class with methods for analyzing classical network
-    structural parameters.
+    """A :class:`Network` class with methods for analyzing classical graph
+    theory parameters. This class contains methods which call customized C
+    routines, for fast calculations on large systems. The user may emulate the
+    wrapper codes for fast calculations of their own parameters. More details
+    of how this works are given in the documentation.
     """
 
     def __init__(self, directory, *args, **kwargs):
@@ -616,7 +560,7 @@ class StructuralNetwork(PhysicalNetwork):
         self.G_attributes = avg_indices
 
     def node_calc(self, Betweenness=True, Closeness=True, Degree=True):
-        """Calculates nodewise parameters of the graph and assigns them as
+        """Compute nodewise parameters of the graph and assigns them as
         attribute to the :class:`Network` object.
 
         Args:
@@ -641,6 +585,145 @@ class StructuralNetwork(PhysicalNetwork):
             if Degree:
                 self.Degree.append(graph.degree())
 
+    def bounded_betweenness(self, sources, targets, weights=None):
+        r"""Compute edge betweenness centrality over a subset of nodes.
+        Sometimes called betweenness subset.
+
+        .. math::
+
+           c_B(v) =\sum_{s\in S,t \in T} \frac{\sigma(s, t|e)}{\sigma(s, t)}
+
+        where $S$ is the set of sources, $T$ is the set of targets,
+        $\sigma(s, t)$ is the number of shortest $(s, t)$-paths,
+        and $\sigma(s, t|e)$ is the number of those paths
+        passing through edge $e$:cite:`Brandes2008` (which is unity for real 
+        value weighted graphs). 
+
+        Args:
+            sources (list):
+                The set of source nodes, $S$.
+            targets (list):
+                The set of target nodes, $T$.
+            weights (str, optional):
+                The name of the edge attribute to be used in finding weighted
+                shortest paths. If omitted, an unweighted network is used.
+        """
+
+        from StructuralGTEdits import _bounded_betweenness_cast
+
+        num_edges = self.Gr.ecount()
+        _copy = copy.deepcopy(self.Gr)
+
+        if weights is None:
+            weights = np.ones(num_edges, dtype=np.double)
+        else:
+            weights = np.array(_copy.es[weights], dtype=np.double)
+
+        cast = _bounded_betweenness_cast.PyCast(_copy._raw_pointer())
+
+        cast.bounded_betweenness_compute(
+            np.array(sources, dtype=np.longlong),
+            np.array(targets, dtype=np.longlong),
+            num_edges,
+            weights,
+        )
+
+        return cast.bounded_betweenness
+
+    def random_betweenness(self, sources, targets, weights=None):
+        """Compute random walk betweenness of edges. Adapted from
+        :cite:`Newman2005` to calculate net random walker flow through `edges`
+        instead of `nodes`. Also adapted to include several source and target
+        nodes at once. To converse flow, number of source and target nodes
+        must be equal. Full details given in :cite:`Kadar2024`.
+        
+        Args:
+            sources (list):
+                The set of source nodes, $S$.
+            targets (list):
+                The set of target nodes, $T$.
+            weights (str, optional):
+                The name of the edge attribute to be used in weighting the
+                random walks. If omitted, an unweighted network is used.
+        """
+
+        from StructuralGTEdits import _random_betweenness_cast
+
+        num_edges = self.Gr.ecount()
+        _copy = copy.deepcopy(self.Gr)
+
+        if weights is None:
+            weights = np.ones(num_edges, dtype=np.double)
+        else:
+            weights = np.array(_copy.es[weights], dtype=np.double)
+
+        cast = _random_betweenness_cast.PyCast(_copy._raw_pointer())
+
+        cast.random_betweenness_compute(
+            np.array(sources, dtype=np.longlong),
+            np.array(targets, dtype=np.longlong),
+            num_edges,
+            weights,
+        )
+
+        return cast.random_betweenness
+
+    def nonlinear_random_betweenness(self, sources, targets, incoming,
+                                     weights=None):
+        """Similar to :meth:`random_betweenness` except flow is conserved by
+        adding a ghost node and attaching it to all the target nodes. Flow
+        constraints are enforced only at the source and ghost node. Full
+        details are given in :cite:`Kadar2024`.
+        Args:
+            sources (list):
+                The set of source nodes, $S$.
+            targets (list):
+                The set of target nodes, $T$.
+            weights (str, optional):
+                The name of the edge attribute to be used in weighting the
+                random walks. If omitted, an unweighted network is used.
+        """
+
+        from StructuralGTEdits import _nonlinear_random_betweenness_cast
+        _copy = copy.deepcopy(self.Gr)
+
+        #Add ghost node and edges from targets to ghost
+        _copy.add_vertex(1)
+        for target in targets:
+            _copy.add_edge(self.Gr.vcount()-1,target)
+        num_edges = _copy.ecount()
+
+        #When passing weight vector, must add additional weights for edges
+        #between targets and ghost node (added in cpp file)
+        if weights is None:
+            weights = np.ones(num_edges, dtype=np.double)
+        else:
+            mean = np.mean(np.array(self.Gr.es[weights]))
+
+            weights = np.append(np.array(self.Gr.es[weights], dtype=np.double),
+                                np.full(len(targets), mean, dtype=np.double)).astype(np.double)
+            assert len(weights) == _copy.ecount()
+        cast = _nonlinear_random_betweenness_cast.PyCast(_copy._raw_pointer())
+
+        cast.nonlinear_random_betweenness_compute(
+            np.array(sources, dtype=np.longlong),
+            np.array(targets, dtype=np.longlong),
+            np.array(incoming, dtype=np.longlong),
+            num_edges,
+            weights,
+        )
+
+        return cast.nonlinear_random_betweenness
+
+    def average_nodal_connectivity(self):
+        from StructuralGTEdits import _average_nodal_connectivity_cast
+        _copy = copy.deepcopy(self.Gr)
+
+        cast = _average_nodal_connectivity_cast.PyCast(_copy._raw_pointer())
+
+        cast.average_nodal_connectivity_compute()
+
+        return cast.average_nodal_connectivity
 
 class StructuralNetworkList(StructuralNetwork):
     """[IN PROGRESS]
@@ -652,7 +735,7 @@ class StructuralNetworkList(StructuralNetwork):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def G_u(self, **kwargs):
+    def set_graph(self, **kwargs):
         label_img = label(self.img_bin)
         regions = regionprops(label_img)
 

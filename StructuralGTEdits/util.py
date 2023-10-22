@@ -1,15 +1,13 @@
 import numpy as np
 import os
 import cv2 as cv
-from StructuralGTEdits import error, base, process_image, convert, sknwEdits
+from StructuralGTEdits import error, base, process_image
 import json
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import time
 import gsd.hoomd
-from skimage.measure import regionprops, label
-import copy
-
+import warnings
 
 def _abs_path(network, name):
     if name[0] == "/":
@@ -112,25 +110,6 @@ class _cropper:
                     domain[5] - domain[4],
                 )
 
-    @property
-    def _3d(self):
-        if self.dim == 2:
-            return None
-        elif self.crop == slice(None):
-            return self.depths
-        else:
-            return [self.crop[2].start, self.crop[2].stop]
-
-    @property
-    def _2d(self):
-        """list: If a crop is associated with the object, return the component
-        which crops the square associated with the :class:`Network` space.
-        """
-        if self.crop == slice(None):
-            return slice(None)
-        else:
-            return self.crop[0:2]
-
     def intergerise(self):
         """Method casts decimal values in the _croppers crop attribute to
         integers such that the new crop contains at least all of the space
@@ -155,9 +134,29 @@ class _cropper:
             )
 
     @property
+    def _3d(self):
+        if self.dim == 2:
+            return None
+        elif self.crop == slice(None):
+            return self.depths
+        else:
+            return [self.crop[2].start, self.crop[2].stop]
+
+    @property
+    def _2d(self):
+        """list: If a crop is associated with the object, return the component
+        which crops the square associated with the :class:`Network` space.
+        """
+        if self.crop == slice(None):
+            return slice(None)
+        else:
+            return self.crop[0:2]
+
+    @property
     def _outer_crop(self):
         """Method supports square 2D crops only. It calculates the crop which
-        could contain any rotation of the _cropper's crop attribute.
+        could contain any rotation about the origin of the _cropper's crop 
+        attribute.
 
         Returns:
             (list): The outer crop
@@ -269,11 +268,11 @@ class Network:
             analysed. Where 2D analysis is concerned, the directory should
             contain a single image.
         child_dir (str):
-            The relative pathname for storing the binarized stack of images
-            and all subsequent results.
+            The pathname relative to directory for storing the binarized 
+            stack of images and all subsequent results.
         depth (tuple, optional):
-            The file range from which should be extracted from the directory
-            files. This is primarily used to analyse a subset of a very large
+            The file range from which files should be extracted from the 
+            directory. This is primarily used to analyse a subset of a large
             directory. Cropping can be carried out after, if this argument
             is not specified.
     """
@@ -336,11 +335,17 @@ class Network:
         self.options = options_dict
 
     def set_img_bin(self, crop):
-        
+        """Sets the :attr:`img_bin` and :attr:`img_bin_3d` attributes, which
+        are numpy arrays of pixels and voxels which represent the binarized 
+        image. Called internally by child classes of :class:`Network`.
+
+        Args:
+            crop (list):
+                The x, y and (optionally) z coordinates of the cuboid/
+                rectangle which encloses the :class:`Network` region of
+                interest.
+        """
         self.cropper = _cropper(self, domain=crop)
-        # Initilise i such that it starts at the lowest number belonging
-        # to the images in the stack_dir
-        # First require boolean mask to filter out non image files
         if self._2d:
             img_bin = np.zeros(self.cropper.dims)
         else:
@@ -350,8 +355,8 @@ class Network:
 
         i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
-            #fname = _fname(self.stack_dir + "/" + fname, domain=_domain(self.depth))
-            fname = _fname(self.stack_dir + "/" + fname, domain=_domain(self.cropper._3d))
+            fname = _fname(self.stack_dir + "/" + fname, 
+                           domain=_domain(self.cropper._3d))
             if fname.isimg and fname.isinrange:
                 suff = base.quadrupletise(i)
                 img_bin[i - self.cropper.surface] = (
@@ -366,12 +371,29 @@ class Network:
                 continue
 
         # For 2D images, img_bin_3d.shape[0] == 1
-        self.img_bin_3d = img_bin
-        self.img_bin = img_bin
+        self._img_bin_3d = img_bin
+        self._img_bin = img_bin
 
         # Always 3d, even for 2d images
-        self.img_bin_3d = self.img_bin
+        self._img_bin_3d = self._img_bin
         # 3d for 3d images, 2d otherwise
-        self.img_bin = np.squeeze(self.img_bin)
+        self._img_bin = np.squeeze(self._img_bin)
+
+    @property
+    def img_bin(self):
+        """:class:`np.ndarray`: The binary image from which the graph was 
+        extracted"""
+        return self.img_bin
+
+    @img_bin.setter
+    def img_bin(self, value):
+        warnings.warn("Setting the binary image should not be necessary if
+                      the raw data has been binarized.")
+
+    @property
+    def graph(self):
+        """:class:`igraph.Graph`: The Graph object extracted from the 
+        skeleton"""
+        return self.Gr
 
 

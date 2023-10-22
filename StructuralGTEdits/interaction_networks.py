@@ -1,5 +1,4 @@
-from StructuralGTEdits import util, base, convert
-import pandas as pd
+from StructuralGTEdits import util, base
 import numpy as np
 import freud
 import igraph as ig
@@ -7,18 +6,34 @@ import os
 from skimage.measure import regionprops, label
 import gsd.hoomd
 
-
-
 class InteractionNetwork(util.Network):
-
+    """Class for extracting bond networks from particle images. In this class,
+    nodes are particles, and edges connect neighbouring particles.
+    Neighbours are found using freudCITE.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def G_u(self, crop, edge_weight='Length', node_weight='Volume',
+    def set_graph(self, crop, edge_weight='Length', node_weight='Volume',
             _dict=dict(num_neighbors=4, exclude_ii=True)):
+        """Calculates a neighbour list and sets the resulting 
+        :class:`igraph.Graph` object as an attribute. 
+
+        Args:
+            crop (list)
+                The x, y and (optionally) z coordinates of the cuboid/
+                rectangle which encloses the :class:`Network` region of
+                interest.
+            edge_weight (optional, str):
+                How to weight the edges.
+            node_weight (optional, str):
+                How to weight the nodes.
+            _dict (optional, dict):
+                Dictionary of neighbour finding arguements to pass to freud's
+                :meth:`query` method.
+        """
 
         self.set_img_bin(crop)
-        print('img_bin has been set')
         crop=[crop[4],crop[5],crop[0],crop[1],crop[2],crop[3]]
 
         G = ig.Graph()
@@ -56,7 +71,16 @@ class InteractionNetwork(util.Network):
         self.points = points
 
     def to_gsd(self, filename='skel.gsd', label='Degree', mode='r+'):
-        
+        """Writes .gsd file from :attr:`Gr` attribute.
+
+        Args:
+            filename (optional, str):
+                Filename to write to. Defaults to skel.gsd
+            label (optional, str):
+                Node attribute to write to gsd file
+            mode (optional, str):
+                The writing mode.
+        """
         if filename[0] == "/":
             save_name = filename
         else:
@@ -93,9 +117,6 @@ class InteractionNetwork(util.Network):
         rows, columns = matrix.nonzero()
         values = matrix.data
         
-        #rows, columns, values = convert.to_dense(
-        #    np.array(self.Gr.get_adjacency(attribute='Weight').data, dtype=np.single)
-        #)
         s.log["Adj_rows"] = rows
         s.log["Adj_cols"] = columns
         s.log["Adj_values"] = values
@@ -113,7 +134,3 @@ class InteractionNetwork(util.Network):
                 j += 1
 
         f.append(s)
-
- 
-
-
