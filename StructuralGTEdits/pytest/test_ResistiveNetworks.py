@@ -32,7 +32,7 @@ def gsd(binarize):
 @pytest.fixture
 def graph(gsd):
     N = gsd
-    N.G_u(weight_type=['FixedWidthConductance'], sub=True)
+    N.set_graph(weight_type=['FixedWidthConductance'], sub=True)
 
     return N
 
