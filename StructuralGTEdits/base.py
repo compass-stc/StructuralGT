@@ -1,5 +1,4 @@
 import numpy as np
-#import sknwEdits as sknw
 import igraph as ig
 import gsd.hoomd
 import pandas as pd
