@@ -1,4 +1,4 @@
-from StructuralGTEdits import util, base
+from StructuralGT import util, base
 import numpy as np
 import freud
 import igraph as ig

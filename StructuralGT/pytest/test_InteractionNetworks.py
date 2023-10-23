@@ -1,8 +1,8 @@
-from StructuralGTEdits import interaction_networks, base
-import StructuralGTEdits
+from StructuralGT import interaction_networks, base
+import StructuralGT
 import pytest
 
-_path = StructuralGTEdits.__path__[0]
+_path = StructuralGT.__path__[0]
 
 def test_find_node():
     pass

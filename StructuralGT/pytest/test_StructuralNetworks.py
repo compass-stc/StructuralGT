@@ -1,8 +1,8 @@
-from StructuralGTEdits import physical_networks, base
-import StructuralGTEdits
+from StructuralGT import physical_networks, base
+import StructuralGT
 import pytest
 
-_path = StructuralGTEdits.__path__[0]
+_path = StructuralGT.__path__[0]
 
 def test_3D():
     N = physical_networks.StructuralNetwork(_path + '/pytest/data/Rectangle1')

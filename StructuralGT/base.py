@@ -12,7 +12,7 @@ import matplotlib.cm as cm
 import csv
 
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing, remove_small_objects
-from StructuralGTEdits import process_image, GetWeights_3d, error, convert, skel_ID, sknwEdits
+from StructuralGT import process_image, GetWeights_3d, error, convert, skel_ID, sknwEdits
 
 
 def read(name, read_type):
@@ -429,73 +429,6 @@ def igraph_ANC(directory, I):
     
     return ANC
 
-#Skeletonize=False enables unusual case of writing binary stack to gsd without skeletonizing. Effective for creating direct 3d reconstruction.
-#Takes directory where stack is located, and a gsd write filename
-#Note when rotate=None, the crop acts upon an origin cornered image but when rotate != None, the image is origin centred and so the crop may contain -ve elements
-def stack_to_gsd(stack_directory, gsd_name, crop=None, skeleton=True, rotate=None):
-    start = time.time()
-    img_bin=[]
-    #Initilise i such that it starts at the lowest number belonging to the images in the stack_directory
-    #First require boolean mask to filter out non image files
-    olist = np.asarray(sorted(os.listdir(stack_directory)))
-    mask = list(Q_img(olist[i]) for i in range(len(olist)))
-    if len(mask) == 0:
-        raise error.ImageDirectoryError(stack_directory)
-    name = sorted(olist[mask])[0] #First name
-    i = int(os.path.splitext(name)[0][5:]) #Strip file type and 'slice' then convert to int
-    #Generate 3d (or 2d) array from stack
-    for name in sorted(os.listdir(stack_directory)):
-        if Q_img(name):
-            img_slice = cv.imread(stack_directory+'/slice'+str(i)+'.tiff',cv.IMREAD_GRAYSCALE)
-            if rotate:
-                image_center = tuple(np.array(img_slice.shape[1::-1]) / 2)
-                rot_mat = cv.getRotationMatrix2D(image_center, rotate, 1.0)
-                img_slice = cv.warpAffine(img_slice, rot_mat, img_slice.shape[1::-1], flags=cv.INTER_LINEAR)
-                upper_directory = os.path.split(stack_directory)[0]
-                plt.imsave(upper_directory + '/rotated_image.tiff', img_slice, cmap=cm.gray)
-            img_bin.append(img_slice)
-            i=i+1
-        else:
-            pass
-    positions = np.asarray(np.where(np.asarray(img_bin) != 0)).T
-    positions = shift(positions)
-    if rotate and crop:
-        positions = oshift(positions)        
-        from numpy import logical_and as a
-        p = positions.T
-        positions = p.T[a(a(a(a(a(p[0]>=crop[0],p[0]<=crop[1]),p[1]>=crop[2]),p[1]<=crop[3]),p[2]>=crop[4]),p[2]<=crop[5])]
-        positions = shift(positions)
-
-    if crop is not None and rotate is None:
-        from numpy import logical_and as a
-        p = positions.T
-        positions = p.T[a(a(a(a(a(p[0]>=crop[0],p[0]<=crop[1]),p[1]>=crop[2]),p[1]<=crop[3]),p[2]>=crop[4]),p[2]<=crop[5])]
-
-    positions = positions.astype(int)
-    dims = np.asarray(list(max(positions.T[i])+1 for i in (0,1,2)))
-    canvas = np.zeros(dims)
-    canvas[positions.T[0], positions.T[1], positions.T[2]] = 1
-    img_bin = canvas
-
-    #Roll axes such that z=0 for all positions when the graph is 2D
-    img_bin = np.swapaxes(img_bin, 0, 2)
-    if skeleton:
-        img_bin = skeletonize_3d(np.asarray(img_bin))
-    else:
-        img_bin = np.asarray(img_bin)
-    positions = np.asarray(np.where(img_bin != 0)).T
-   
-
-
-    with gsd.hoomd.open(name=gsd_name, mode='w') as f:
-        s = gsd.hoomd.Frame()
-        s.particles.N = len(positions)
-        s.particles.position = shift(positions)
-        s.particles.types = ['A']
-        s.particles.typeid = ['0']*s.particles.N
-        f.append(s)
-    end = time.time()
-    print('Ran stack_to_gsd() in ', end-start, 'for gsd with ', len(positions), 'particles')
 
 def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
     if not isinstance(weight_type,list) and weight_type is not None: raise TypeError('weight_type must be list, even if single element')

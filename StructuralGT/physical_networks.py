@@ -1,13 +1,15 @@
 import numpy as np
 import os
-from StructuralGTEdits import base, util
+from StructuralGT import base, util
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import time
 import gsd.hoomd
+import freud
 from skimage.morphology import skeletonize_3d
 from skimage.measure import regionprops, label
 import copy
+
 
 class PhysicalNetwork(util.Network):
     """A :class:`Network` class with methods for constructing networks from
@@ -18,7 +20,7 @@ class PhysicalNetwork(util.Network):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def stack_to_gsd(
+    def img_to_skel(
         self,
         name="skel.gsd",
         crop=None,
@@ -98,12 +100,12 @@ class PhysicalNetwork(util.Network):
         self.set_img_bin(crop)
         
         if skeleton:
-            self._skeleton = skeletonize_3d(np.asarray(self.img_bin, dtype=np.dtype('uint8')))
-            self.skeleton_3d = skeletonize_3d(np.asarray(self.img_bin_3d, dtype=np.dtype('uint8')))
+            self._skeleton = skeletonize_3d(np.asarray(self._img_bin, dtype=np.dtype('uint8')))
+            self.skeleton_3d = skeletonize_3d(np.asarray(self._img_bin_3d, dtype=np.dtype('uint8')))
         else:
-            self.img_bin = np.asarray(self.img_bin)
-            self.skeleton_3d = self.img_bin_3d
-            self._skeleton = self.img_bin
+            self._img_bin = np.asarray(self._img_bin)
+            self.skeleton_3d = self._img_bin_3d
+            self._skeleton = self._img_bin
 
         positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
         self.shape = np.asarray(
@@ -345,7 +347,7 @@ class PhysicalNetwork(util.Network):
 
         axis_0 = abs(axis - 2)
 
-        display_img = np.swapaxes(self.img_bin_3d, 0, axis_0)[surface]
+        display_img = np.swapaxes(self._img_bin_3d, 0, axis_0)[surface]
         drop_list = []
         for i in range(self.Gr.vcount()):
             if (
@@ -367,7 +369,7 @@ class PhysicalNetwork(util.Network):
         fig = plt.figure(figsize=(10, 25))
         plt.scatter(node_positions.T[2], node_positions.T[1], s=10, color="red")
         plt.scatter(positions.T[2], positions.T[1], s=2)
-        plt.imshow(self.img_bin[axis], cmap=cm.gray)
+        plt.imshow(self._img_bin[axis], cmap=cm.gray)
         plt.show()
 
         self.Gr = Gr_copy
@@ -378,9 +380,35 @@ class PhysicalNetwork(util.Network):
         extracted."""
         return self._skeleton
 
+    @property
+    def N(self):
+        r""":class`np.ndarray`: The nematic tensor of the graph's edges, defined
+        as
+        
+        .. math::
+        
+            \mathbf{N} = \mathbf{M} - \frac{1}{3} \mathbf{I}
+        
+        where :math:`\mathbf{I}` is the identity matrix and :math:`mathbf{M}` 
+        is a numerical estimation of the following weighted integral:
+
+        .. math::
+            
+            \mathbf{M} = \int_{\mathcal{B}} (\mathbf{m} \otimes \mathbf{m}) f(\mathbf{m}) d\sigma(\mathbf{m})
+
+        where $\mathbf{m}$ is the vector tangent to the straight line joining 
+        an edge's source and target and $\mathcal{B}$ is the unit hemisphere.
+        $f(\mathbf{m})$ is the probability distribution of vector orientations.
+        When the graph is 2D, :code:`z` component is set to :code:`0`. 
+        The calculation is carried out using the open-source software package, 
+        freud :cite:`Ramasubramani2020`.
+        """
+
+        return 0
+
 class ResistiveNetwork(PhysicalNetwork):
     """A :class:`Network` class with methods for analyzing flow in networks
-    with linearly driven flow.
+    with conserved, linearly driven flow.
     """
 
     def __init__(self, *args, **kwargs):
@@ -389,10 +417,9 @@ class ResistiveNetwork(PhysicalNetwork):
     def potential_distribution(self, axis, boundary1, boundary2, R_j=0):
         """Solves for the potential distribution in a (optionally, weighted)
         network. Source and sink nodes are connected according to a
-        penetration boundary condition. After calling, the weighted Laplacian,
-        Laplacian pseudoinverse, potential and flow attributes (:attr:`L`,
-        :attr:`Q`:, attr:`P`, :attr:`F`) are all set. Details of the
-        calculation can be found in :cite:`Newman2018`.
+        penetration boundary condition. After calling, the Laplacian 
+        pseudoinverse and potential attributes (:attr:`Q`:, attr:`P`) are all
+        set. Details of the calculation can be found in :cite:`Newman2018`.
 
         Args:
             axis (int):
@@ -506,8 +533,8 @@ class ResistiveNetwork(PhysicalNetwork):
                 Sink node id.
         """
 
-        return O_eff = self.Q[source, source] + self.Q[sink, sink]
-        - 2 * self.Q[source, sink]
+        return self.Q[source, source] + self.Q[sink, sink] \
+                - 2 * self.Q[source, sink]
 
     @property
     def P(self):
@@ -609,7 +636,7 @@ class StructuralNetwork(PhysicalNetwork):
                 shortest paths. If omitted, an unweighted network is used.
         """
 
-        from StructuralGTEdits import _bounded_betweenness_cast
+        from StructuralGT import _bounded_betweenness_cast
 
         num_edges = self.Gr.ecount()
         _copy = copy.deepcopy(self.Gr)
@@ -647,7 +674,7 @@ class StructuralNetwork(PhysicalNetwork):
                 random walks. If omitted, an unweighted network is used.
         """
 
-        from StructuralGTEdits import _random_betweenness_cast
+        from StructuralGT import _random_betweenness_cast
 
         num_edges = self.Gr.ecount()
         _copy = copy.deepcopy(self.Gr)
@@ -684,7 +711,7 @@ class StructuralNetwork(PhysicalNetwork):
                 random walks. If omitted, an unweighted network is used.
         """
 
-        from StructuralGTEdits import _nonlinear_random_betweenness_cast
+        from StructuralGT import _nonlinear_random_betweenness_cast
         _copy = copy.deepcopy(self.Gr)
 
         #Add ghost node and edges from targets to ghost
@@ -716,7 +743,7 @@ class StructuralNetwork(PhysicalNetwork):
         return cast.nonlinear_random_betweenness
 
     def average_nodal_connectivity(self):
-        from StructuralGTEdits import _average_nodal_connectivity_cast
+        from StructuralGT import _average_nodal_connectivity_cast
         _copy = copy.deepcopy(self.Gr)
 
         cast = _average_nodal_connectivity_cast.PyCast(_copy._raw_pointer())
@@ -736,7 +763,7 @@ class StructuralNetworkList(StructuralNetwork):
         super().__init__(*args, **kwargs)
 
     def set_graph(self, **kwargs):
-        label_img = label(self.img_bin)
+        label_img = label(self._img_bin)
         regions = regionprops(label_img)
 
         self.Gr = []

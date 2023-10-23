@@ -182,6 +182,8 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
             wt = pix_width**2
     elif(weight_type=='Length'):
         wt = len(ge)
+    elif(weight_type=='InverseLength'):
+        wt = len(ge)**-1
     else:
         raise TypeError('Invalid weight type')
     

@@ -1,10 +1,10 @@
-from StructuralGTEdits import physical_networks, base
-import StructuralGTEdits
+from StructuralGT import physical_networks, base
+import StructuralGT
 import pytest
 import os
 import shutil
 
-_path = StructuralGTEdits.__path__[0]
+_path = StructuralGT.__path__[0]
 
 @pytest.fixture(params=[pytest.param(_path+'/pytest/data/AgNWN'),
                         pytest.param(_path+'/pytest/data/ANF')])
@@ -12,7 +12,7 @@ def binarize(request):
     _dir = request.param
     if os.path.isdir(_dir+'/Binarized'): shutil.rmtree(_dir+'/Binarized')
 
-    N = StructuralGTEdits.physical_networks.ResistiveNetwork(_dir)
+    N = StructuralGT.physical_networks.ResistiveNetwork(_dir)
     N.binarize()
 
     #assert N.img_bin.shape == N.img.shape
