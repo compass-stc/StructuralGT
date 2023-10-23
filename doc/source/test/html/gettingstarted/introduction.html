@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Introduction &#8212; StructuralGT 2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=039e1c02" />
+    <script src="../_static/documentation_options.js?v=60dbed4a"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Installation" href="installation.html" />
+    <link rel="prev" title="StructuralGT" href="../index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">¶</a></h1>
+<p>StructuralGT is a Python package for graph theoretic analysis of image data. Originally prototyped as a GUI based package for microscopy <a class="reference external" href="data:cite">data:cite</a>:<cite>Vecchio2020</cite> the package outlined in this documentation is designed for terminal based use. Initial graph theoretic studies of microscopy datasets have shown structural differences betweeen disordered architectures of various nanoscale materials. This API offers the users the possiblility of performing analysis that had not been anticipated by the developers’ original implementation. Examples of such analyses are given in Examples.</p>
+<p>The highest level component to StructuralGT’s API is the <code class="xref py py-class docutils literal notranslate"><span class="pre">Network</span></code> class, from which all other network-type classes inherit. To motivate it’s construction, we first outline the conceptual differecne between a <cite>network</cite> and a <cite>graph</cite>. Networks are real-world objects which exhibit a structure akin to points linked by connections. Their study belongs to the discipline of <cite>network science</cite> and examples may include social networks, internet networks, or material networks. The mathematical objects which abstract these structures are graphs, and the discipline which examines them is <cite>graph theory</cite>. A graph is defined only by it’s nodes and connecting edges. While the nodes and edges may contain attributes, to give further detail, a large part of the network’s description is lost as a result of it’s abstraction into a graph (most notably, its geometric features). Hence we construct the <code class="xref py py-class docutils literal notranslate"><span class="pre">Network</span></code> class to contain conventional graph, and all other information that would be otherwise lost. Specifically, after the appropriate graph extraction methods have been called, the <code class="xref py py-class docutils literal notranslate"><span class="pre">Network</span></code> class is populated with a <code class="xref py py-attr docutils literal notranslate"><span class="pre">graph</span></code> attribute. This attribute is an <code class="xref py py-class docutils literal notranslate"><span class="pre">igraph.Graph</span></code>, which allows the user to call fast graph theoretic computations, via the <code class="code docutils literal notranslate"><span class="pre">igraph</span></code> C library:cite:<cite>Csardi</cite>. The user may also write their own Python code for customized analysis. When the user wishes to carry out custom analysis with C-level speed, they may implement their own C routines, which and expose the results to in the Python API. Instructions on this implementation are given in REF. Finally, the <code class="xref py py-class docutils literal notranslate"><span class="pre">Network</span></code> class contains a series of attributes which are useful for analysis.</p>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">StructuralGT</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../networks/networks.html">Networks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../networks/physical_networks.html">Physical networks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../networks/interaction_networks.html">Interaction Networks</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../reference/zreferences.html">References</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../index.html" title="previous chapter">StructuralGT</a></li>
+      <li>Next: <a href="installation.html" title="next chapter">Installation</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, Alain Kadar.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="../_sources/gettingstarted/introduction.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
