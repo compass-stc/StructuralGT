@@ -1,6 +1,6 @@
-=================
-StructuralGTEdits
-=================
+============
+StructuralGT
+============
 
 Overview
 ========
@@ -9,13 +9,13 @@ A python package for the extraction and analysis of graphs from 2D and 3D experi
 Use
 ===
 To use, clone, build, and install from the `GitHub repository
-<https://github.com/AlainKadar/StructuralGTEdits>`__. You will need to install the cython, igraph, and eigen with conda.
+<https://github.com/AlainKadar/StructuralGT>`__. You will need to install the cython, igraph, and eigen with conda.
 
 .. code:: bash
 
    conda install igraph eigen cython
-   git clone https://github.com/AlainKadar/StructuralGTEdits
-   cd StructuralGTEdits
+   git clone https://github.com/AlainKadar/StructuralGT
+   cd StructuralGT
    python setup.py install
 
 Example
@@ -24,7 +24,7 @@ The following minimal example shows how the package can be used to calculate the
 
 .. code:: python
 
-   from StructuralGTEdits import physical_networks
+   from StructuralGT import physical_networks
 
    Nanofibre3DNetwork = physical_networks.StructuralNetwork('Nanofibre_Image_Stack')
    Nanofibre3DNetwork.binarize()
