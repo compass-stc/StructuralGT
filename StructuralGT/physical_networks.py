@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from StructuralGT import base, util
+from StructuralGT import base, networks, util
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import time
@@ -11,7 +11,7 @@ from skimage.measure import regionprops, label
 import copy
 
 
-class PhysicalNetwork(util.Network):
+class PhysicalNetwork(networks.Network):
     """A :class:`Network` class with methods for constructing networks from
     images. This is the parent class for all classes for which edges
     represent tangible links and should not be instantiated directly by the
@@ -33,16 +33,12 @@ class PhysicalNetwork(util.Network):
         remove_objects=None,
     ):
 
-        """Writes a .gsd file from the object's directory. The name of the
-        written .gsd is set as an attribute so it may be easily matched with
-        its :class:`igraph.Graph` object. Running this also sets the
-        positions, shape attributes.
+        """Writes calculates and writes the skeleton to a :code:`.gsd` file. 
 
         Note: if the rotation argument is given, this writes the union of all
         of the graph which can be obtained from cropping after rotation about 
-        the origin (i.e. that which is returned by self.crop._outer_crop). 
-        The rotated skeleton can be written after the :py:attr:`Gr` attribute
-        has been set.
+        the origin. The rotated skeleton can be written after the :attr:`graph`
+        attribute has been set.
 
         Args:
             name (str):
@@ -169,16 +165,18 @@ class PhysicalNetwork(util.Network):
             self.rotate = None
 
     def set_graph(self, sub=True, weight_type=None, **kwargs):
-        """Sets :class:`igraph.Graph` object as an attribute by reading the
-        skeleton file written by :meth:`stack_to_gsd`.
+        """Sets :class:`Graph` object as an attribute by reading the
+        skeleton file written by :meth:`img_to_skel`.
 
         Args:
             sub (optional, bool):
                 Whether to onlyh assign the largest connected component as the
                 :class:`igraph.Graph` object.
             weight_type (optional, str):
-                How to weight the edges. Options include 'Length', 'Width',
-                'Area', 'FixedWidthConductance', 'VariableWidthConductance'.
+                How to weight the edges. Options include :code:`Length`, 
+                :code:`Width`, :code:`Area`,
+                :code:`FixedWidthConductance`,
+                :code:`VariableWidthConductance`.
         """
 
         G = base.gsd_to_G(self.gsd_name, _2d=self._2d, sub=sub)
@@ -253,9 +251,10 @@ class PhysicalNetwork(util.Network):
         )
 
     def Node_labelling(self, attribute, label, filename, edge_weight=None, mode="r+"):
-        """Method saves a new :code:`.gsd` which labels the :attr:`Gr` 
+        """Method saves a new :code:`.gsd` which labels the :attr:`graph` 
         attribute with the given node attribute values. Method saves the
-        :class:`igraph.Graph` in the :code:`.gsd`.
+        :attr:`graph`  attribute in the :code:`.gsd` file in the form of a 
+        sparse adjacency matrix (therefore edge/node attributes are not saved).
 
         Args:
             attribute (:class:`numpy.ndarray`):
@@ -267,7 +266,7 @@ class PhysicalNetwork(util.Network):
             edge_weight (optional, :class:`numpy.ndarray`):
                 Any edge weights to store in the adjacency matrix.
             mode (optional, str):
-                The writing mode.
+                The writing mode. See  for details.
         """
         if isinstance(self.Gr, list):
             self.Gr = self.Gr[0]
@@ -382,27 +381,30 @@ class PhysicalNetwork(util.Network):
 
     @property
     def N(self):
-        r""":class`np.ndarray`: The nematic tensor of the graph's edges, defined
+        r""":class:`np.ndarray`: The nematic tensor of the graph's edges, defined
         as
         
         .. math::
         
             \mathbf{N} = \mathbf{M} - \frac{1}{3} \mathbf{I}
         
-        where :math:`\mathbf{I}` is the identity matrix and :math:`mathbf{M}` 
+        where :math:`\mathbf{I}` is the identity matrix and :math:`\mathbf{M}` 
         is a numerical estimation of the following weighted integral:
 
         .. math::
             
             \mathbf{M} = \int_{\mathcal{B}} (\mathbf{m} \otimes \mathbf{m}) f(\mathbf{m}) d\sigma(\mathbf{m})
 
-        where $\mathbf{m}$ is the vector tangent to the straight line joining 
-        an edge's source and target and $\mathcal{B}$ is the unit hemisphere.
-        $f(\mathbf{m})$ is the probability distribution of vector orientations.
+        where :math:`\mathbf{m}` is the vector tangent to the straight line joining 
+        an edge's source and target and :math:`\mathcal{B}` is the unit hemisphere.
+        :math:`f(\mathbf{m})` is the probability distribution of vector orientations.
         When the graph is 2D, :code:`z` component is set to :code:`0`. 
         The calculation is carried out using the open-source software package, 
-        freud :cite:`Ramasubramani2020`.
+        *freud* :cite:`Ramasubramani2020`. For more details on the nematic tensor,
+        see :cite:`Mottram2014`.
         """
+
+        X=6
 
         return 0
 
@@ -537,6 +539,13 @@ class ResistiveNetwork(PhysicalNetwork):
                 - 2 * self.Q[source, sink]
 
     @property
+    def skel_loc(self):
+        """str: The name of the :code:`.gsd` file containing the skeleton
+        """
+
+        return self.gsd_name
+
+    @property
     def P(self):
         """:class:`np.ndarray`: The vector of potentials at each node."""
         return self._P
@@ -623,12 +632,12 @@ class StructuralNetwork(PhysicalNetwork):
         where $S$ is the set of sources, $T$ is the set of targets,
         $\sigma(s, t)$ is the number of shortest $(s, t)$-paths,
         and $\sigma(s, t|e)$ is the number of those paths
-        passing through edge $e$:cite:`Brandes2008` (which is unity for real 
+        passing through edge $e$ :cite:`Brandes2008` (which is unity for real 
         value weighted graphs). 
 
         Args:
             sources (list):
-                The set of source nodes, $S$.
+                The set of source nodes, :math:`S`.
             targets (list):
                 The set of target nodes, $T$.
             weights (str, optional):
@@ -662,7 +671,7 @@ class StructuralNetwork(PhysicalNetwork):
         :cite:`Newman2005` to calculate net random walker flow through `edges`
         instead of `nodes`. Also adapted to include several source and target
         nodes at once. To converse flow, number of source and target nodes
-        must be equal. Full details given in :cite:`Kadar2024`.
+        must be equal. Full details given in :cite:`Martinez2024`.
         
         Args:
             sources (list):
@@ -700,7 +709,8 @@ class StructuralNetwork(PhysicalNetwork):
         """Similar to :meth:`random_betweenness` except flow is conserved by
         adding a ghost node and attaching it to all the target nodes. Flow
         constraints are enforced only at the source and ghost node. Full
-        details are given in :cite:`Kadar2024`.
+        details are given in :cite:`Martinez2024`.
+        
         Args:
             sources (list):
                 The set of source nodes, $S$.

@@ -9,19 +9,19 @@ import time
 import gsd.hoomd
 import warnings
 
-from util import *
+from StructuralGT.util import _image_stack, _cropper, _domain, _fname
 
 class Network:
     """Generic class to represent networked image data. Should not be
     instantiated by the user.
 
-    Children of this class will hold igraph :class:`Graph` attributes and
+    Subclasses will hold :class:`graph` attributes 
     holds additional attributes and methods for supporting geometric features
     associated images, dimensionality etc.
 
     Args:
         directory (str):
-            The (absolute or relative) pathname for the stack of images to be
+            The (absolute or relative) pathname for the image(s) to be
             analysed. Where 2D analysis is concerned, the directory should
             contain a single image.
         child_dir (str):
@@ -94,7 +94,7 @@ class Network:
     def set_img_bin(self, crop):
         """Sets the :attr:`img_bin` and :attr:`img_bin_3d` attributes, which
         are numpy arrays of pixels and voxels which represent the binarized 
-        image. Called internally by child classes of :class:`Network`.
+        image. Called internally by subclasses of :class:`Network`.
 
         Args:
             crop (list):

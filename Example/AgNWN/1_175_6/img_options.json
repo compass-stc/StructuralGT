@@ -1,0 +1,1 @@
+{"Thresh_method":1, "gamma": 0.8, "md_filter": 1, "g_blur":1, "autolvl": 0,"fg_color":0, "laplacian": 0, "scharr": 0, "sobel":0 , "lowpass": 0, "asize": 23, "bsize":31, "wsize":21, "thresh": 100}

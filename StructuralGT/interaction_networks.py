@@ -1,4 +1,4 @@
-from StructuralGT import util, base
+from StructuralGT import util, base, networks
 import numpy as np
 import freud
 import igraph as ig
@@ -6,7 +6,7 @@ import os
 from skimage.measure import regionprops, label
 import gsd.hoomd
 
-class InteractionNetwork(util.Network):
+class InteractionNetwork(networks.Network):
     """Class for extracting bond networks from particle images. In this class,
     nodes are particles, and edges connect neighbouring particles.
     Neighbours are found using freudCITE.
