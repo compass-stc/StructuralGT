@@ -30,7 +30,6 @@ setup(
         'Cython',
         'gsd',
         'python-igraph',
-        'igraph',
         'eigen',
         'pytest',
         'cmake',
