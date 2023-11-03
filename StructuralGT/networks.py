@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import cv2 as cv
-from StructuralGT import error, base, process_image
+from StructuralGT import error, base, process_image, util
 import json
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -9,7 +9,8 @@ import time
 import gsd.hoomd
 import warnings
 
-from StructuralGT.util import _image_stack, _cropper, _domain, _fname
+from skimage.morphology import skeletonize_3d
+from StructuralGT.util import _image_stack, _cropper, _domain, _fname, _abs_path
 
 class Network:
     """Generic class to represent networked image data. Should not be
@@ -136,6 +137,234 @@ class Network:
         # 3d for 3d images, 2d otherwise
         self._img_bin = np.squeeze(self._img_bin)
 
+    def set_graph(self, sub=True, weight_type=None, **kwargs):
+        """Sets :class:`Graph` object as an attribute by reading the
+        skeleton file written by :meth:`img_to_skel`.
+
+        Args:
+            sub (optional, bool):
+                Whether to onlyh assign the largest connected component as the
+                :class:`igraph.Graph` object.
+            weight_type (optional, str):
+                How to weight the edges. Options include :code:`Length`, 
+                :code:`Width`, :code:`Area`,
+                :code:`FixedWidthConductance`,
+                :code:`VariableWidthConductance`.
+        """
+
+        G = base.gsd_to_G(self.gsd_name, _2d=self._2d, sub=sub)
+
+        self.Gr = G
+
+        if self.rotate is not None:
+            centre = np.asarray(self.shape) / 2
+            inner_length_x = (self.inner_cropper.dims[2]) * 0.5
+            inner_length_y = (self.inner_cropper.dims[1]) * 0.5
+            inner_crop = np.array(
+                [
+                    centre[0] - inner_length_x,
+                    centre[0] + inner_length_x,
+                    centre[1] - inner_length_y,
+                    centre[1] + inner_length_y,
+                ],
+                dtype=int,
+            )
+
+            node_positions = np.asarray(
+                list(self.Gr.vs[i]["o"] for i in range(self.Gr.vcount()))
+            )
+            node_positions = base.oshift(node_positions, _shift=centre)
+            node_positions = np.vstack(
+                (node_positions.T, np.zeros(len(node_positions)))
+            ).T
+            node_positions = np.matmul(node_positions, self.rotate).T[0:2].T
+            node_positions = base.shift(node_positions, _shift=-centre)[0]
+
+            drop_list = []
+            for i in range(self.Gr.vcount()):
+                if not base.isinside(np.asarray([node_positions[i]]), inner_crop):
+                    drop_list.append(i)
+                    continue
+
+                self.Gr.vs[i]["o"] = node_positions[i]
+                self.Gr.vs[i]["pts"] = node_positions[i]
+            self.Gr.delete_vertices(drop_list)
+
+            node_positions = np.asarray(
+                list(self.Gr.vs[i]["o"] for i in range(self.Gr.vcount()))
+            )
+            final_shift = np.asarray(
+                list(min(node_positions.T[i]) for i in (0, 1, 2)[0 : self.dim])
+            )
+            edge_positions_list = np.asarray(
+                list(
+                    base.oshift(self.Gr.es[i]["pts"], _shift=centre)
+                    for i in range(self.Gr.ecount())
+                ), dtype=object
+            )
+            for i, edge in enumerate(edge_positions_list):
+                edge_position = np.vstack((edge.T, np.zeros(len(edge)))).T
+                edge_position = np.matmul(edge_position, self.rotate).T[0:2].T
+                edge_position = base.shift(edge_position, _shift=-centre + final_shift)[
+                    0
+                ]
+                self.Gr.es[i]["pts"] = edge_position
+
+            node_positions = base.shift(node_positions, _shift=final_shift)[0]
+            for i in range(self.Gr.vcount()):
+                self.Gr.vs[i]["o"] = node_positions[i]
+                self.Gr.vs[i]["pts"] = node_positions[i]
+
+        if weight_type is not None:
+            self.Gr = base.add_weights(self, weight_type=weight_type, **kwargs)
+
+        self.shape = list(
+            max(list(self.Gr.vs[i]["o"][j] for i in range(self.Gr.vcount())))
+            for j in (0, 1, 2)[0 : self.dim]
+        )
+    def img_to_skel(
+        self,
+        name="skel.gsd",
+        crop=None,
+        skeleton=True,
+        rotate=None,
+        debubble=None,
+        box=False,
+        merge_nodes=None,
+        prune=None,
+        remove_objects=None,
+    ):
+
+        """Writes calculates and writes the skeleton to a :code:`.gsd` file. 
+
+        Note: if the rotation argument is given, this writes the union of all
+        of the graph which can be obtained from cropping after rotation about 
+        the origin. The rotated skeleton can be written after the :attr:`graph`
+        attribute has been set.
+
+        Args:
+            name (str):
+                File name to write.
+            crop (list):
+                The x, y and (optionally) z coordinates of the cuboid/
+                rectangle which encloses the :class:`Network` region of
+                interest.
+            skeleton (bool):
+                Whether to write the skeleton or the unskeletonized
+                binarization of the image(s).
+            rotate (float):
+                The amount to rotate the skeleton by *after* the
+                :py:attr:`Gr` attribute has been set.
+            debubble (list[:class:`numpy.ndarray`]):
+                The footprints to use for a debubbling protocol.
+            box (bool):
+                Whether to plot the boundaries of the cropped
+                :class:`Network`.
+            merge_nodes (int):
+                The radius of the disk used in the node merging protocol,
+                taken from :cite:`Vecchio2021`.
+            prune (int):
+                The number of times to apply the pruning algorithm taken from
+                :cite:`Vecchio2021`.
+            remove_objects (int):
+                The size of objects to remove from the skeleton, using the
+                algorithm in :cite:`Vecchio2021`.
+        """
+        if not self._2d and rotate is not None:
+            raise ValueError("Cannot rotate 3D graphs.")
+        if crop is None and rotate is not None:
+            raise ValueError("If rotating a graph, crop must be specified")
+        if crop is not None and self.depth is not None:
+            if crop[4] < self.depth[0] or crop[5] > self.depth[1]:
+                raise ValueError(
+                    "crop argument cannot be outwith the bounds of \
+                    the network's depth"
+                )
+        if crop is not None and self.depth is None and not self._2d:
+            if len(self.image_stack) < crop[5] - crop[4]:
+                raise ValueError("Crop too large for image stack")
+            else:
+                self.depth = [crop[4], crop[5]]
+
+        start = time.time()
+
+        self.gsd_name = _abs_path(self, name)
+        self.gsd_dir = os.path.split(self.gsd_name)[0]
+
+        if rotate is not None:
+            self.inner_cropper = _cropper(self, domain=crop)
+            crop = self.inner_cropper._outer_crop
+
+        self.set_img_bin(crop)
+        
+        if skeleton:
+            self._skeleton = skeletonize_3d(np.asarray(self._img_bin, dtype=np.dtype('uint8')))
+            self.skeleton_3d = skeletonize_3d(np.asarray(self._img_bin_3d, dtype=np.dtype('uint8')))
+        else:
+            self._img_bin = np.asarray(self._img_bin)
+            self.skeleton_3d = self._img_bin_3d
+            self._skeleton = self._img_bin
+
+        positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
+        self.shape = np.asarray(
+            list(max(positions.T[i]) + 1 for i in (2, 1, 0)[0 : self.dim])
+        )
+        self.positions = positions
+
+        with gsd.hoomd.open(name=self.gsd_name, mode="w") as f:
+            s = gsd.hoomd.Frame()
+            s.particles.N = len(positions)
+            if box:
+                L = list(max(positions.T[i]) for i in (0, 1, 2))
+                s.particles.position, self.shift = base.shift(
+                    positions, _shift=(L[0] / 2, L[1] / 2, L[2] / 2)
+                )
+                s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
+            else:
+                s.particles.position, self.shift = base.shift(positions)
+            s.particles.types = ["A"]
+            s.particles.typeid = ["0"] * s.particles.N
+            f.append(s)
+
+        end = time.time()
+        print(
+            "Ran stack_to_gsd() in ",
+            end - start,
+            "for gsd with ",
+            len(positions),
+            "particles",
+        )
+
+        if debubble is not None:
+            self = base.debubble(self, debubble)
+
+        if merge_nodes is not None:
+            self = base.merge_nodes(self, merge_nodes)
+
+        if prune is not None:
+            self = base.prune(self, prune)
+
+        if remove_objects is not None:
+            self = base.remove_objects(self, remove_objects)
+
+        # Until now, the rotation arguement has not been used; the image and
+        # writted .gsds are all unrotated. The final block of this method is
+        # for reassigning the image attribute, as well as setting the rotate
+        # attribute for later. Only the img_bin attribute is altered because
+        # the image_stack attribute exists to expose the unprocessed image to
+        # the user.
+        #
+        # Also note that this only applies to 2D graphs, because 3D graphs
+        # cannot be rotated.
+        if rotate is not None:
+            # Set the rotate attribute
+            from scipy.spatial.transform import Rotation as R
+
+            r = R.from_rotvec(rotate / 180 * np.pi * np.array([0, 0, 1]))
+            self.rotate = r.as_matrix()
+            self.crop = np.asarray(crop) - min(crop)
+        else:
+            self.rotate = None
     @property
     def img_bin(self):
         """:class:`np.ndarray`: The binary image from which the graph was 
