@@ -320,10 +320,10 @@ def debubble(g, elements):
     g._skeleton = skeletonize_3d(canvas)/255
 
     if g._2d:
-        g._skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
-        g._skeleton_3d = np.asarray([g.skeleton])
+        g._skeleton_3d = np.swapaxes(np.array([g._skeleton]), 2, 1)
+        g._skeleton_3d = np.asarray([g._skeleton])
     else:
-        g._skeleton_3d = np.asarray(g.skeleton)
+        g._skeleton_3d = np.asarray(g._skeleton)
     
     positions = np.asarray(np.where(g._skeleton_3d!=0)).T
     with gsd.hoomd.open(name=g.gsd_name, mode='w') as f:
@@ -348,10 +348,10 @@ def merge_nodes(g, disk_size):
     g._skeleton = skel_ID.merge_nodes(canvas, disk_size)
 
     if g._2d:
-        g._skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
-        g._skeleton_3d = np.asarray([g.skeleton])
+        g._skeleton_3d = np.swapaxes(np.array([g._skeleton]), 2, 1)
+        g._skeleton_3d = np.asarray([g._skeleton])
     else:
-        g._skeleton_3d = np.asarray(g.skeleton)
+        g._skeleton_3d = np.asarray(g._skeleton)
     
     positions = np.asarray(np.where(g._skeleton_3d!=0)).T
     with gsd.hoomd.open(name=g.gsd_name, mode='w') as f:
@@ -375,10 +375,10 @@ def prune(g, size):
     g._skeleton = skel_ID.pruning(canvas, size)
 
     if g._2d:
-        g._skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
-        g._skeleton_3d = np.asarray([g.skeleton])
+        g._skeleton_3d = np.swapaxes(np.array([g._skeleton]), 2, 1)
+        g._skeleton_3d = np.asarray([g._skeleton])
     else:
-        g._skeleton_3d = np.asarray(g.skeleton)
+        g._skeleton_3d = np.asarray(g._skeleton)
     
     positions = np.asarray(np.where(g._skeleton_3d!=0)).T
     with gsd.hoomd.open(name=g.gsd_name, mode='w') as f:
@@ -402,10 +402,10 @@ def remove_objects(g, size):
     g._skeleton = remove_small_objects(canvas, size, connectivity=2)
 
     if g._2d:
-        g._skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
-        g._skeleton_3d = np.asarray([g.skeleton])
+        g._skeleton_3d = np.swapaxes(np.array([g._skeleton]), 2, 1)
+        g._skeleton_3d = np.asarray([g._skeleton])
     else:
-        g._skeleton_3d = np.asarray(g.skeleton)
+        g._skeleton_3d = np.asarray(g._skeleton)
     
     positions = np.asarray(np.where(g._skeleton_3d!=0)).T
     with gsd.hoomd.open(name=g.gsd_name, mode='w') as f:
