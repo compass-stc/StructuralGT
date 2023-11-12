@@ -16,7 +16,7 @@ include_dirs = [os.path.join(PREFIX, 'include', 'igraph'),
                 os.path.join(PREFIX, 'include', 'eigen3'),]
 
 setup(
-    name='StructuralGTEdits',
+    name='StructuralGT',
     packages = find_packages(),
     install_requires=[
         'numpy',
@@ -30,7 +30,6 @@ setup(
         'Cython',
         'gsd',
         'python-igraph',
-        'igraph',
         'eigen',
         'pytest',
         'cmake',
@@ -39,40 +38,40 @@ setup(
     setup_requires = ["cython"],
 #    ext_modules=cythonize('convert.pyx'))
     ext_modules=cythonize([
-                              Extension(name="StructuralGTEdits._bounded_betweenness_cast",
+                              Extension(name="StructuralGT._bounded_betweenness_cast",
                               sources=["_bounded_betweenness_cast.pyx"],
                               include_dirs=include_dirs,
                               language="c++",
                               extra_objects=[extra_obj]
                                         ),
 
-                              Extension(name="StructuralGTEdits._random_betweenness_cast",
+                              Extension(name="StructuralGT._random_betweenness_cast",
                               sources=["_random_betweenness_cast.pyx"],
                               include_dirs=include_dirs,
                               language="c++",
                               extra_objects=[extra_obj]
                                         ),
 
-                              Extension(name="StructuralGTEdits._nonlinear_random_betweenness_cast",
+                              Extension(name="StructuralGT._nonlinear_random_betweenness_cast",
                               sources=["_nonlinear_random_betweenness_cast.pyx"],
                               include_dirs=include_dirs,
                               language="c++",
                               extra_objects=[extra_obj]
                                         ),
 
-                              Extension(name="StructuralGTEdits._average_nodal_connectivity_cast",
+                              Extension(name="StructuralGT._average_nodal_connectivity_cast",
                               sources=["_average_nodal_connectivity_cast.pyx"],
                               include_dirs=include_dirs,
                               language="c++",
                               extra_objects=[extra_obj]
                                         ),
 
-                              Extension(name="StructuralGTEdits.convert",
+                              Extension(name="StructuralGT.convert",
                               sources=["convert.pyx"]),
 
                             ]
                           ),
     zip_safe=False,
-    package_data={'StructuralGTEdits':['pytest/data/*/*',]}#'_bounded_betweenness_cast.pyx'],}
-                  #'StructuralGTEdits._boundndess_betweenness_cast':['_bounded_betweenneess_cast.pyx']},
+    package_data={'StructuralGT':['pytest/data/*/*',]}#'_bounded_betweenness_cast.pyx'],}
+                  #'StructuralGT._boundndess_betweenness_cast':['_bounded_betweenneess_cast.pyx']},
 )

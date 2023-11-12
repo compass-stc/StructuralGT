@@ -6,6 +6,6 @@ requires = ["setuptools",
 ]
 
 [project]
-name = "StructuralGTEdits"
+name = "StructuralGT"
 version = "0.0.1"
 dynamic = ["dependencies"]
