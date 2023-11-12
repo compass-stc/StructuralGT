@@ -2,6 +2,13 @@ from StructuralGT.util import _Compute
 import numpy as np
 
 class Betweenness(_Compute):
+    """A module for calculating different extension of the classical
+    edge betweenness centrality measure. In particular, calculates
+    betweennesses which include geometric features of the network via weights
+    and boundary conditions.
+    """
+    def __init__(self):
+        pass
 
     def bounded_betweenness(self, sources, targets, weights=None):
         from StructuralGT import _bounded_betweenness_cast
