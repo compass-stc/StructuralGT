@@ -5,8 +5,9 @@ class Structural(_Compute):
     """Classical GT parameters. Calculates most of the parameters offered
     by the StructuralGT GUI :cite:`Vecchio2021`.
     """
-    def __init__(self):
-        pass
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def compute(self, network, skips=None):
         """Calculates graph diameter, density, assortativity by degree,

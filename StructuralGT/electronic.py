@@ -5,10 +5,11 @@ import os
 
 class Electronic(_Compute):
 
-    def __init__(self):
-        pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    def compute(self, network, axis, boundary_conditions, source=-1, sink=-2):
+    def compute(self, network, R_j, axis, boundary_conditions, source=-1,
+                sink=-2):
         """
         Args:
             source (int, optional):
@@ -18,6 +19,7 @@ class Electronic(_Compute):
         """
         self.source = source
         self.sink = sink
+        network.R_j = R_j
         boundary1 = boundary_conditions[0]
         boundary2 = boundary_conditions[1]
         network.graph_connected = network.graph
