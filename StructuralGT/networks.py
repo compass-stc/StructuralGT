@@ -367,7 +367,7 @@ class Network:
         else:
             self.rotate = None
 
-    def Node_labelling(self, attribute, label, filename, edge_weight=None, mode="r+"):
+    def Node_labelling(self, attributes, labels, filename, edge_weight=None, mode="r+"):
         """Method saves a new :code:`.gsd` which labels the :attr:`graph` 
         attribute with the given node attribute values. Method saves the
         :attr:`graph`  attribute in the :code:`.gsd` file in the form of a 
@@ -388,7 +388,9 @@ class Network:
         if isinstance(self.Gr, list):
             self.Gr = self.Gr[0]
 
-        assert self.Gr.vcount() == len(attribute)
+        if not isinstance(labels, list):
+            labels = [labels,]
+            attributes = [attributes,]
 
         if filename[0] == "/":
             save_name = filename
@@ -429,7 +431,8 @@ class Network:
         s.particles.types = ["Edge", "Node"]
         s.particles.typeid = [0] * N
         s.configuration.box = [L[0] / 2, L[1] / 2, L[2] / 2, 0, 0, 0]
-        s.log["particles/" + label] = [np.NaN] * N
+        for label in labels:
+            s.log["particles/" + label] = [np.NaN] * N
 
         # Store adjacency matrix in CSR format
         matrix = self.Gr.get_adjacency_sparse(attribute=edge_weight)
@@ -440,7 +443,7 @@ class Network:
         s.log["Adj_cols"] = columns
         s.log["Adj_values"] = values
 
-        j = 0
+        #j = 0
         for i, particle in enumerate(positions):
             node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[
                 0
@@ -448,9 +451,12 @@ class Network:
             if len(node_id) == 0:
                 continue
             else:
-                s.log["particles/" + label][i] = attribute[node_id[0]]
-                s.particles.typeid[i] = 1
-                j += 1
+                first=True
+                for attribute,label in zip(attributes,labels):
+                    s.log["particles/" + label][i] = attribute[node_id[0]]
+                    if first: s.particles.typeid[i] = 1
+                    first=False
+                #j += 1
 
         f.append(s)
 
