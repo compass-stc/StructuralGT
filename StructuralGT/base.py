@@ -13,7 +13,7 @@ import csv
 import scipy
 
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing, remove_small_objects
-from StructuralGTEdits import process_image, GetWeights_3d, error, convert, skel_ID, sknwEdits, util
+from StructuralGT import process_image, GetWeights_3d, error, convert, skel_ID, sknwEdits, util
 
 
 def read(name, read_type):
