@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import cv2 as cv
+import scipy
 from StructuralGT import error, base, process_image
 import json
 import matplotlib.pyplot as plt

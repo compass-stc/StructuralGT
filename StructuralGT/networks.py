@@ -1,8 +1,10 @@
 import numpy as np
 import os
 import cv2 as cv
-from StructuralGT import error, base, process_image, util
+from StructuralGT import error, base, process_image
 import json
+import scipy
+import igraph as ig
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import copy
@@ -138,7 +140,7 @@ class Network:
         # 3d for 3d images, 2d otherwise
         self._img_bin = np.squeeze(self._img_bin)
 
-    def set_graph(self, sub=True, weight_type=None, **kwargs):
+    def set_graph(self, sub=True, weight_type=None, write=False, **kwargs):
         """Sets :class:`Graph` object as an attribute by reading the
         skeleton file written by :meth:`img_to_skel`.
 
@@ -223,6 +225,9 @@ class Network:
             max(list(self.Gr.vs[i]["o"][j] for i in range(self.Gr.vcount())))
             for j in (0, 1, 2)[0 : self.dim]
         )
+
+        if write: self.Node_labelling([], [], 'graph.gsd')
+
     def img_to_skel(
         self,
         name="skel.gsd",
@@ -367,7 +372,7 @@ class Network:
         else:
             self.rotate = None
 
-    def Node_labelling(self, attributes, labels, filename, edge_weight=None, mode="r+"):
+    def Node_labelling(self, attributes, labels, filename, edge_weight=None, mode="w"):
         """Method saves a new :code:`.gsd` which labels the :attr:`graph` 
         attribute with the given node attribute values. Method saves the
         :attr:`graph`  attribute in the :code:`.gsd` file in the form of a 
@@ -451,11 +456,11 @@ class Network:
             if len(node_id) == 0:
                 continue
             else:
-                first=True
+                s.particles.typeid[i] = 1
+                #first=True
                 for attribute,label in zip(attributes,labels):
                     s.log["particles/" + label][i] = attribute[node_id[0]]
-                    if first: s.particles.typeid[i] = 1
-                    first=False
+                    #first=False
                 #j += 1
 
         f.append(s)
@@ -515,4 +520,35 @@ class Network:
         skeleton"""
         return self.Gr
 
+def from_gsd(filename, frame=0, depth=None):
+    """
+    Function returns a Network object stored in a given .gsd file
+    Assigns parent directory to filename, dropping last 2 subdirectories.
+    I.e. assumes filename given as ../...../dir/Binarized/name.gsd
+    This is why the Network object never calls its .binarize() method in this function
+
+    Currently only assigns node positions as attributes.
+    TODO: Assign edge position attributes if neccessary
+    """
+    _dir = os.path.split(os.path.split(filename)[0])[0]
+    N = Network(_dir, depth=depth)
+    f = gsd.hoomd.open(name=filename, mode='r')[frame]
+    rows =   f.log['Adj_rows']
+    cols =   f.log['Adj_cols']
+    values = f.log['Adj_values']
+    S = scipy.sparse.csr_matrix((values, (rows,cols)))
+    G = ig.Graph()
+    N.Gr = G.Weighted_Adjacency(S)
+
+    node_pos = f.particles.position[f.particles.typeid == 1]
+    edge_pos = f.particles.position[f.particles.typeid == 0]
+    print(len(node_pos))
+    print(N.Gr.vcount())
+
+    assert len(node_pos) == N.Gr.vcount()
+
+    N.Gr.vs['o'] = node_pos
+    N.Gr.es['pts'] = edge_pos
+
+    return N
 
