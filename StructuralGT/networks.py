@@ -46,19 +46,23 @@ class Network:
             is not specified.
     """
 
-    def __init__(self, directory, child_dir="Binarized", depth=None):
+    def __init__(self, directory, child_dir="Binarized", depth=None,
+                 prefix="slice"):
 
         self.dir = directory
         self.child_dir = '/' + child_dir
         self.stack_dir = self.dir + self.child_dir
         self.depth = depth
+        self.prefix = prefix
 
         #self.img, self.slice_names = [], []
         image_stack = _image_stack()
         for slice_name in sorted(os.listdir(self.dir)):
             fname = _fname(self.dir + '/' + slice_name,
                            domain=_domain(depth))
-            if (fname.isinrange and fname.isimg):
+            if (fname.isinrange and
+                fname.isimg and 
+                self.prefix in fname.prefix):
                 _slice = cv.imread(self.dir + "/" + slice_name)
                 image_stack.append(_slice, slice_name)
 
@@ -96,7 +100,7 @@ class Network:
             gray_image = cv.imread(self.dir + '/' + name, cv.IMREAD_GRAYSCALE)
             _, img_bin, _ = process_image.binarize(gray_image, options_dict)
             plt.imsave(
-                self.stack_dir + "/slice" + fname.num + ".tiff",
+                self.stack_dir + "/" + self.prefix + fname.num + ".tiff",
                 img_bin,
                 cmap=cm.gray,
             )
@@ -130,7 +134,7 @@ class Network:
                 suff = base.quadrupletise(i)
                 img_bin[i - self.cropper.surface] = (
                     base.read(
-                        self.stack_dir + "/slice" + fname.num + ".tiff",
+                        self.stack_dir + "/" + self.prefix + fname.num + ".tiff",
                         cv.IMREAD_GRAYSCALE,
                     )[self.cropper._2d]
                     / 255
