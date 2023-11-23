@@ -547,7 +547,7 @@ class Network:
 
         ax.set_xticks([])
         ax.set_yticks([])
-        sp = ax.imshow(self.image_stack[depth][0], cmap='plasma')
+        sp = ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap='plasma')
         _max = np.max(parameter)
         _min = np.min(parameter)
         for edge in self.graph.es:
