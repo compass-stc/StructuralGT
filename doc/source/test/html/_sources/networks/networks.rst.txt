@@ -7,7 +7,7 @@ Networks
 .. autosummary::
     :nosignatures:
 
-    StructuralGT.networks
+    StructuralGT.networks.Network
 
 .. rubric:: Details
 

@@ -36,9 +36,88 @@
 <p class="rubric">Overview</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#StructuralGT.networks.Network" title="StructuralGT.networks.Network"><code class="xref py py-obj docutils literal notranslate"><span class="pre">StructuralGT.networks.Network</span></code></a></p></td>
+<td><p>Generic class to represent networked image data.</p></td>
+</tr>
 </tbody>
 </table>
 <p class="rubric">Details</p>
+<dl class="py class" id="module-StructuralGT.networks">
+<dt class="sig sig-object py" id="StructuralGT.networks.Network">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">StructuralGT.networks.</span></span><span class="sig-name descname"><span class="pre">Network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Binarized'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#StructuralGT.networks.Network" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Generic class to represent networked image data. Should not be
+instantiated by the user.</p>
+<p>Subclasses will hold <a class="reference internal" href="#StructuralGT.networks.Network.graph" title="StructuralGT.networks.Network.graph"><code class="xref py py-class docutils literal notranslate"><span class="pre">graph</span></code></a> attributes 
+holds additional attributes and methods for supporting geometric features
+associated images, dimensionality etc.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>directory (str):</dt><dd><p>The (absolute or relative) pathname for the image(s) to be
+analysed. Where 2D analysis is concerned, the directory should
+contain a single image.</p>
+</dd>
+<dt>child_dir (str):</dt><dd><p>The pathname relative to directory for storing the binarized 
+stack of images and all subsequent results.</p>
+</dd>
+<dt>depth (tuple, optional):</dt><dd><p>The file range from which files should be extracted from the 
+directory. This is primarily used to analyse a subset of a large
+directory. Cropping can be carried out after, if this argument
+is not specified.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="StructuralGT.networks.Network.binarize">
+<span class="sig-name descname"><span class="pre">binarize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">options_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#StructuralGT.networks.Network.binarize" title="Link to this definition">¶</a></dt>
+<dd><p>Binarizes stack of experimental images using a set of image
+processing parameters.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>options_dict (dict, optional):</dt><dd><p>A dictionary of option-value pairs for image processing. All
+options must be specified. When this arguement is not
+specified, the network’s parent directory will be searched for
+a file called img_options.json, containing the options.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="StructuralGT.networks.Network.set_img_bin">
+<span class="sig-name descname"><span class="pre">set_img_bin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">crop</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#StructuralGT.networks.Network.set_img_bin" title="Link to this definition">¶</a></dt>
+<dd><p>Sets the <a class="reference internal" href="#StructuralGT.networks.Network.img_bin" title="StructuralGT.networks.Network.img_bin"><code class="xref py py-attr docutils literal notranslate"><span class="pre">img_bin</span></code></a> and <code class="xref py py-attr docutils literal notranslate"><span class="pre">img_bin_3d</span></code> attributes, which
+are numpy arrays of pixels and voxels which represent the binarized 
+image. Called internally by subclasses of <a class="reference internal" href="#StructuralGT.networks.Network" title="StructuralGT.networks.Network"><code class="xref py py-class docutils literal notranslate"><span class="pre">Network</span></code></a>.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>crop (list):</dt><dd><p>The x, y and (optionally) z coordinates of the cuboid/
+rectangle which encloses the <a class="reference internal" href="#StructuralGT.networks.Network" title="StructuralGT.networks.Network"><code class="xref py py-class docutils literal notranslate"><span class="pre">Network</span></code></a> region of
+interest.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="StructuralGT.networks.Network.img_bin">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">img_bin</span></span><a class="headerlink" href="#StructuralGT.networks.Network.img_bin" title="Link to this definition">¶</a></dt>
+<dd><p><code class="xref py py-class docutils literal notranslate"><span class="pre">np.ndarray</span></code>: The binary image from which the graph was 
+extracted</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="StructuralGT.networks.Network.graph">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">graph</span></span><a class="headerlink" href="#StructuralGT.networks.Network.graph" title="Link to this definition">¶</a></dt>
+<dd><p><code class="xref py py-class docutils literal notranslate"><span class="pre">igraph.Graph</span></code>: The Graph object extracted from the 
+skeleton</p>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
 
@@ -67,12 +146,17 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Networks</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Networks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#StructuralGT.networks.Network"><code class="docutils literal notranslate"><span class="pre">Network</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="physical_networks.html">Physical networks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="interaction_networks.html">Interaction Networks</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../reference/addingcppscripts.html">Adding C++ Scripts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/cite.html">How to cite StructuralGT</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../reference/zreferences.html">References</a></li>
 </ul>
 
@@ -108,7 +192,7 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2023, Alain Kadar.
+      &copy;2023, Reagents of the University of Michigan.
       
       |
       Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
