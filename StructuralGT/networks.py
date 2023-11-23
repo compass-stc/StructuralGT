@@ -5,6 +5,7 @@ from StructuralGT import error, base, process_image, util
 import json
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import copy
 import time
 import gsd.hoomd
 import warnings
@@ -365,6 +366,138 @@ class Network:
             self.crop = np.asarray(crop) - min(crop)
         else:
             self.rotate = None
+
+    def Node_labelling(self, attributes, labels, filename, edge_weight=None, mode="r+"):
+        """Method saves a new :code:`.gsd` which labels the :attr:`graph` 
+        attribute with the given node attribute values. Method saves the
+        :attr:`graph`  attribute in the :code:`.gsd` file in the form of a 
+        sparse adjacency matrix (therefore edge/node attributes are not saved).
+
+        Args:
+            attribute (:class:`numpy.ndarray`):
+                An array of attribute values in ascending order of node id.
+            label (str):
+                The label to give the attribute in the file.
+            filename (str):
+                The file name to write.
+            edge_weight (optional, :class:`numpy.ndarray`):
+                Any edge weights to store in the adjacency matrix.
+            mode (optional, str):
+                The writing mode. See  for details.
+        """
+        if isinstance(self.Gr, list):
+            self.Gr = self.Gr[0]
+
+        if not isinstance(labels, list):
+            labels = [labels,]
+            attributes = [attributes,]
+
+        if filename[0] == "/":
+            save_name = filename
+        else:
+            save_name = self.stack_dir + "/" + filename
+        if mode == "r+" and os.path.exists(save_name):
+            _mode = "r+"
+        else:
+            _mode = "w"
+
+        f = gsd.hoomd.open(name=save_name, mode=_mode)
+        self.labelled_name = save_name
+
+        node_positions = np.asarray(
+            list(self.Gr.vs()[i]["o"] for i in range(self.Gr.vcount()))
+        )
+        positions = node_positions
+        for edge in self.Gr.es():
+            positions = np.vstack((positions, edge["pts"]))
+        for node in self.Gr.vs():
+            positions = np.vstack((positions, node["pts"]))
+        positions = np.unique(positions, axis=0)
+        if self._2d:
+            node_positions = np.hstack(
+                (np.zeros((len(node_positions), 1)), node_positions)
+            )
+            positions = np.hstack((np.zeros((len(positions), 1)), positions))
+
+        L = list(max(positions.T[i]) * 2 for i in (0, 1, 2))
+        node_positions = base.shift(
+            node_positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4)
+        )[0]
+        positions = base.shift(positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4))[0]
+        s = gsd.hoomd.Frame()
+        N = len(positions)
+        s.particles.N = N
+        s.particles.position = positions
+        s.particles.types = ["Edge", "Node"]
+        s.particles.typeid = [0] * N
+        s.configuration.box = [L[0] / 2, L[1] / 2, L[2] / 2, 0, 0, 0]
+        for label in labels:
+            s.log["particles/" + label] = [np.NaN] * N
+
+        # Store adjacency matrix in CSR format
+        matrix = self.Gr.get_adjacency_sparse(attribute=edge_weight)
+        rows, columns = matrix.nonzero()
+        values = matrix.data
+
+        s.log["Adj_rows"] = rows
+        s.log["Adj_cols"] = columns
+        s.log["Adj_values"] = values
+
+        #j = 0
+        for i, particle in enumerate(positions):
+            node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[
+                0
+            ]
+            if len(node_id) == 0:
+                continue
+            else:
+                first=True
+                for attribute,label in zip(attributes,labels):
+                    s.log["particles/" + label][i] = attribute[node_id[0]]
+                    if first: s.particles.typeid[i] = 1
+                    first=False
+                #j += 1
+
+        f.append(s)
+
+    def recon(self, axis, surface, depth):
+        """Method displays 2D slice of binary image and
+        annotates with attributes from 3D graph subslice
+        """
+
+        Gr_copy = copy.deepcopy(self.Gr)
+
+        # self.Gr = base.sub_G(self.Gr)
+
+        axis_0 = abs(axis - 2)
+
+        display_img = np.swapaxes(self._img_bin_3d, 0, axis_0)[surface]
+        drop_list = []
+        for i in range(self.Gr.vcount()):
+            if (
+                self.Gr.vs[i]["o"][axis_0] < surface
+                or self.Gr.vs[i]["o"][axis_0] > surface + depth
+            ):
+                drop_list.append(i)
+                continue
+
+        self.Gr.delete_vertices(drop_list)
+
+        node_positions = np.asarray(
+            list(self.Gr.vs()[i]["o"] for i in range(self.Gr.vcount()))
+        )
+        positions = np.array([[0, 0, 0]])
+        for edge in self.Gr.es():
+            positions = np.vstack((positions, edge["pts"]))
+
+        fig = plt.figure(figsize=(10, 25))
+        plt.scatter(node_positions.T[2], node_positions.T[1], s=10, color="red")
+        plt.scatter(positions.T[2], positions.T[1], s=2)
+        plt.imshow(self._img_bin[axis], cmap=cm.gray)
+        plt.show()
+
+        self.Gr = Gr_copy
+
     @property
     def img_bin(self):
         """:class:`np.ndarray`: The binary image from which the graph was 

@@ -76,7 +76,7 @@ class Structural(_Compute):
         on node i.
 
         """
-        return self.Degree_Assortativity
+        return self.Clustering
 
     @_Compute._computed_property
     def average_clustering_coefficient(self):
@@ -107,7 +107,7 @@ class Structural(_Compute):
         chosen edge.
 
         """
-        return self.assortativity_degree
+        return self.Degree_Assortativity
 
     @_Compute._computed_property
     def betweenness(self):
