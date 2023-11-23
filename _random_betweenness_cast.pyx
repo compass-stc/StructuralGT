@@ -47,7 +47,7 @@ cdef class PyCast:
         
     @property
     def random_betweenness(self):
-        _random_betweennesses = {}
+        _random_betweennesses = np.zeros(self.c_cast.num_edges, dtype=np.float)
         for i in range(self.c_cast.num_edges):
             _random_betweennesses[i] = self.c_cast.betweennesses[i]
 
