@@ -16,14 +16,20 @@ Table of Contents
    :maxdepth: 2
    :caption: API
 
+   binarizer/binarizer
    networks/networks
-   networks/physical_networks
-   networks/interaction_networks
+   compute/structural
+   compute/electronic
+   compute/geometric
+   compute/betweenness
+   compute/average_nodal_connectivity
 
 .. toctree::
    :maxdepth: 2
    :caption: Reference
 
+   reference/addingcppscripts
+   reference/cite
    reference/zreferences
 
 Indices and tables
