@@ -40,7 +40,10 @@ class Structural(_Compute):
         ]
 
         for operation, name in zip(operations, names):
-            setattr(self, name, operation())
+            if name in ["Diameter", "Betweenness", "Closeness"]:
+                setattr(self, name, operation(weights=self.weight_type))
+            else:
+                setattr(self, name, operation())
 
     @_Compute._computed_property
     def diameter(self):
