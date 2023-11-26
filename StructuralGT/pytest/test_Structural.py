@@ -2,7 +2,7 @@ from StructuralGT.structural import Structural
 from network_factory import fibrous
 import igraph as ig
 import pytest
-from networkx import diameter, density, clustering, average_clustering
+from networkx import diameter, density, clustering, average_clustering, degree_assortativity_coefficient, betweenness_centrality, closeness_centrality
 import numpy.testing as npt
 
 
@@ -36,15 +36,36 @@ class TestUnweightedStructural:
                 )
 
     def test_average_clustering(self, test_compute):
-        """
         ComputeModule, testGraph = test_compute
         npt.assert_allclose(
-                ComputeModule.average_clustering,
+                ComputeModule.average_clustering_coefficient,
                 average_clustering(testGraph),
                 atol=1e-2,
                 )
-        """
-        pass
+
+    def test_assortativity(self, test_compute): 
+        ComputeModule, testGraph = test_compute
+        npt.assert_allclose(
+                ComputeModule.assortativity,
+                degree_assortativity_coefficient(testGraph),
+                atol=1e-2,
+                )
+    
+    def test_betweenness(self, test_compute): 
+        ComputeModule, testGraph = test_compute
+        npt.assert_allclose(
+                ComputeModule.betweenness,
+                betweenness_centrality(testGraph),
+                atol=1e-2,
+                )
+
+    def test_closenness(self, test_compute): 
+        ComputeModule, testGraph = test_compute
+        npt.assert_allclose(
+                ComputeModule.closeness,
+                closeness_centrality(testGraph),
+                atol=1e-2,
+                )
 
 class TestWeightedStructural:
     @pytest.fixture
@@ -54,7 +75,7 @@ class TestWeightedStructural:
         testGraph = testNetwork.graph.to_networkx()
 
         #Instantiate a compute module and run calculation
-        ComputeModule = Structural(weight_type=['Length'])
+        ComputeModule = Structural(weight_type='Length')
         ComputeModule.compute(testNetwork)
 
         return ComputeModule, testGraph
@@ -63,6 +84,6 @@ class TestWeightedStructural:
         ComputeModule, testGraph = test_compute
         npt.assert_allclose(
                 ComputeModule.diameter,
-                diameter(testGraph),
+                diameter(testGraph, weight='Length'),
                 atol=1e-2,
                 )
