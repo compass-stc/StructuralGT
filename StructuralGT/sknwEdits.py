@@ -131,8 +131,10 @@ def build_graph(nodes, edges, multi=False, full=True):
     edge_list = []
     weight_list = []
     for s,e,pts in edges:
+        if not multi and (s,e) in edge_list: continue
         edge_list.append((s,e))
         pts_list.append(pts)
+
 
     graph.add_edges(edge_list, attributes=dict(pts=pts_list)) 
     
