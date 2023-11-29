@@ -2,16 +2,25 @@ from StructuralGT.structural import Structural
 from network_factory import fibrous
 import igraph as ig
 import pytest
-from networkx import diameter, density, clustering, average_clustering, degree_assortativity_coefficient, betweenness_centrality, closeness_centrality
+from networkx import (
+        average_clustering, 
+        betweenness_centrality,
+        closeness_centrality,
+        clustering, 
+        degree_assortativity_coefficient,
+        density, 
+        diameter, 
+        Graph
+    )
 import numpy.testing as npt
-
+import numpy as np
 
 class TestUnweightedStructural:
     @pytest.fixture
     def test_compute(self):
         #Obtain an unweighted connected graph
         testNetwork = fibrous()
-        testGraph = testNetwork.graph.to_networkx()
+        testGraph = testNetwork.graph.to_networkx(create_using=Graph)
 
         #Instantiate a compute module and run calculation
         ComputeModule = Structural()
@@ -55,7 +64,8 @@ class TestUnweightedStructural:
         ComputeModule, testGraph = test_compute
         npt.assert_allclose(
                 ComputeModule.betweenness,
-                betweenness_centrality(testGraph),
+                np.fromiter(betweenness_centrality(testGraph).values(),
+                            dtype=float),
                 atol=1e-2,
                 )
 
@@ -63,7 +73,8 @@ class TestUnweightedStructural:
         ComputeModule, testGraph = test_compute
         npt.assert_allclose(
                 ComputeModule.closeness,
-                closeness_centrality(testGraph),
+                np.fromiter(closeness_centrality(testGraph).values(),
+                            dtype=float),
                 atol=1e-2,
                 )
 
@@ -87,3 +98,24 @@ class TestWeightedStructural:
                 diameter(testGraph, weight='Length'),
                 atol=1e-2,
                 )
+
+    def test_betweenness(self, test_compute): 
+        ComputeModule, testGraph = test_compute
+        npt.assert_allclose(
+                ComputeModule.betweenness,
+                np.fromiter(betweenness_centrality(testGraph, 
+                                                   weight='Length').values(),
+                            dtype=float),
+                atol=1e-2,
+                )
+
+    def test_closenness(self, test_compute): 
+        ComputeModule, testGraph = test_compute
+        npt.assert_allclose(
+                ComputeModule.closeness,
+                np.fromiter(closeness_centrality(testGraph,
+                                                 distance='Length').values(),
+                            dtype=float),
+                atol=1e-2,
+                )
+

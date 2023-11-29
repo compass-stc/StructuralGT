@@ -21,7 +21,8 @@ class TestAverageNodalConnectivity:
             for j in range(i+1, testNetwork.graph.vcount()):
                 val=testNetwork.graph.vertex_connectivity(source=j,
                                                           target=i,
-                                                          neighbors="ignore")
+                                                          neighbors="negative")
+                if val==-1: continue
                 vals.append(val)
         #Check that the StructuralGT and networkx values are equal
         npt.assert_allclose(ComputeModule.average_nodal_connectivity,
