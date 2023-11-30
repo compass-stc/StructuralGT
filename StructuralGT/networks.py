@@ -551,15 +551,18 @@ class Network:
 
         ax.set_xticks([])
         ax.set_yticks([])
-        sp = ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap='plasma')
+        ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap='plasma')
         _max = np.max(parameter)
         _min = np.min(parameter)
+        
+        e = np.empty((0,2))
         for edge in self.graph.es:
-            ax.scatter(edge['pts'][:,1], edge['pts'][:,0], c='k', s=3,
-                       marker='s')
-        for node,i in zip(self.graph.vs, parameter):
-            ax.scatter(node['o'][1], node['o'][0], c=i, s=20, vmax=_max,
-                       vmin=_min, cmap='plasma')
+            e = np.vstack((e,edge['pts']))
+        ax.scatter(e.T[1], e.T[0], c='k', s=3, marker='s', edgecolors='none')
+        
+        y,x = np.array(self.graph.vs['o']).T
+        sp=ax.scatter(x,y, c=parameter, s=10, marker='o', cmap='plasma',
+                      edgecolors='none')
         cb = colorbar(sp)
         cb.set_label('Value')
 
