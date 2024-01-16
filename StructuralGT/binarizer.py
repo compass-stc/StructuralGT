@@ -41,7 +41,7 @@ class Binarizer:
         if export:
             if self.export_dir is None:
                 self.export_dir = os.path.split(self.filename)[0]
-            with open(self.export_dir + '/options.json', 'w') as fp:
+            with open(self.export_dir + '/img_options.json', 'w') as fp:
                 json.dump(options_dict, fp)
         
         _, binary_image, _ = process_image.binarize(gray_image, options_dict)
