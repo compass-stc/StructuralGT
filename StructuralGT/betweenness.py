@@ -40,7 +40,6 @@ class Betweenness(_Compute):
 
         num_edges = network.Gr.ecount()
         _copy = copy.deepcopy(network.Gr)
-
         if weights is None:
             weights = np.ones(num_edges, dtype=np.double)
         else:
