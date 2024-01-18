@@ -140,7 +140,7 @@ class Network:
         # 3d for 3d images, 2d otherwise
         self._img_bin = np.squeeze(self._img_bin)
 
-    def set_graph(self, sub=True, weight_type=None, write=False, **kwargs):
+    def set_graph(self, sub=True, weight_type=None, write='graph.gsd', **kwargs):
         """Sets :class:`Graph` object as an attribute by reading the
         skeleton file written by :meth:`img_to_skel`.
 
@@ -226,7 +226,7 @@ class Network:
             for j in (0, 1, 2)[0 : self.dim]
         )
 
-        if write: self.Node_labelling([], [], 'graph.gsd')
+        if write: self.Node_labelling([], [], write)
 
     def img_to_skel(
         self,
@@ -409,15 +409,22 @@ class Network:
         f = gsd.hoomd.open(name=save_name, mode=_mode)
         self.labelled_name = save_name
 
-        node_positions = np.asarray(
-            list(self.Gr.vs()[i]["o"] for i in range(self.Gr.vcount()))
-        )
-        positions = node_positions
-        for edge in self.Gr.es():
-            positions = np.vstack((positions, edge["pts"]))
-        for node in self.Gr.vs():
-            positions = np.vstack((positions, node["pts"]))
+        centroid_positions = np.empty((0, self.dim))
+        node_positions = np.empty((0, self.dim))
+        edge_positions = np.empty((0, self.dim))
+        for i in range(len(self.Gr.vs())):
+            node_positions = np.vstack((node_positions, self.Gr.vs()[i]["pts"]))
+            centroid_positions = np.vstack((centroid_positions, self.Gr.vs()[i]["o"]))
+        for i in range(len(self.Gr.es())):
+            edge_positions = np.vstack((edge_positions, self.Gr.es()[i]["pts"]))
+
+        positions = centroid_positions
+        for edge in edge_positions:
+            positions = np.vstack((positions, edge))
+        for node in node_positions:
+            positions = np.vstack((positions, node))
         positions = np.unique(positions, axis=0)
+
         if self._2d:
             node_positions = np.hstack(
                 (np.zeros((len(node_positions), 1)), node_positions)
@@ -428,12 +435,19 @@ class Network:
         node_positions = base.shift(
             node_positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4)
         )[0]
+        edge_positions = base.shift(
+            edge_positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4)
+        )[0]
+        centroid_positions = base.shift(
+            centroid_positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4)
+        )[0]
         positions = base.shift(positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4))[0]
+        
         s = gsd.hoomd.Frame()
         N = len(positions)
         s.particles.N = N
         s.particles.position = positions
-        s.particles.types = ["Edge", "Node"]
+        s.particles.types = ["Edge", "Node", "Centroid"]
         s.particles.typeid = [0] * N
         s.configuration.box = [L[0] / 2, L[1] / 2, L[2] / 2, 0, 0, 0]
         for label in labels:
@@ -448,20 +462,18 @@ class Network:
         s.log["Adj_cols"] = columns
         s.log["Adj_values"] = values
 
-        #j = 0
         for i, particle in enumerate(positions):
-            node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[
-                0
-            ]
-            if len(node_id) == 0:
+            node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[0]
+            centroid_id = np.where(np.all(positions[i] == centroid_positions, axis=1) == True)[0]
+            if len(node_id) == 0 and len(centroid_id)==0:
                 continue
-            else:
-                s.particles.typeid[i] = 1
-                #first=True
+            elif len(centroid_id)!=0:
+                s.particles.typeid[i] = 2
                 for attribute,label in zip(attributes,labels):
-                    s.log["particles/" + label][i] = attribute[node_id[0]]
-                    #first=False
-                #j += 1
+                    s.log["particles/" + label][i] = attribute[centroid_id[0]]
+            else:
+                assert len(node_id)!=0
+                s.particles.typeid[i] = 1
 
         f.append(s)
 
@@ -520,7 +532,7 @@ class Network:
         skeleton"""
         return self.Gr
 
-def from_gsd(filename, frame=0, depth=None):
+def from_gsd(_dir, filename, frame=0, depth=None):
     """
     Function returns a Network object stored in a given .gsd file
     Assigns parent directory to filename, dropping last 2 subdirectories.
@@ -530,7 +542,7 @@ def from_gsd(filename, frame=0, depth=None):
     Currently only assigns node positions as attributes.
     TODO: Assign edge position attributes if neccessary
     """
-    _dir = os.path.split(os.path.split(filename)[0])[0]
+    #_dir = os.path.split(os.path.split(filename)[0])[0]
     N = Network(_dir, depth=depth)
     f = gsd.hoomd.open(name=filename, mode='r')[frame]
     rows =   f.log['Adj_rows']
@@ -540,15 +552,13 @@ def from_gsd(filename, frame=0, depth=None):
     G = ig.Graph()
     N.Gr = G.Weighted_Adjacency(S)
 
-    node_pos = f.particles.position[f.particles.typeid == 1]
     edge_pos = f.particles.position[f.particles.typeid == 0]
-    print(len(node_pos))
-    print(N.Gr.vcount())
+    node_pos = f.particles.position[f.particles.typeid == 1]
+    centroid_pos = f.particles.position[f.particles.typeid == 2]
 
-    assert len(node_pos) == N.Gr.vcount()
-
-    N.Gr.vs['o'] = node_pos
     N.Gr.es['pts'] = edge_pos
+    N.Gr.vs['pts'] = node_pos
+    N.Gr.vs['o'] = centroid_pos
 
     return N
 
