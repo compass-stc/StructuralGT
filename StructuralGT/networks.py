@@ -15,6 +15,16 @@ import warnings
 from skimage.morphology import skeletonize_3d
 from StructuralGT.util import _image_stack, _cropper, _domain, _fname, _abs_path
 
+from matplotlib.colorbar import Colorbar
+def colorbar(mappable, *args, **kwargs):
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    ax = mappable.axes
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size="5%", pad=0.05)
+    cbar = Colorbar(cax, mappable)
+    ax.set(*args, **kwargs)
+    return cbar
+
 class Network:
     """Generic class to represent networked image data. Should not be
     instantiated by the user.
@@ -38,20 +48,25 @@ class Network:
             is not specified.
     """
 
-    def __init__(self, directory, child_dir="Binarized", depth=None):
+    def __init__(self, directory, child_dir="Binarized", depth=None,
+                 prefix="slice"):
 
         self.dir = directory
         self.child_dir = '/' + child_dir
         self.stack_dir = self.dir + self.child_dir
         self.depth = depth
+        self.prefix = prefix
 
         #self.img, self.slice_names = [], []
         image_stack = _image_stack()
         for slice_name in sorted(os.listdir(self.dir)):
             fname = _fname(self.dir + '/' + slice_name,
                            domain=_domain(depth))
-            if (fname.isinrange and fname.isimg):
-                _slice = cv.imread(self.dir + "/" + slice_name)
+            if (fname.isinrange and
+                fname.isimg and 
+                self.prefix in fname.prefix):
+                #_slice = cv.imread(self.dir + "/" + slice_name)
+                _slice = plt.imread(self.dir + "/" + slice_name)
                 image_stack.append(_slice, slice_name)
 
         self.image_stack = image_stack
@@ -88,7 +103,7 @@ class Network:
             gray_image = cv.imread(self.dir + '/' + name, cv.IMREAD_GRAYSCALE)
             _, img_bin, _ = process_image.binarize(gray_image, options_dict)
             plt.imsave(
-                self.stack_dir + "/slice" + fname.num + ".tiff",
+                self.stack_dir + "/" + self.prefix + fname.num + ".tiff",
                 img_bin,
                 cmap=cm.gray,
             )
@@ -122,7 +137,7 @@ class Network:
                 suff = base.quadrupletise(i)
                 img_bin[i - self.cropper.surface] = (
                     base.read(
-                        self.stack_dir + "/slice" + fname.num + ".tiff",
+                        self.stack_dir + "/" + self.prefix + fname.num + ".tiff",
                         cv.IMREAD_GRAYSCALE,
                     )[self.cropper._2d]
                     / 255
@@ -477,6 +492,45 @@ class Network:
 
         f.append(s)
 
+    def node_plot(self, parameter, ax=None, depth=0):
+        """Superimpose the skeleton, image, and nodal graph theory parameters.
+
+        Args:
+            parameter (:class:`numpy.ndarray`):
+                The value of node parameters
+            ax (:class:`matplotlib.axes.Axes`, optional): 
+                Axis to plot on. If :code:`None`, make a new figure and axis.
+                (Default value = :code:`None`)
+
+        Returns:
+            (:class:`matplotlib.axes.Axes`): Axis with the plot.
+        """
+
+        assert self.Gr.vcount() == len(parameter)
+
+        if ax is None:
+            fig = plt.figure()
+            ax = fig.subplots()
+
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap='plasma')
+        _max = np.max(parameter)
+        _min = np.min(parameter)
+        
+        e = np.empty((0,2))
+        for edge in self.graph.es:
+            e = np.vstack((e,edge['pts']))
+        ax.scatter(e.T[1], e.T[0], c='k', s=3, marker='s', edgecolors='none')
+        
+        y,x = np.array(self.graph.vs['o']).T
+        sp=ax.scatter(x,y, c=parameter, s=10, marker='o', cmap='plasma',
+                      edgecolors='none')
+        cb = colorbar(sp)
+        cb.set_label('Value')
+
+        return ax
+
     def recon(self, axis, surface, depth):
         """Method displays 2D slice of binary image and
         annotates with attributes from 3D graph subslice
@@ -561,4 +615,3 @@ def from_gsd(_dir, filename, frame=0, depth=None):
     N.Gr.vs['o'] = centroid_pos
 
     return N
-

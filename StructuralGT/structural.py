@@ -19,6 +19,8 @@ class Structural(_Compute):
                 The :class:`Network` object.
         """
 
+        self.vcount = network.graph.vcount()
+
         operations = [
                 network.graph.diameter,
                 network.graph.density,
@@ -40,7 +42,12 @@ class Structural(_Compute):
         ]
 
         for operation, name in zip(operations, names):
-            setattr(self, name, operation())
+            if name in ["Diameter", "Betweenness", "Closeness"]:
+                setattr(self, name, operation(weights=self.weight_type))
+            elif name == "Clustering":
+                setattr(self, name, operation(mode="zero"))
+            else:
+                setattr(self, name, operation())
 
     @_Compute._computed_property
     def diameter(self):
@@ -125,7 +132,7 @@ class Structural(_Compute):
         pass through node $i$. For variations on this parameter, see the
         :class:`Betweenness` module.
         """
-        return np.asarray(self.Betweenness)
+        return np.asarray(self.Betweenness)/(self.vcount-1)/(self.vcount-2)*2
 
     @_Compute._computed_property
     def closeness(self):

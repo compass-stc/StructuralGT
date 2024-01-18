@@ -1,5 +1,10 @@
 from StructuralGT.util import _Compute
 import numpy as np
+import copy
+
+from StructuralGT import _bounded_betweenness_cast
+from StructuralGT import _random_betweenness_cast
+from StructuralGT import _nonlinear_random_betweenness_cast
 
 class Betweenness(_Compute):
     """A module for calculating different extension of the classical
@@ -10,11 +15,10 @@ class Betweenness(_Compute):
     def __init__(self):
         pass
 
-    def bounded_betweenness(self, sources, targets, weights=None):
-        from StructuralGT import _bounded_betweenness_cast
+    def bounded_betweenness(self, network, sources, targets, weights=None):
 
-        num_edges = self.Gr.ecount()
-        _copy = copy.deepcopy(self.Gr)
+        num_edges = network.Gr.ecount()
+        _copy = copy.deepcopy(network.Gr)
 
         if weights is None:
             weights = np.ones(num_edges, dtype=np.double)
@@ -32,12 +36,10 @@ class Betweenness(_Compute):
 
         return cast.bounded_betweenness
 
-    def random_betweenness(self, sources, targets, weights=None):
-        from StructuralGT import _random_betweenness_cast
+    def random_betweenness(self, network, sources, targets, weights=None):
 
-        num_edges = self.Gr.ecount()
-        _copy = copy.deepcopy(self.Gr)
-
+        num_edges = network.Gr.ecount()
+        _copy = copy.deepcopy(network.Gr)
         if weights is None:
             weights = np.ones(num_edges, dtype=np.double)
         else:
@@ -54,15 +56,14 @@ class Betweenness(_Compute):
 
         return cast.random_betweenness
 
-    def nonlinear_random_betweenness(self, sources, targets, incoming,
+    def nonlinear_random_betweenness(self, network, sources, targets, incoming,
                                      weights=None):
-        from StructuralGT import _nonlinear_random_betweenness_cast
-        _copy = copy.deepcopy(self.Gr)
+        _copy = copy.deepcopy(network.Gr)
 
         #Add ghost node and edges from targets to ghost
         _copy.add_vertex(1)
         for target in targets:
-            _copy.add_edge(self.Gr.vcount()-1,target)
+            _copy.add_edge(network.Gr.vcount()-1,target)
         num_edges = _copy.ecount()
 
         #When passing weight vector, must add additional weights for edges
@@ -70,9 +71,9 @@ class Betweenness(_Compute):
         if weights is None:
             weights = np.ones(num_edges, dtype=np.double)
         else:
-            mean = np.mean(np.array(self.Gr.es[weights]))
+            mean = np.mean(np.array(network.Gr.es[weights]))
 
-            weights = np.append(np.array(self.Gr.es[weights], dtype=np.double),
+            weights = np.append(np.array(network.Gr.es[weights], dtype=np.double),
                                 np.full(len(targets), mean, dtype=np.double)).astype(np.double)
             assert len(weights) == _copy.ecount()
         cast = _nonlinear_random_betweenness_cast.PyCast(_copy._raw_pointer())
@@ -104,9 +105,9 @@ class Betweenness(_Compute):
 
         """
 
-        self._bounded_betweenness = bounded_betweenness(network, sources, targets, weights)
-        self._random_betweenness = random_betweenness_cast(network, sources, targets, weights)
-        self._nonlinear_random_betweenness = nonlinear_random_betweenness(network, sources, targets, weights)
+        self._bounded_betweenness = self.bounded_betweenness(network, sources, targets, weights)
+        self._random_betweenness = self.random_betweenness(network, sources, targets, weights)
+        self._nonlinear_random_betweenness = self.nonlinear_random_betweenness(network, sources, targets, weights)
 
     @_Compute._computed_property
     def bounded(self):

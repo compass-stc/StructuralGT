@@ -24,7 +24,6 @@ void RandomBetweennessCast::random_betweenness_compute () {
     igraph_real_t* weights_arr = (double *)weights_ptr; 
     igraph_vector_init_array(&weights_vec, weights_arr, num_edges);
 
-    //std::cout << num_verts << "\n";
     /*Prepare Laplacian as Eigen Array*/
     igraph_sparsemat_t A, compA;
     igraph_sparsemat_t L, compL;
@@ -36,80 +35,62 @@ void RandomBetweennessCast::random_betweenness_compute () {
             &weights_vec, IGRAPH_NO_LOOPS);
     igraph_sparsemat_compress(&L, &compL);
     igraph_sparsemat_compress(&A, &compA);
-    //igraph_sparsemat_print(&L, stdout);
     igraph_sparsemat_iterator_t mit;
-    Eigen::MatrixXf eigL = Eigen::MatrixXf::Zero(num_verts, num_verts);
+    Eigen::MatrixXf L_reduced = Eigen::MatrixXf::Zero(num_verts-1, num_verts-1);
 
     int row, col;
     float val;
     igraph_sparsemat_iterator_init(&mit, &compL);
     for (int i=0; i<(num_edges*2+num_verts); i++) {
-        
         row = igraph_sparsemat_iterator_row(&mit);
         col = igraph_sparsemat_iterator_col(&mit);
+        if (row==0 or col==0) { 
+            igraph_sparsemat_iterator_next(&mit);
+            continue;
+        }
+
         val = igraph_sparsemat_iterator_get(&mit);
 
-        eigL(row, col) = val;
-//        if (igraph_sparsemat_iterator_end(&mit)) { break; }
-//        printf("Setting %i,%i equal to %f\n", row,col,val);
+        L_reduced(row-1, col-1) = val;
         igraph_sparsemat_iterator_next(&mit);
     }
     
-    //igraph_integer_t* sources_arr = (long long *)sources_ptr;
-    //igraph_integer_t* targets_arr = (long long *)targets_ptr;
-
     /*Invert Laplacian*/
-    //eigL.completeOrthogonalDecomposition().pseudoInverse();
-    Eigen::MatrixXf pinv(num_verts, num_verts);
-    pinv = eigL.completeOrthogonalDecomposition().pseudoInverse();
+    Eigen::MatrixXf L_red_inv(num_verts-1, num_verts-1);
+    L_red_inv = L_reduced.inverse();
 
-    //std::cout << pinv << "\n";
+    /*Get matrix C*/ 
+    Eigen::MatrixXf C(num_verts, num_verts);
+    // Set the first column and row to zeros
+    C.col(0).setZero();
+    C.row(0).setZero();
+    C.block(1, 1, num_verts-1, num_verts-1) = L_red_inv;
 
-    /*Here, from/to refer to the edge endpoints; not the source/targets used
-     * to calculate the betweenness subset.
-     */
-    //printf("%i\n", sources_len);
-    betweennesses.resize(num_edges);
+    /*Get incidence matrix, B*/
     igraph_integer_t from, to;
+    Eigen::MatrixXf B = Eigen::MatrixXf::Zero(num_edges, num_verts);
     for (int i=0; i<num_edges; i++) {
-        for (int s=0; s<sources_len; s++) {
-            for (int t=0; t<targets_len; t++) {
-                igraph_edge(g, i, &from, &to);
-                if (from>=to) { continue; }
-                betweennesses[i] += abs(pinv(int(from),sources[s])-pinv(int(from),targets[t])
-                    -pinv(int(to),sources[s])+pinv(int(to),targets[t]))*igraph_sparsemat_get(
-                    &A, from, to);
-            }
+        igraph_edge(g, i, &from, &to);
+        B(i, from) = float(VECTOR(weights_vec)[i]); 
+        B(i, to) = float(-VECTOR(weights_vec)[i]);
+    }
+
+    /*Get flow matrix, F*/
+    Eigen::MatrixXf F(num_edges, num_verts);
+    F = B * C;
+
+    Eigen::VectorXf b = Eigen::VectorXf::Zero(num_verts);
+    Eigen::VectorXf RW = Eigen::VectorXf::Zero(num_edges);
+    for (int u=0; u<num_verts; u++) {
+        for (int v=u+1; v<num_verts; v++) {
+            b[u] = 1;
+            b[v] = -1;
+            RW += (F*b).cwiseAbs();
+            b[u] = 0;
+            b[v] = 0;
         }
     }
-
-    /*
-    for (int i=0; i<num_edges; i++) {
-        std::cout << betweennesses[i] << "\n";
-    }
-    */
-
-    /*
-    igraph_vector_int_t sources_vec, targets_vec;
-    igraph_vector_t res, weights_vec;
-    igraph_vector_init(&res, num_edges);
-    igraph_vs_t sources, targets;
-
-    igraph_integer_t* sources_arr = (long long *)sources_ptr;
-    igraph_integer_t* targets_arr = (long long *)targets_ptr;
-    igraph_vector_int_init_array(&sources_vec, sources_arr, sources_len);
-    igraph_vector_int_init_array(&targets_vec, targets_arr, targets_len);
-    igraph_vs_vector(&sources, &sources_vec);
-    igraph_vs_vector(&targets, &targets_vec);
-
-    igraph_real_t* weights_arr = (double *)weights_ptr;
-    igraph_vector_init_array(&weights_vec, weights_arr, num_edges);
-    
-    */
-       
+    betweennesses <<= RW;
     igraph_destroy(g);
 }
-
-
-
 }

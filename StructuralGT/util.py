@@ -157,9 +157,7 @@ class _cropper:
 
         if domain is None:
             self.crop = slice(None)
-            planar_dims = cv.imread(
-                Network.stack_dir + "/slice0000.tiff",
-                cv.IMREAD_GRAYSCALE).shape
+            planar_dims = Network.image_stack[0][0].shape[0:2]
             if self.dim == 2:
                 self.dims = (1,) + planar_dims
             else:
@@ -326,4 +324,7 @@ class _fname():
         """
         return base.Q_img(self.name)
 
-
+    @property
+    def prefix(self):
+        """str: Returns leading string of the filename."""
+        return os.path.splitext(os.path.basename(self.name))[0]
