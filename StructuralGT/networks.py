@@ -63,7 +63,8 @@ class Network:
             if (fname.isinrange and
                 fname.isimg and 
                 self.prefix in fname.prefix):
-                _slice = cv.imread(self.dir + "/" + slice_name)
+                #_slice = cv.imread(self.dir + "/" + slice_name)
+                _slice = plt.imread(self.dir + "/" + slice_name)
                 image_stack.append(_slice, slice_name)
 
         self.image_stack = image_stack
