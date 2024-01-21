@@ -54,7 +54,8 @@ cdef class PyCast:
         
     @property
     def nonlinear_random_betweenness(self):
-        _random_betweennesses = {}
+        _random_betweennesses = np.zeros((self.c_cast.num_edges-self.c_cast.targets_len),
+                                         dtype=np.double)
         #Return all elements of the betweenness vector, except the final
         #elements connecting the targets and to the ghost
         for i in range(self.c_cast.num_edges-self.c_cast.targets_len):
