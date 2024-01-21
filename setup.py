@@ -25,7 +25,7 @@ setup(
         'matplotlib',
         'networkx',
         'opencv-python',
-        'Pillow',
+        'Pillow<10.1.0,>=8.3.2',
         'pandas',
         'Cython',
         'gsd',
