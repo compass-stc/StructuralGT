@@ -433,18 +433,23 @@ class Network:
         for i in range(len(self.Gr.es())):
             edge_positions = np.vstack((edge_positions, self.Gr.es()[i]["pts"]))
 
+        if self._2d:
+            node_positions = np.hstack(
+                (np.zeros((len(node_positions), 1)), node_positions)
+            )
+            edge_positions = np.hstack(
+                (np.zeros((len(edge_positions), 1)), edge_positions)
+            )
+            centroid_positions = np.hstack(
+                (np.zeros((len(centroid_positions), 1)), centroid_positions)
+            )
+
         positions = centroid_positions
         for edge in edge_positions:
             positions = np.vstack((positions, edge))
         for node in node_positions:
             positions = np.vstack((positions, node))
         positions = np.unique(positions, axis=0)
-
-        if self._2d:
-            node_positions = np.hstack(
-                (np.zeros((len(node_positions), 1)), node_positions)
-            )
-            positions = np.hstack((np.zeros((len(positions), 1)), positions))
 
         L = list(max(positions.T[i]) * 2 for i in (0, 1, 2))
         node_positions = base.shift(
