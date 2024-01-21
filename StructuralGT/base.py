@@ -15,7 +15,6 @@ import scipy
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing, remove_small_objects
 from StructuralGT import process_image, GetWeights_3d, error, convert, skel_ID, sknwEdits, util
 
-
 def read(name, read_type):
     """For raising an error when a file does not exist because cv.imread does
     not do this.
@@ -485,34 +484,6 @@ def gyration_moments_3(G, sampling=1, weighted=True):
             Axy = Axy + (Axy_term)
             A = np.array([[Ax,Axy,0],[Axy,Ay,0],[0,0,0]])/(len(trimmed_node_count)**2)
     return A
-
-def from_gsd(filename, frame=0):
-    """
-    Function returns a Network object stored in a given .gsd file
-    Assigns parent directory to filename, dropping last 2 subdirectories.
-    I.e. assumes filename given as ../...../dir/Binarized/name.gsd
-    This is why the Network object never calls its .binarize() method in this function
-
-    Currently only assigns node positions as attributes.
-    TODO: Assign edge position attributes if neccessary
-    """
-    _dir = os.path.split(os.path.split(filename)[0])[0]
-    N = util.Network(_dir)
-    f = gsd.hoomd.open(name=filename, mode='rb')[frame]
-    rows =   f.log['Adj_rows']
-    cols =   f.log['Adj_cols']
-    values = f.log['Adj_values']
-    S = scipy.sparse.csr_matrix((values, (rows,cols)))
-    G = ig.Graph()
-    N.Gr = G.Weighted_Adjacency(S)
-
-    node_pos = f.particles.position[f.particles.typeid == 1]
-
-    assert len(node_pos) == N.Gr.vcount()
-
-    N.Gr.vs['o'] = node_pos
-
-    return N
 
 def quadrupletise(i):
     if len(str(i))==4: return str(i)

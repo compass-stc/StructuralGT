@@ -1,8 +1,10 @@
 import numpy as np
 import os
 import cv2 as cv
-from StructuralGT import error, base, process_image, util
+from StructuralGT import error, base, process_image
 import json
+import scipy
+import igraph as ig
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import copy
@@ -153,7 +155,7 @@ class Network:
         # 3d for 3d images, 2d otherwise
         self._img_bin = np.squeeze(self._img_bin)
 
-    def set_graph(self, sub=True, weight_type=None, **kwargs):
+    def set_graph(self, sub=True, weight_type=None, write='graph.gsd', **kwargs):
         """Sets :class:`Graph` object as an attribute by reading the
         skeleton file written by :meth:`img_to_skel`.
 
@@ -238,6 +240,9 @@ class Network:
             max(list(self.Gr.vs[i]["o"][j] for i in range(self.Gr.vcount())))
             for j in (0, 1, 2)[0 : self.dim]
         )
+
+        if write: self.Node_labelling([], [], write)
+
     def img_to_skel(
         self,
         name="skel.gsd",
@@ -382,7 +387,7 @@ class Network:
         else:
             self.rotate = None
 
-    def Node_labelling(self, attributes, labels, filename, edge_weight=None, mode="r+"):
+    def Node_labelling(self, attributes, labels, filename, edge_weight=None, mode="w"):
         """Method saves a new :code:`.gsd` which labels the :attr:`graph` 
         attribute with the given node attribute values. Method saves the
         :attr:`graph`  attribute in the :code:`.gsd` file in the form of a 
@@ -419,15 +424,22 @@ class Network:
         f = gsd.hoomd.open(name=save_name, mode=_mode)
         self.labelled_name = save_name
 
-        node_positions = np.asarray(
-            list(self.Gr.vs()[i]["o"] for i in range(self.Gr.vcount()))
-        )
-        positions = node_positions
-        for edge in self.Gr.es():
-            positions = np.vstack((positions, edge["pts"]))
-        for node in self.Gr.vs():
-            positions = np.vstack((positions, node["pts"]))
+        centroid_positions = np.empty((0, self.dim))
+        node_positions = np.empty((0, self.dim))
+        edge_positions = np.empty((0, self.dim))
+        for i in range(len(self.Gr.vs())):
+            node_positions = np.vstack((node_positions, self.Gr.vs()[i]["pts"]))
+            centroid_positions = np.vstack((centroid_positions, self.Gr.vs()[i]["o"]))
+        for i in range(len(self.Gr.es())):
+            edge_positions = np.vstack((edge_positions, self.Gr.es()[i]["pts"]))
+
+        positions = centroid_positions
+        for edge in edge_positions:
+            positions = np.vstack((positions, edge))
+        for node in node_positions:
+            positions = np.vstack((positions, node))
         positions = np.unique(positions, axis=0)
+
         if self._2d:
             node_positions = np.hstack(
                 (np.zeros((len(node_positions), 1)), node_positions)
@@ -438,12 +450,19 @@ class Network:
         node_positions = base.shift(
             node_positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4)
         )[0]
+        edge_positions = base.shift(
+            edge_positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4)
+        )[0]
+        centroid_positions = base.shift(
+            centroid_positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4)
+        )[0]
         positions = base.shift(positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4))[0]
+        
         s = gsd.hoomd.Frame()
         N = len(positions)
         s.particles.N = N
         s.particles.position = positions
-        s.particles.types = ["Edge", "Node"]
+        s.particles.types = ["Edge", "Node", "Centroid"]
         s.particles.typeid = [0] * N
         s.configuration.box = [L[0] / 2, L[1] / 2, L[2] / 2, 0, 0, 0]
         for label in labels:
@@ -458,22 +477,59 @@ class Network:
         s.log["Adj_cols"] = columns
         s.log["Adj_values"] = values
 
-        #j = 0
         for i, particle in enumerate(positions):
-            node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[
-                0
-            ]
-            if len(node_id) == 0:
+            node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[0]
+            centroid_id = np.where(np.all(positions[i] == centroid_positions, axis=1) == True)[0]
+            if len(node_id) == 0 and len(centroid_id)==0:
                 continue
-            else:
-                first=True
+            elif len(centroid_id)!=0:
+                s.particles.typeid[i] = 2
                 for attribute,label in zip(attributes,labels):
-                    s.log["particles/" + label][i] = attribute[node_id[0]]
-                    if first: s.particles.typeid[i] = 1
-                    first=False
-                #j += 1
+                    s.log["particles/" + label][i] = attribute[centroid_id[0]]
+            else:
+                assert len(node_id)!=0
+                s.particles.typeid[i] = 1
 
         f.append(s)
+
+    def node_plot(self, parameter, ax=None, depth=0):
+        """Superimpose the skeleton, image, and nodal graph theory parameters.
+
+        Args:
+            parameter (:class:`numpy.ndarray`):
+                The value of node parameters
+            ax (:class:`matplotlib.axes.Axes`, optional): 
+                Axis to plot on. If :code:`None`, make a new figure and axis.
+                (Default value = :code:`None`)
+
+        Returns:
+            (:class:`matplotlib.axes.Axes`): Axis with the plot.
+        """
+
+        assert self.Gr.vcount() == len(parameter)
+
+        if ax is None:
+            fig = plt.figure()
+            ax = fig.subplots()
+
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap='plasma')
+        _max = np.max(parameter)
+        _min = np.min(parameter)
+        
+        e = np.empty((0,2))
+        for edge in self.graph.es:
+            e = np.vstack((e,edge['pts']))
+        ax.scatter(e.T[1], e.T[0], c='k', s=3, marker='s', edgecolors='none')
+        
+        y,x = np.array(self.graph.vs['o']).T
+        sp=ax.scatter(x,y, c=parameter, s=10, marker='o', cmap='plasma',
+                      edgecolors='none')
+        cb = colorbar(sp)
+        cb.set_label('Value')
+
+        return ax
 
     def recon(self, axis, surface, depth):
         """Method displays 2D slice of binary image and
@@ -530,42 +586,32 @@ class Network:
         skeleton"""
         return self.Gr
 
-    def node_plot(self, parameter, ax=None, depth=0):
-        """Superimpose the skeleton, image, and nodal graph theory parameters.
+def from_gsd(_dir, filename, frame=0, depth=None):
+    """
+    Function returns a Network object stored in a given .gsd file
+    Assigns parent directory to filename, dropping last 2 subdirectories.
+    I.e. assumes filename given as ../...../dir/Binarized/name.gsd
+    This is why the Network object never calls its .binarize() method in this function
 
-        Args:
-            parameter (:class:`numpy.ndarray`):
-                The value of node parameters
-            ax (:class:`matplotlib.axes.Axes`, optional): 
-                Axis to plot on. If :code:`None`, make a new figure and axis.
-                (Default value = :code:`None`)
+    Currently only assigns node positions as attributes.
+    TODO: Assign edge position attributes if neccessary
+    """
+    #_dir = os.path.split(os.path.split(filename)[0])[0]
+    N = Network(_dir, depth=depth)
+    f = gsd.hoomd.open(name=filename, mode='r')[frame]
+    rows =   f.log['Adj_rows']
+    cols =   f.log['Adj_cols']
+    values = f.log['Adj_values']
+    S = scipy.sparse.csr_matrix((values, (rows,cols)))
+    G = ig.Graph()
+    N.Gr = G.Weighted_Adjacency(S)
 
-        Returns:
-            (:class:`matplotlib.axes.Axes`): Axis with the plot.
-        """
+    edge_pos = f.particles.position[f.particles.typeid == 0]
+    node_pos = f.particles.position[f.particles.typeid == 1]
+    centroid_pos = f.particles.position[f.particles.typeid == 2]
 
-        assert self.Gr.vcount() == len(parameter)
+    N.Gr.es['pts'] = edge_pos
+    N.Gr.vs['pts'] = node_pos
+    N.Gr.vs['o'] = centroid_pos
 
-        if ax is None:
-            fig = plt.figure()
-            ax = fig.subplots()
-
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap='plasma')
-        _max = np.max(parameter)
-        _min = np.min(parameter)
-        
-        e = np.empty((0,2))
-        for edge in self.graph.es:
-            e = np.vstack((e,edge['pts']))
-        ax.scatter(e.T[1], e.T[0], c='k', s=3, marker='s', edgecolors='none')
-        
-        y,x = np.array(self.graph.vs['o']).T
-        sp=ax.scatter(x,y, c=parameter, s=10, marker='o', cmap='plasma',
-                      edgecolors='none')
-        cb = colorbar(sp)
-        cb.set_label('Value')
-
-        return ax
-
+    return N
