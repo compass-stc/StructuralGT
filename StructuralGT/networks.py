@@ -609,7 +609,7 @@ def from_gsd(_dir, filename, frame=0, depth=None):
     values = f.log['Adj_values']
     S = scipy.sparse.csr_matrix((values, (rows,cols)))
     G = ig.Graph()
-    N.Gr = G.Weighted_Adjacency(S)
+    N.Gr = G.Weighted_Adjacency(S, mode='upper')
 
     edge_pos = f.particles.position[f.particles.typeid == 0]
     node_pos = f.particles.position[f.particles.typeid == 1]
