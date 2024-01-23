@@ -119,12 +119,12 @@ def build_graph(nodes, edges, multi=False, full=True):
     #Each item may contain several points if the node spans several voxels
     #os is a list of centroids for each node
     #if full, os will be rounded to nearest voxel position
-    os = np.array([i.mean(axis=0) for i in nodes])
+    os = np.array([i.mean(axis=0) for i in nodes], dtype=np.int16)
     
-    if full: os = os.round().astype(np.uint16)
+    if full: os = os.round()
     graph = ig.Graph()
     graph.add_vertices(len(nodes))
-    graph.vs['pts'] = nodes
+    graph.vs['pts'] = [np.array(node, dtype=np.int16) for node in nodes]
     graph.vs['o'] = os
     
     pts_list = []
