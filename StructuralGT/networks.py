@@ -49,7 +49,7 @@ class Network:
     """
 
     def __init__(self, directory, child_dir="Binarized", depth=None,
-                 prefix="slice"):
+                 prefix="slice", dim=2):
 
         self.dir = directory
         self.child_dir = '/' + child_dir
@@ -62,11 +62,13 @@ class Network:
         for slice_name in sorted(os.listdir(self.dir)):
             fname = _fname(self.dir + '/' + slice_name,
                            domain=_domain(depth))
+            if (dim==2 and fname.isimg):
+                _slice = plt.imread(self.dir + "/" + slice_name)
+                image_stack.append(_slice, slice_name)
+                break
             if (fname.isinrange and
                 fname.isimg and 
                 self.prefix in fname.prefix):
-                #_slice = cv.imread(self.dir + "/" + slice_name)
-                _slice = plt.imread(self.dir + "/" + slice_name)
                 image_stack.append(_slice, slice_name)
 
         self.image_stack = image_stack
