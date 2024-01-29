@@ -5,7 +5,7 @@ Quickstart
 Data Formats
 ============
 
-Before any analysis, you must first ensure your network images are laid out in your directory appropriately. Network images may be either a single image from which you would like to extract a two-dimensional (2D) network `or` it may be a stack of 2D images which represent a three-dimensional (3D) network. The rules for laying them out in storage are the same for both cases.  Namely, each material network (whether a single 2D image or a stack of 2D images) must be stored in it's own directory. Supported image formats include :code:`.tiff`, :code:`.jpeg`, :code:`.png`, :code:`.bmp`, :code:`.gif`. The name of each image in the directory should be :code:`slice` followed by a 4 number identification of its depth. Therefore, single images will be named :code:`slice0000`, followed by the filetype. TODO remove this requirement.
+Before any analysis, you must first ensure your network images are laid out in your directory appropriately. Network images may be either a single image from which you would like to extract a two-dimensional (2D) network `or` it may be a stack of 2D images which represent a three-dimensional (3D) network. Each material network (whether a single 2D image or a stack of 2D images) must be stored in it's own directory. Supported image formats include :code:`.tiff`, :code:`.jpeg`, :code:`.png`, :code:`.bmp`, :code:`.gif`. For 2D images, the directory should contain just one image file. For 3D data, the images must be stored as a stack of 2D images and all of which must be named with an identical prefix, followed by a 4 digit identification of its depth, e.g. :code:`slice0000.tiff`.
 
 Binarizing
 ==========
@@ -20,6 +20,7 @@ The first step in extracting a graph involves binarizing your networked images. 
    B.binarize()
 
 When you are finished, tick the :code:`Export` box and the current image processing options will be exported to the same directory as the image you are working with.
+
 Analysis
 ========
 
