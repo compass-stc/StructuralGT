@@ -351,11 +351,11 @@ class Network:
 
         end = time.time()
         print(
-            "Ran stack_to_gsd() in ",
+            "Ran img_to_skel() in ",
             end - start,
-            "for gsd with ",
+            "for skeleton with ",
             len(positions),
-            "particles",
+            "voxels",
         )
 
         if debubble is not None:
@@ -592,6 +592,12 @@ class Network:
         """:class:`igraph.Graph`: The Graph object extracted from the 
         skeleton"""
         return self.Gr
+
+    @property
+    def image(self):
+        """:class:`np.ndarray`: The original image used to obtain the graph."""
+        if self._2d: return self.image_stack[0][0]
+        else: return self.image_stack[:][0]
 
 def from_gsd(_dir, filename, frame=0, depth=None):
     """

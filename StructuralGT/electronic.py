@@ -37,7 +37,7 @@ class Electronic(_Compute):
         sink_id = source_id + 1
         network.graph_connected.add_vertices(2)
 
-        print("Graph has max ", network.shape)
+        print("Graph has shape ", network.shape)
         axes = np.array([0, 1, 2])[0 : network.dim]
         indices = axes[axes != axis]
         axis_centre1 = np.zeros(network.dim, dtype=int)
@@ -49,15 +49,11 @@ class Electronic(_Compute):
         axis_centre2[axis] = network.shape[axis]
         source_coord = axis_centre1 - delta
         sink_coord = axis_centre2 + delta
-        print("source coord is ", source_coord)
-        print("sink coord is ", sink_coord)
+        print("Source coordinate is ", source_coord)
+        print("Sink coordinate is ", sink_coord)
         network.graph_connected.vs[source_id]["o"] = source_coord
         network.graph_connected.vs[sink_id]["o"] = sink_coord
 
-        print(
-            "Before connecting external nodes, G has vcount ",
-            network.graph_connected.vcount(),
-        )
         for node in network.graph_connected.vs:
             if node["o"][axis] >= boundary1[0] and node["o"][axis] <= boundary1[1]:
                 network.graph_connected.add_edges([(node.index, source_id)])
@@ -77,10 +73,6 @@ class Electronic(_Compute):
                 ] = base.connector(sink_coord, node["o"])
 
         # Write skeleton connected to external node
-        print(network.graph_connected.is_connected(), " connected")
-        print(
-            "After connecting external nodes, G has vcount ", network.graph_connected.vcount()
-        )
         connected_name = (
             os.path.split(network.gsd_name)[0]
             + "/connected_"
