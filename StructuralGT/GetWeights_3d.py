@@ -28,8 +28,10 @@ def unitvector(u,v):
 
     vec = u-v # find the vector between u and v
 
-    # returns the unit vector in the direction from v to u
-    return vec/np.linalg.norm(vec)
+    if np.linalg.norm(vec)==0:
+        return np.array([0,]*len(u), dtype=np.float16)
+    else:
+        return vec/np.linalg.norm(vec)
 
 def halflength(u,v):
     # Inputs:
@@ -45,8 +47,8 @@ def findorthogonal(u,v):
     # u, v: two coordinates (x, y) or (x, y, z)
 
     n = unitvector(u,v)         # make n a unit vector along u,v
-    if (np.isnan(n[0]) or np.isnan(n[1])):
-        n[0] , n[1] = float(0) , float(0)
+    #if (np.isnan(n[0]) or np.isnan(n[1])):
+    #    n[0] , n[1] = float(0) , float(0)
     hl = halflength(u,v)        # find the half-length of the vector u,v
     orth = np.random.randn(len(u))   # take a random vector
     orth -= orth.dot(n) * n     # make it orthogonal to vector u,v
