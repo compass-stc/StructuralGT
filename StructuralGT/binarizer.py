@@ -5,6 +5,7 @@ from ipywidgets import interactive, Layout, widgets
 import json
 import os
     
+    
 class Binarizer:
     """Class for providing realtime image binarization to determine optimal
     image processing parameters.
@@ -13,9 +14,7 @@ class Binarizer:
         filename (str):
             The name of the file to binarize.
     """
-    def __init__(self, filename):
-        self.filename = filename
-        
+
     def binarize_widget(self, Thresh_method, gamma, md_filter, autolvl, g_blur, fg_color, laplacian, scharr, 
                   sobel, lowpass, thr, asize, bsize, wsize, export):
         """The widget method. Interacted with by calling :meth:`binarize()`.
@@ -46,8 +45,8 @@ class Binarizer:
         
         _, binary_image, _ = process_image.binarize(gray_image, options_dict)
         plt.imshow(binary_image, cmap='gray')
-    
-    def binarize(self, export_dir=None):
+
+    def __init__(self, filename, export_dir=None):
         """Method for generating the interactive binarization widget.
 
         Args:
@@ -56,6 +55,7 @@ class Binarizer:
                 no arguement given, exports to parent directory of image.
         """
 
+        self.filename = filename
         self.export_dir = export_dir
         
         item_layout = Layout(
@@ -66,19 +66,19 @@ class Binarizer:
         
         Thresh_method = widgets.Dropdown(options=['Global','Adaptive','OTSU'], description='Threshold', layout=item_layout)
         gamma = widgets.FloatSlider(description='Gamma', value=1, min=0.001, max=10, layout=item_layout)
-        md_filter = widgets.Checkbox(description='Median filter', value=False, layout=item_layout)
-        autolvl = widgets.Checkbox(description='Autolevel', value=False, layout=item_layout)
-        g_blur = widgets.Checkbox(description='Gaussian Blur', value=False, layout=item_layout)
-        fg_color = widgets.Checkbox(description='Foreground dark', value=False, layout=item_layout)
-        laplacian = widgets.Checkbox(description='Laplacian', value=False, layout=item_layout)
-        scharr = widgets.Checkbox(description='Scharr', value=False, layout=item_layout)
-        sobel = widgets.Checkbox(description='Sobel', value=False, layout=item_layout)
-        lowpass = widgets.Checkbox(description='Lowpass', value=False, layout=item_layout)
+        md_filter = widgets.Checkbox(description='Median filter', value=0, layout=item_layout)
+        autolvl = widgets.Checkbox(description='Autolevel', value=0, layout=item_layout)
+        g_blur = widgets.Checkbox(description='Gaussian Blur', value=0, layout=item_layout)
+        fg_color = widgets.Checkbox(description='Foreground dark', value=0, layout=item_layout)
+        laplacian = widgets.Checkbox(description='Laplacian', value=0, layout=item_layout)
+        scharr = widgets.Checkbox(description='Scharr', value=0, layout=item_layout)
+        sobel = widgets.Checkbox(description='Sobel', value=0, layout=item_layout)
+        lowpass = widgets.Checkbox(description='Lowpass', value=0, layout=item_layout)
         thr = widgets.FloatSlider(description='Threshold', value=128, min=0, max=256, layout=item_layout)
         asize = widgets.FloatSlider(description='Adaptive threshold kernel', value=1, min=1, max=200, layout=item_layout)
         bsize = widgets.FloatSlider(description='Blurring kernel size', value=0, min=0, max=10, layout=item_layout)
         wsize = widgets.FloatSlider(description='Window size', value=0, min=0, max=10, layout=item_layout)
-        export=widgets.Checkbox(description='Export', value=False, layout=item_layout)
+        export=widgets.Checkbox(description='Export', value=0, layout=item_layout)
         w = interactive(self.binarize_widget,
                         Thresh_method=Thresh_method,
                         gamma=gamma,

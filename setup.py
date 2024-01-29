@@ -9,6 +9,7 @@ if platform.system() == 'Windows':
     freud='freud-analysis'
 else:
     PREFIX=os.getenv("CONDA_PREFIX")
+    PREFIX="/Users/alaink/miniconda3/envs/SGTE-dev/"
     extra_obj="-ligraph"
     freud='freud'
 
@@ -25,8 +26,8 @@ setup(
         'matplotlib',
         'networkx',
         'opencv-python',
-        'Pillow<10.1.0,>=8.3.2',
         'pandas',
+        'Pillow<10.1.0,>=8.3.2',
         'Cython',
         'gsd',
         'python-igraph',
