@@ -24,7 +24,7 @@ When you are finished, tick the :code:`Export` box and the current image process
 Analysis
 ========
 
-After laying out your images and establishing optimal binarization parameters you can begin analysis. Instantiating the :class:`Network` class and  calling the :meth:`binarize` method is usually the first step. If your images have already been binarized, you don't need to call this again.
+After laying out your images and establishing optimal binarization parameters you can begin analysis. Instantiating the :class:`Network` class and  calling the :meth:`binarize` method is usually the first step. If your images have already been binarized, you don't need to call :meth:`binarize` again.
 
 .. code:: python
 

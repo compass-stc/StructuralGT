@@ -399,7 +399,7 @@ def remove_objects(g, size):
         s.particles.typeid = ['0']*s.particles.N
         f.append(s)
     end = time.time()
-    print(f'Ran remove objects in {end-start} for an image with shape {g._skeleton_3d.shape})
+    print(f'Ran remove objects in {end-start} for an image with shape {g._skeleton_3d.shape}')
 
     return g
 

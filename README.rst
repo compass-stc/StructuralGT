@@ -24,10 +24,14 @@ The following minimal example shows how the package can be used to calculate the
 
 .. code:: python
 
-   from StructuralGT import physical_networks
+   from StructuralGT.structural import Structural
+   from StructuralGT.networks import Network
 
-   Nanofibre3DNetwork = physical_networks.StructuralNetwork('Nanofibre_Image_Stack')
+   Nanofibre3DNetwork = Network('Nanofibre_Image_Stack')
    Nanofibre3DNetwork.binarize()
-   Nanofibre3DNetwork.stack_to_gsd(crop=[0,500,0,500,0,500])
-   Nanofibre3DNetwork.node_calc(betweenness=True)
-   Nanofibre3DNetwork.node_labelling(Nanofibre3DNetwork.betweenness)
+   Nanofibre3DNetwork.img_to_skel(crop=[0,500,0,500,0,500])
+   Nanofibre3DNetwork.set_graph(weight_type=['Length'])
+
+   S = Structural()
+   S.compute(ANF)
+   print(S.diameter)

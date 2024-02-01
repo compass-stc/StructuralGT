@@ -5,7 +5,7 @@ Examples
 Conductivities of silver nanowire films
 =======================================
 
-Predicting the conductivties of two-dimensional silver nanowire (Ag NW) films is a common use case for graph theory. In this example, we show how to predict the sheet resistance of a film that was reported in REF. To do this we must specify a conductance weight when we set the graph. We may optionally rotate the graph to investivate anisotropy, as well as include a resistance assocaited with NW junctions (see API).
+Predicting the conductivties of two-dimensional silver nanowire (Ag NW) films is a common use case for graph theory. To do this we must specify a conductance weight when we set the graph. We may optionally rotate the graph to investivate anisotropy, as well as include a resistance assocaited with NW junctions (see API).
 
 .. code:: python
 
@@ -29,3 +29,5 @@ Predicting the conductivties of two-dimensional silver nanowire (Ag NW) films is
 
 Structural attributes of 3-dimensional tomography of aramid nanofibres
 ======================================================================
+
+In progress
