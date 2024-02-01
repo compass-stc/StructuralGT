@@ -499,11 +499,12 @@ class Network:
 
         f.append(s)
 
-    def node_plot(self, parameter, ax=None, depth=0):
+    def node_plot(self, parameter=None, ax=None, depth=0):
         """Superimpose the skeleton, image, and nodal graph theory parameters.
+        If no parameter provided, simply imposes skeleton and image.
 
         Args:
-            parameter (:class:`numpy.ndarray`):
+            parameter (:class:`numpy.ndarray`, optional):
                 The value of node parameters
             ax (:class:`matplotlib.axes.Axes`, optional): 
                 Axis to plot on. If :code:`None`, make a new figure and axis.
@@ -512,6 +513,11 @@ class Network:
         Returns:
             (:class:`matplotlib.axes.Axes`): Axis with the plot.
         """
+
+        _parameter = True
+        if parameter is None:
+            parameter = np.ones(self.Gr.vcount(), dtype=np.intc)
+            _parameter = False
 
         assert self.Gr.vcount() == len(parameter)
 
@@ -533,8 +539,10 @@ class Network:
         y,x = np.array(self.graph.vs['o']).T
         sp=ax.scatter(x,y, c=parameter, s=10, marker='o', cmap='plasma',
                       edgecolors='none')
-        cb = colorbar(sp)
-        cb.set_label('Value')
+
+        if _parameter: 
+            cb = colorbar(sp)
+            cb.set_label('Value')
 
         return ax
 
