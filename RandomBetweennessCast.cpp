@@ -44,7 +44,7 @@ void RandomBetweennessCast::random_betweenness_compute () {
     for (int i=0; i<(num_edges*2+num_verts); i++) {
         row = igraph_sparsemat_iterator_row(&mit);
         col = igraph_sparsemat_iterator_col(&mit);
-        if (row==0 or col==0) { 
+        if ((row == 0) || (col == 0)) { 
             igraph_sparsemat_iterator_next(&mit);
             continue;
         }
