@@ -9,7 +9,7 @@ if platform.system() == 'Windows':
     freud='freud-analysis'
 else:
     PREFIX=os.getenv("CONDA_PREFIX")
-    PREFIX="/Users/alaink/miniconda3/envs/SGTE-dev/"
+    #PREFIX="/Users/alaink/miniconda3/envs/SGTE-dev/"
     extra_obj="-ligraph"
     freud='freud'
 
