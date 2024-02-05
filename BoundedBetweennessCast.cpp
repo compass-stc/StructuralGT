@@ -1,4 +1,4 @@
-#include <igraph/igraph.h>
+#include <igraph.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "BoundedBetweennessCast.h"
