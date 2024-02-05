@@ -20,7 +20,7 @@ setup(
     name='StructuralGT',
     packages = find_packages(),
     install_requires=[
-        'numpy',
+        'numpy<1.25.0,>=1.18.5',
         'scipy',
         'scikit-image',
         'matplotlib',
