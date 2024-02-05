@@ -1,4 +1,4 @@
-#include <igraph/igraph.h>
+#include <igraph.h>
 #include <vector>
 #include <Eigen/Dense>
 
