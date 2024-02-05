@@ -9,6 +9,7 @@ if platform.system() == 'Windows':
     freud='freud-analysis'
 else:
     PREFIX=os.getenv("CONDA_PREFIX")
+    #PREFIX="/Users/alaink/miniconda3/envs/SGTE-dev/"
     extra_obj="-ligraph"
     freud='freud'
 
@@ -19,14 +20,14 @@ setup(
     name='StructuralGT',
     packages = find_packages(),
     install_requires=[
-        'numpy',
+        'numpy<1.25.0,>=1.18.5',
         'scipy',
         'scikit-image',
         'matplotlib',
         'networkx',
         'opencv-python',
-        'Pillow',
         'pandas',
+        'Pillow<10.1.0,>=8.3.2',
         'Cython',
         'gsd',
         'python-igraph',

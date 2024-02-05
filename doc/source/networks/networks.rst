@@ -7,10 +7,10 @@ Networks
 .. autosummary::
     :nosignatures:
 
-    StructuralGT.networks
+    StructuralGT.networks.Network
 
 .. rubric:: Details
 
 .. automodule:: StructuralGT.networks
-    :synopsis: Base network class
+    :synopsis: Network class
     :members:

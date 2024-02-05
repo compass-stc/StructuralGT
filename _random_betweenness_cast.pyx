@@ -36,8 +36,6 @@ cdef class PyCast:
             targets_vec.push_back(targets[i])
         self.c_cast.sources = sources_vec
         self.c_cast.targets = targets_vec
-        if weights is None:
-            weights = np.ones(num_edges+1, dtype=np.double)
 
         cdef double[:] weights_memview = weights
         self.c_cast.weights_ptr = &weights_memview[0]
@@ -47,9 +45,11 @@ cdef class PyCast:
         
     @property
     def random_betweenness(self):
-        _random_betweennesses = np.zeros(self.c_cast.num_edges, dtype=np.float)
+        _random_betweennesses = np.zeros((self.c_cast.num_edges),
+                                          dtype=np.double)
         for i in range(self.c_cast.num_edges):
             _random_betweennesses[i] = self.c_cast.betweennesses[i]
 
         return _random_betweennesses
+
 

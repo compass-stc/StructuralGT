@@ -15,7 +15,6 @@ import scipy
 from skimage.morphology import skeletonize, skeletonize_3d, binary_closing, remove_small_objects
 from StructuralGT import process_image, GetWeights_3d, error, convert, skel_ID, sknwEdits, util
 
-
 def read(name, read_type):
     """For raising an error when a file does not exist because cv.imread does
     not do this.
@@ -269,7 +268,6 @@ def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
                            for i in list(range(min(positions.shape)))))
     canvas[tuple(list(positions.T))] = 1
     canvas = canvas.astype(int)
-    print('gsd_to_G canvas has shape ', canvas.shape)
 
     G = sknwEdits.build_sknw(canvas)
 
@@ -280,31 +278,16 @@ def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
 
 #Function generates largest connected induced subgraph. Node and edge numbers are reset such that they are consecutive integers, starting from 0
 def sub_G(G): 
-    print('pre sub has ', G.vcount(), ' nodes')
+    print(f'Before removing smaller components, graph has {G.vcount()}  nodes')
     components = G.connected_components()
     G = components.giant() 
-    print('post sub has ', G.vcount(), ' nodes')
+    print(f'After removing smaller components, graph has {G.vcount()}  nodes')
    
    # G_sub  = G.subgraph(max(nx.connected_components(G), key=len).copy())
    # G = nx.relabel.convert_node_labels_to_integers(G_sub)
     
     return G
 
-#GT_Params_noGUI is a modified copy of the original SGT .py file, with the GUI modules removed    
-def write_averaged(gsd_name):
-    import GT_Params_noGUI
-    
-    start = time.time()
-    G = gsd_to_G(gsd_name)
-    end = time.time()
-    G = sub_G(G)
-    
-    start = time.time()
-    data = GT_Params_noGUI.run_GT_calcs(G,1,1,1,1,1,1,1,1,0,1,1,0)
-    end = time.time()
-    print('Ran GT_Params in', end-start, 'for a graph with ', G.vcount(), 'nodes')
-    datas = pd.DataFrame(data)
-    datas.to_csv(gsd_name + 'Averaged_indices.csv')
 
 def debubble(g, elements):
     if not isinstance(elements,list): raise error.StructuralElementError
@@ -320,10 +303,10 @@ def debubble(g, elements):
     g._skeleton = skeletonize_3d(canvas)/255
 
     if g._2d:
-        g._skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
-        g._skeleton_3d = np.asarray([g.skeleton])
+        g._skeleton_3d = np.swapaxes(np.array([g._skeleton]), 2, 1)
+        g._skeleton_3d = np.asarray([g._skeleton])
     else:
-        g._skeleton_3d = np.asarray(g.skeleton)
+        g._skeleton_3d = np.asarray(g._skeleton)
     
     positions = np.asarray(np.where(g._skeleton_3d!=0)).T
     with gsd.hoomd.open(name=g.gsd_name, mode='w') as f:
@@ -334,7 +317,7 @@ def debubble(g, elements):
         s.particles.typeid = ['0']*s.particles.N
         f.append(s)
     end = time.time()
-    print('Ran debubble in ', end-start, 'for an image with shape ', g._skeleton_3d.shape)
+    print(f'Ran debubble in {end-start} for an image with shape {g._skeleton_3d.shape}')
     
     return g
 
@@ -348,10 +331,10 @@ def merge_nodes(g, disk_size):
     g._skeleton = skel_ID.merge_nodes(canvas, disk_size)
 
     if g._2d:
-        g._skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
-        g._skeleton_3d = np.asarray([g.skeleton])
+        g._skeleton_3d = np.swapaxes(np.array([g._skeleton]), 2, 1)
+        g._skeleton_3d = np.asarray([g._skeleton])
     else:
-        g._skeleton_3d = np.asarray(g.skeleton)
+        g._skeleton_3d = np.asarray(g._skeleton)
     
     positions = np.asarray(np.where(g._skeleton_3d!=0)).T
     with gsd.hoomd.open(name=g.gsd_name, mode='w') as f:
@@ -362,7 +345,7 @@ def merge_nodes(g, disk_size):
         s.particles.typeid = ['0']*s.particles.N
         f.append(s)
     end = time.time()
-    print('Ran merge in ', end-start, 'for an image with shape ', g._skeleton_3d.shape)
+    print(f'Ran merge in {end-start} for an image with shape {g._skeleton_3d.shape}')
 
     return g
 
@@ -375,10 +358,10 @@ def prune(g, size):
     g._skeleton = skel_ID.pruning(canvas, size)
 
     if g._2d:
-        g._skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
-        g._skeleton_3d = np.asarray([g.skeleton])
+        g._skeleton_3d = np.swapaxes(np.array([g._skeleton]), 2, 1)
+        g._skeleton_3d = np.asarray([g._skeleton])
     else:
-        g._skeleton_3d = np.asarray(g.skeleton)
+        g._skeleton_3d = np.asarray(g._skeleton)
     
     positions = np.asarray(np.where(g._skeleton_3d!=0)).T
     with gsd.hoomd.open(name=g.gsd_name, mode='w') as f:
@@ -389,7 +372,7 @@ def prune(g, size):
         s.particles.typeid = ['0']*s.particles.N
         f.append(s)
     end = time.time()
-    print('Ran prune in ', end-start, 'for an image with shape ', g._skeleton_3d.shape)
+    print(f'Ran prune in {end-start} for an image with shape {g._skeleton_3d.shape}')
 
     return g
 
@@ -402,10 +385,10 @@ def remove_objects(g, size):
     g._skeleton = remove_small_objects(canvas, size, connectivity=2)
 
     if g._2d:
-        g._skeleton_3d = np.swapaxes(np.array([g.skeleton]), 2, 1)
-        g._skeleton_3d = np.asarray([g.skeleton])
+        g._skeleton_3d = np.swapaxes(np.array([g._skeleton]), 2, 1)
+        g._skeleton_3d = np.asarray([g._skeleton])
     else:
-        g._skeleton_3d = np.asarray(g.skeleton)
+        g._skeleton_3d = np.asarray(g._skeleton)
     
     positions = np.asarray(np.where(g._skeleton_3d!=0)).T
     with gsd.hoomd.open(name=g.gsd_name, mode='w') as f:
@@ -416,28 +399,9 @@ def remove_objects(g, size):
         s.particles.typeid = ['0']*s.particles.N
         f.append(s)
     end = time.time()
-    print('Ran remove objects in ', end-start, 'for an image with shape ', g._skeleton_3d.shape)
+    print(f'Ran remove objects in {end-start} for an image with shape {g._skeleton_3d.shape}')
 
     return g
-
-def igraph_ANC(directory, I):
-    start = time.time()
-    vclist = []
-
-    for node_i in I.vs:
-        for node_j in I.vs:
-            if node_i.index == node_j.index: continue
-            if I.are_connected(node_i, node_j): continue
-            cut = I.vertex_connectivity(source=node_i.index, target = node_j.index)
-            vclist.append(cut)
-
-    ANC = np.mean(np.asarray(vclist))
-    end = time.time()
-    np.savetxt(directory+'/ANC.csv',ANC)
-    print('ANC calculated as ', ANC, ' in ', end-start) 
-    
-    return ANC
-
 
 def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
     if not isinstance(weight_type,list) and weight_type is not None: raise TypeError('weight_type must be list, even if single element')
@@ -451,68 +415,6 @@ def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
             edge[_type_name] = wt
             
     return g.Gr
-
-
-def gyration_moments_3(G, sampling=1, weighted=True):
-    Ax=0
-    Ay=0
-    Axy=0
-    node_count = np.asarray(list(range(G.vcount())))
-    mask = np.random.rand(G.vcount()) > (1-sampling)
-    trimmed_node_count = node_count[mask]
-    for i in trimmed_node_count:
-        for j in trimmed_node_count:
-            if i >= j:    #Symetric matrix
-                continue
-            
-            if weighted:
-                path = G.get_shortest_paths(i,to=j, weights='Resistance')
-            else:
-                path = G.get_shortest_paths(i,to=j)
-            Ax_term  = 0
-            Ay_term  = 0
-            Axy_term = 0
-            for hop_s,hop_t in zip(path[0][0:-1],path[0][1::]):
-                if weighted:
-                    weight = G.es[G.get_eid(hop_s,hop_t)]['Conductance']
-                else:
-                    weight = 1
-                Ax_term  = Ax_term  + weight*(((G.vs[hop_s]['o'][0]).astype(float) - (G.vs[hop_t]['o'][0]).astype(float))**2)
-                Ay_term  = Ay_term  + weight*(((G.vs[hop_s]['o'][1]).astype(float) - (G.vs[hop_t]['o'][1]).astype(float))**2)
-                Axy_term = Axy_term + weight*(((G.vs[hop_s]['o'][1]).astype(float) - (G.vs[hop_t]['o'][1].astype(float))) * ((G.vs[hop_s]['o'][0]).astype(float) - (G.vs[hop_t]['o'][0]).astype(float)))
-            Ax  = Ax  + (Ax_term)
-            Ay  = Ay  + (Ay_term)
-            Axy = Axy + (Axy_term)
-            A = np.array([[Ax,Axy,0],[Axy,Ay,0],[0,0,0]])/(len(trimmed_node_count)**2)
-    return A
-
-def from_gsd(filename, frame=0):
-    """
-    Function returns a Network object stored in a given .gsd file
-    Assigns parent directory to filename, dropping last 2 subdirectories.
-    I.e. assumes filename given as ../...../dir/Binarized/name.gsd
-    This is why the Network object never calls its .binarize() method in this function
-
-    Currently only assigns node positions as attributes.
-    TODO: Assign edge position attributes if neccessary
-    """
-    _dir = os.path.split(os.path.split(filename)[0])[0]
-    N = util.Network(_dir)
-    f = gsd.hoomd.open(name=filename, mode='rb')[frame]
-    rows =   f.log['Adj_rows']
-    cols =   f.log['Adj_cols']
-    values = f.log['Adj_values']
-    S = scipy.sparse.csr_matrix((values, (rows,cols)))
-    G = ig.Graph()
-    N.Gr = G.Weighted_Adjacency(S)
-
-    node_pos = f.particles.position[f.particles.typeid == 1]
-
-    assert len(node_pos) == N.Gr.vcount()
-
-    N.Gr.vs['o'] = node_pos
-
-    return N
 
 def quadrupletise(i):
     if len(str(i))==4: return str(i)

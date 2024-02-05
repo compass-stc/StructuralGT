@@ -54,7 +54,8 @@ cdef class PyCast:
 
     @property
     def bounded_betweenness(self):
-        _bounded_betweennesses = np.zeros(self.c_cast.num_edges, dtype=np.float)
+        _bounded_betweennesses = np.zeros((self.c_cast.num_edges),
+                                          dtype=np.double)
         for i in range(self.c_cast.num_edges):
             _bounded_betweennesses[i] = self.c_cast.betweennesses[i]
 

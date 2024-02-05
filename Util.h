@@ -1,5 +1,6 @@
 #include <igraph.h>
 #include <vector>
+#include <Eigen/Dense>
 
 //Casts an igraph vector to a std::vector. The assignemnet operator may not 
 //be overloaded for a class that had been defined elsewhere. Hence I am using 
@@ -23,5 +24,9 @@ std::vector<std::vector<float> >& operator<<=(std::vector<std::vector<float> >& 
     return V;
 }
 
-
-
+std::vector<float>& operator<<=(std::vector<float>& V, Eigen::VectorXf& E){
+    for (int i=0; i<E.size(); i++) {
+        V.push_back(E[i]);
+    }
+    return V;
+}

@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import cv2 as cv
+import scipy
 from StructuralGT import error, base, process_image
 import json
 import matplotlib.pyplot as plt
@@ -8,6 +9,78 @@ import matplotlib.cm as cm
 import time
 import gsd.hoomd
 import warnings
+from functools import wraps
+
+class _Compute:
+    r"""Parent class for all compute classes in StructuralGT. Modelled after
+    the :class:`_Compute` class used in **freud** :cite:`Ramasubramani2020`.
+
+    The primary purpose of this class is to prevent access of uncomputed
+    values. This is accomplished by maintaining a boolean flag to track whether
+    the compute method in a class has been called and decorating class
+    properties that rely on compute having been called.
+
+    To use this class, one would write, for example,
+
+    .. code-block:: python
+        class Electronic(_Compute):
+
+            def compute(...)
+                ...
+
+            @_Compute._computed_property
+            def effectice_resistance(self):
+                return ...
+
+    Attributes:
+        _called_compute (bool):
+            Flag representing whether the compute method has been called.
+    """
+
+    def __init__(self, weight_type=None):
+        self._called_compute = False
+        self.weight_type = weight_type
+
+    def __getattribute__(self, attr):
+        """Compute methods set a flag to indicate that quantities have been
+        computed. Compute must be called before plotting."""
+        attribute = object.__getattribute__(self, attr)
+        if attr == 'compute':
+            # Set the attribute *after* computing. This enables
+            # self._called_compute to be used in the compute method itself.
+            compute = attribute
+
+            @wraps(compute)
+            def compute_wrapper(*args, **kwargs):
+                return_value = compute(*args, **kwargs)
+                self._called_compute = True
+                return return_value
+            return compute_wrapper
+        elif attr == 'plot':
+            if not self._called_compute:
+                raise AttributeError(
+                    "The compute method must be called before calling plot.")
+        return attribute
+
+    @staticmethod
+    def _computed_property(prop):
+        r"""Decorator that makes a class method to be a property with limited access.
+
+        Args:
+            prop (callable): The property function.
+
+        Returns:
+            Decorator decorating appropriate property method.
+        """
+
+        @property
+        @wraps(prop)
+        def wrapper(self, *args, **kwargs):
+            if not self._called_compute:
+                raise AttributeError(
+                    "Property not computed. Call compute first.")
+            return prop(self, *args, **kwargs)
+        return wrapper
 
 def _abs_path(network, name):
     if name[0] == "/":
@@ -84,9 +157,7 @@ class _cropper:
 
         if domain is None:
             self.crop = slice(None)
-            planar_dims = cv.imread(
-                Network.stack_dir + "/slice0000.tiff",
-                cv.IMREAD_GRAYSCALE).shape
+            planar_dims = Network.image_stack[0][0].shape[0:2]
             if self.dim == 2:
                 self.dims = (1,) + planar_dims
             else:
@@ -253,4 +324,7 @@ class _fname():
         """
         return base.Q_img(self.name)
 
-
+    @property
+    def prefix(self):
+        """str: Returns leading string of the filename."""
+        return os.path.splitext(os.path.basename(self.name))[0]

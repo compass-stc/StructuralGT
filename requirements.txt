@@ -1,4 +1,4 @@
-numpy~=1.22
+numpy<1.25.0,>=1.18.5
 scipy~=1.6.0
 scikit-image~=0.18.1
 matplotlib~=3.3.4
@@ -8,3 +8,4 @@ pandas~=1.2.1
 python-igraph>=0.9.10
 gsd~=3.1.1
 pytest~=7.1.1
+pillow<10.1.0,>=8.3.2

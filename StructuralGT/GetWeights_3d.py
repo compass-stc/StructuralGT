@@ -28,8 +28,10 @@ def unitvector(u,v):
 
     vec = u-v # find the vector between u and v
 
-    # returns the unit vector in the direction from v to u
-    return vec/np.linalg.norm(vec)
+    if np.linalg.norm(vec)==0:
+        return np.array([0,]*len(u), dtype=np.float16)
+    else:
+        return vec/np.linalg.norm(vec)
 
 def halflength(u,v):
     # Inputs:
@@ -45,8 +47,8 @@ def findorthogonal(u,v):
     # u, v: two coordinates (x, y) or (x, y, z)
 
     n = unitvector(u,v)         # make n a unit vector along u,v
-    if (np.isnan(n[0]) or np.isnan(n[1])):
-        n[0] , n[1] = float(0) , float(0)
+    #if (np.isnan(n[0]) or np.isnan(n[1])):
+    #    n[0] , n[1] = float(0) , float(0)
     hl = halflength(u,v)        # find the half-length of the vector u,v
     orth = np.random.randn(len(u))   # take a random vector
     orth -= orth.dot(n) * n     # make it orthogonal to vector u,v
@@ -151,12 +153,12 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
         midpt, orth = findorthogonal(pt1, pt2)
         m.astype(int)
         pix_width = int(lengthtoedge(m, orth, img_bin)) 
+        length = len(ge)
     if(weight_type==None):
         wt = pix_width/10
     elif(weight_type=='VariableWidthConductance'):
         #This is electrical conductance; not graph conductance.
         #This conductance is based on both width and length of edge, as measured from the raw data. rho_dim is resistivity (i.e. ohm pixels)
-        length = len(ge)
         if pix_width == 0 or length == 0:
             wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal, rendering flow problems underdetermined
         else:
@@ -180,6 +182,11 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
             wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal, rendering flow problems underdetermined
         else:
             wt = pix_width**2
+    elif(weight_type=='Width'):
+        if pix_width == 0 or length == 0:
+            wt = 1 #Arbitrary. Smallest possible value for a lattice graph. Using zero may cause 0 elements on the weighted Laplacian diagonal, rendering flow problems underdetermined
+        else:
+            wt = pix_width
     elif(weight_type=='Length'):
         wt = len(ge)
     elif(weight_type=='InverseLength'):
