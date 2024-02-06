@@ -13,8 +13,8 @@ To use, clone, build, and install from the `GitHub repository
 
 .. code:: bash
 
-   conda install igraph eigen cython
    git clone https://github.com/AlainKadar/StructuralGT
+   conda install -c conda-forge igraph eigen cython
    cd StructuralGT
    python setup.py install
 
@@ -33,5 +33,5 @@ The following minimal example shows how the package can be used to calculate the
    Nanofibre3DNetwork.set_graph(weight_type=['Length'])
 
    S = Structural()
-   S.compute(ANF)
+   S.compute(Nanofibre3DNetwork)
    print(S.diameter)
