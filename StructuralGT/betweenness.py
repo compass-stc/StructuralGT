@@ -96,9 +96,9 @@ class Betweenness(_Compute):
             network (:class:`Network`):
                 The :class:`Network` object.
             sources (list):
-                The set of source nodes, $S$.
+                The set of source nodes, :math:`S`.
             targets (list):
-                The set of target nodes, $T$.
+                The set of target nodes, :math:`T`.
             weights (str, optional):
                 The name of the edge attribute to be used in weighting the
                 random walks. If omitted, an unweighted network is used.
@@ -118,10 +118,10 @@ class Betweenness(_Compute):
 
            c_B(v) =\sum_{s\in S,t \in T} \frac{\sigma(s, t|e)}{\sigma(s, t)}
 
-        where $S$ is the set of sources, $T$ is the set of targets,
+        where :math:`S` is the set of sources, :math:`T` is the set of targets,
         $\sigma(s, t)$ is the number of shortest $(s, t)$-paths,
         and $\sigma(s, t|e)$ is the number of those paths
-        passing through edge $e$ :cite:`Brandes2008` (which is unity for real 
+        passing through edge :math:`e` :cite:`Brandes2008` (which is unity for real 
         value weighted graphs). 
         """
         return self._bounded_betweenness
