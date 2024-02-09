@@ -31,4 +31,3 @@ class Nematic(_Compute):
         for more information."""
 
         return self._nematic
-
