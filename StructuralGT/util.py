@@ -138,7 +138,9 @@ class _cropper:
 
     def __init__(self, Network, domain=None):
         self.dim = Network.dim
-        if domain is None or Network._2d:
+        if Network._2d:
+            self.surface = 0
+        elif domain is None:
             self.surface = int(
                 _fname(Network.dir + '/' + Network.image_stack[0][1]).num
             )  # Strip file type and 'slice' then convert to int
