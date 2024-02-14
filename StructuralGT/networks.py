@@ -4,6 +4,7 @@ import cv2 as cv
 from StructuralGT import error, base, process_image
 import json
 import scipy
+import freud
 import igraph as ig
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -16,6 +17,9 @@ from skimage.morphology import skeletonize_3d
 from StructuralGT.util import _image_stack, _cropper, _domain, _fname, _abs_path
 
 from matplotlib.colorbar import Colorbar
+
+from collections.abc import Sequence
+
 def colorbar(mappable, *args, **kwargs):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     ax = mappable.axes
@@ -26,12 +30,7 @@ def colorbar(mappable, *args, **kwargs):
     return cbar
 
 class Network:
-    """Generic class to represent networked image data. Should not be
-    instantiated by the user.
-
-    Subclasses will hold :class:`graph` attributes 
-    holds additional attributes and methods for supporting geometric features
-    associated images, dimensionality etc.
+    """Generic class to represent networked image data.
 
     Args:
         directory (str):
@@ -104,6 +103,7 @@ class Network:
             fname = _fname(self.dir + '/' + name)
             gray_image = cv.imread(self.dir + '/' + name, cv.IMREAD_GRAYSCALE)
             _, img_bin, _ = process_image.binarize(gray_image, options_dict)
+            if self._2d: fname.num = '0000' 
             plt.imsave(
                 self.stack_dir + "/" + self.prefix + fname.num + ".tiff",
                 img_bin,
@@ -636,3 +636,71 @@ def from_gsd(_dir, filename, frame=0, depth=None):
     N.Gr.vs['o'] = centroid_pos
 
     return N
+
+class Regions:
+    def __init__(self, partition, box):
+        if partition==0:
+            self.regions = [
+                [(-box[0]/2,box[0]/2),(-box[1]/2,box[1]/2),(-box[2]/2,box[2]/2)]
+            ]
+        elif partition==1:
+            self.regions = [
+                [(-box[0]/2,0),(-box[1]/2,0),(-box[2]/2,0)],
+                [(-box[0]/2,0),(-box[1]/2,0),(0,box[2]/2)],
+                [(-box[0]/2,0),(0,box[1]/2),(-box[2]/2,0)],
+                [(-box[0]/2,0),(0,box[1]/2),(0,box[2]/2)],
+                [(0,box[0]/2),(-box[1]/2,0),(-box[2]/2,0)],
+                [(0,box[0]/2),(-box[1]/2,0),(0,box[2]/2)],
+                [(0,box[0]/2),(0,box[1]/2),(-box[2]/2,0)],
+                [(0,box[0]/2),(0,box[1]/2),(0,box[2]/2)],
+            ]
+            
+    def inregion(self, region, p):
+        mask = np.array(p.T[0]>region[0][0]) & np.array(p.T[0]<region[0][1]) \
+             & np.array(p.T[1]>region[1][0]) & np.array(p.T[1]<region[1][1]) \
+             & np.array(p.T[2]>region[2][0]) & np.array(p.T[2]<region[2][1])
+             
+        return p[mask]
+            
+class ParticleNetwork(Sequence):
+    def __init__(self, trajectory, cutoff, partition=0, periodic=False):
+
+        self.traj = gsd.hoomd.open(trajectory)
+        self.cutoff = cutoff
+        self.periodic = periodic
+        self.partition = partition
+
+        self.regions = Regions(partition, self.traj[0].configuration.box)
+
+    def __getitem__(self, key):
+        self._graph_list = []
+        if isinstance(key, int): _iter=[self.traj[key]]
+        else: _iter=self.traj[key]
+        for frame in _iter:
+            _first=True
+            for region in self.regions.regions:
+                positions = self.regions.inregion(region, frame.particles.position)
+                box = frame.configuration.box * {False:2, True:1}[self.periodic]
+                aq = freud.locality.AABBQuery(box, positions)
+                nlist = aq.query(
+                    positions,
+                    {
+                        "r_max": self.cutoff,
+                        "exclude_ii": True
+                    },
+                ).toNeighborList()
+                nlist.filter(nlist.query_point_indices<nlist.point_indices)
+                if _first:
+                    _graph = ig.Graph.TupleList(nlist[:], directed=False)
+                    _first=False
+                else:
+                    nlist = nlist[:]+_graph.vcount()
+                    __graph = ig.Graph.TupleList(nlist[:], directed=False)
+                    _graph = ig.operators.union([_graph, __graph])
+
+            self._graph_list.append(_graph)
+
+        return self._graph_list
+
+    def __len__(self):
+        return len(self._graph_list)
