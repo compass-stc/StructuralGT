@@ -158,6 +158,7 @@ class _cropper:
         self.depths = Network.depth
 
         if domain is None:
+            self.domain = None
             self.crop = slice(None)
             planar_dims = Network.image_stack[0][0].shape[0:2]
             if self.dim == 2:
@@ -170,6 +171,7 @@ class _cropper:
                 self.crop = (slice(domain[2], domain[3]),
                              slice(domain[0], domain[1]))
                 self.dims = (1, domain[3] - domain[2], domain[1] - domain[0])
+                self.domain = (domain[2],domain[3],domain[0],domain[1])
 
             else:
                 self.crop = (
@@ -182,6 +184,24 @@ class _cropper:
                     domain[3] - domain[2],
                     domain[5] - domain[4],
                 )
+                self.domain = (
+                        domain[0], domain[1],
+                        domain[2], domain[3],
+                        domain[4], domain[5],
+                        )
+
+    @classmethod
+    def from_string(cls, Network, domain):
+        if domain=="None":
+            return cls(Network, domain=None)
+        else:
+            domain=domain.split(',')
+        if len(domain)==4:
+            _0 = int(domain[0][1:])
+            _1 = int(domain[1])
+            _2 = int(domain[2])
+            _3 = int(domain[3][:-1])
+            return cls(Network, domain=[_0,_1,_2,_3])
 
     def intergerise(self):
         """Method casts decimal values in the _croppers crop attribute to
@@ -206,6 +226,9 @@ class _cropper:
                 slice(first_z, last_z),
             )
 
+    def __str__(self):
+        return str(self.domain)
+
     @property
     def _3d(self):
         if self.dim == 2:
@@ -218,7 +241,7 @@ class _cropper:
     @property
     def _2d(self):
         """list: If a crop is associated with the object, return the component
-        which crops the square associated with the :class:`Network` space.
+        which crops the rectangle associated with the :class:`Network` space.
         """
         if self.crop == slice(None):
             return slice(None)
