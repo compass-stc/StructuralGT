@@ -52,7 +52,7 @@ class Network:
 
         self.dir = directory
         self.child_dir = '/' + child_dir
-        self.stack_dir = self.dir + self.child_dir
+        self.stack_dir = os.path.normpath(self.dir + self.child_dir)
         self.depth = depth
         self.prefix = prefix
 
@@ -79,22 +79,22 @@ class Network:
             self._2d = False
             self.dim = 3
 
-    def binarize(self, options_dict=None):
+    def binarize(self, options=None):
         """Binarizes stack of experimental images using a set of image
         processing parameters.
 
         Args:
-            options_dict (dict, optional):
+            options (dict, optional):
                 A dictionary of option-value pairs for image processing. All
                 options must be specified. When this arguement is not
                 specified, the network's parent directory will be searched for
                 a file called img_options.json, containing the options.
         """
 
-        if options_dict is None:
+        if options is None:
             options = self.dir + "/img_options.json"
             with open(options) as f:
-                options_dict = json.load(f)
+                options = json.load(f)
 
         if not os.path.isdir(self.dir + self.child_dir):
             os.mkdir(self.dir + self.child_dir)
@@ -102,7 +102,7 @@ class Network:
         for _,name in self.image_stack:
             fname = _fname(self.dir + '/' + name)
             gray_image = cv.imread(self.dir + '/' + name, cv.IMREAD_GRAYSCALE)
-            _, img_bin, _ = process_image.binarize(gray_image, options_dict)
+            _, img_bin, _ = process_image.binarize(gray_image, options)
             if self._2d: fname.num = '0000' 
             plt.imsave(
                 self.stack_dir + "/" + self.prefix + fname.num + ".tiff",
@@ -110,7 +110,7 @@ class Network:
                 cmap=cm.gray,
             )
 
-        self.options = options_dict
+        self.options = options
 
     def set_img_bin(self, crop):
         """Sets the :attr:`img_bin` and :attr:`img_bin_3d` attributes, which
@@ -157,7 +157,7 @@ class Network:
         # 3d for 3d images, 2d otherwise
         self._img_bin = np.squeeze(self._img_bin)
 
-    def set_graph(self, sub=True, weight_type=None, write='graph.gsd', **kwargs):
+    def set_graph(self, sub=True, weight_type=None, write='network.gsd', **kwargs):
         """Sets :class:`Graph` object as an attribute by reading the
         skeleton file written by :meth:`img_to_skel`.
 
@@ -175,6 +175,7 @@ class Network:
         G = base.gsd_to_G(self.gsd_name, _2d=self._2d, sub=sub)
 
         self.Gr = G
+        self.write_name = write
 
         if self.rotate is not None:
             centre = np.asarray(self.shape) / 2
@@ -498,6 +499,14 @@ class Network:
                 s.particles.typeid[i] = 1
 
         f.append(s)
+       
+        _dict = {}
+        for attr in ('stack_dir', '_2d', 'dim', 'cropper'):
+            _dict[attr] = str(getattr(self, attr))
+
+        name = os.path.splitext(os.path.basename(filename))[0]
+        with open(self.stack_dir + '/' + name + '.json', "w") as json_file:
+            json.dump(_dict, json_file)
 
     def node_plot(self, parameter=None, ax=None, depth=0):
         """Superimpose the skeleton, image, and nodal graph theory parameters.
@@ -528,8 +537,6 @@ class Network:
         ax.set_xticks([])
         ax.set_yticks([])
         ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap='plasma')
-        _max = np.max(parameter)
-        _min = np.min(parameter)
         
         e = np.empty((0,2))
         for edge in self.graph.es:
@@ -607,35 +614,80 @@ class Network:
         if self._2d: return self.image_stack[0][0]
         else: return self.image_stack[:][0]
 
-def from_gsd(_dir, filename, frame=0, depth=None):
-    """
-    Function returns a Network object stored in a given .gsd file
-    Assigns parent directory to filename, dropping last 2 subdirectories.
-    I.e. assumes filename given as ../...../dir/Binarized/name.gsd
-    This is why the Network object never calls its .binarize() method in this function
+    @classmethod
+    def from_gsd(cls, filename, frame=0, dim=dim, depth=None):
+        """
+        Alternative constructor for returning a Network object that was
+        previously stored in a `.gsd` and `.json` file. Assumes file is stored
+        in the same directory as *StructuralGT* wrote it to. I.e. assumed name
+        given as `.../dir/Binarized/name.gsd`.
 
-    Currently only assigns node positions as attributes.
-    TODO: Assign edge position attributes if neccessary
+        TODO: Assign edge position attributes if neccessary
+        """
+
+        assert os.path.exists(filename)
+
+        _dir = os.path.abspath(filename)
+        _dir = os.path.split(os.path.split(filename)[0])[0]
+        N = cls(_dir, depth=depth, dim=dim)
+
+        name = os.path.splitext(os.path.basename(filename))[0]
+        _json = N.stack_dir + '/' + name + '.json'
+        with open(_json, "r") as json_file:
+            data = json.load(json_file)
+
+        N.cropper = _cropper.from_string(N, domain=data["cropper"])
+        N._2d = bool(data["cropper"])
+        N.dim = int(data["dim"])
+        f = gsd.hoomd.open(name=filename, mode='r')[frame]
+        rows =   f.log['Adj_rows']
+        cols =   f.log['Adj_cols']
+        values = f.log['Adj_values']
+        S = scipy.sparse.csr_matrix((values, (rows,cols)))
+        G = ig.Graph()
+        N.Gr = G.Weighted_Adjacency(S, mode='upper')
+
+        edge_pos = f.particles.position[f.particles.typeid == 0]
+        node_pos = f.particles.position[f.particles.typeid == 1]
+        centroid_pos = f.particles.position[f.particles.typeid == 2]
+
+        N.Gr.es['pts'] = edge_pos
+        N.Gr.vs['pts'] = node_pos
+        N.Gr.vs['o'] = centroid_pos
+
+
+        return N
+
+def Graph(filename, frame=0):
+    """Functions which returns an `igraph.Graph` object from a gsd, with 
+    node and edge position attributes. Useful when a `Network` object is not
+    required. Unlike `Network.from_gsd`, it makes no assumptions about the
+    path of the `gsd` file.
+
+    Args:
+        filename (str):
+            The file name to read.
+
+    Returns:
+        (`igraph.Graph`): igraph Graph object.
     """
-    #_dir = os.path.split(os.path.split(filename)[0])[0]
-    N = Network(_dir, depth=depth)
+
     f = gsd.hoomd.open(name=filename, mode='r')[frame]
     rows =   f.log['Adj_rows']
     cols =   f.log['Adj_cols']
     values = f.log['Adj_values']
     S = scipy.sparse.csr_matrix((values, (rows,cols)))
-    G = ig.Graph()
-    N.Gr = G.Weighted_Adjacency(S, mode='upper')
+    Gr = ig.Graph.Weighted_Adjacency(S, mode='upper')
 
     edge_pos = f.particles.position[f.particles.typeid == 0]
     node_pos = f.particles.position[f.particles.typeid == 1]
     centroid_pos = f.particles.position[f.particles.typeid == 2]
 
-    N.Gr.es['pts'] = edge_pos
-    N.Gr.vs['pts'] = node_pos
-    N.Gr.vs['o'] = centroid_pos
+    Gr.es['pts'] = edge_pos
+    Gr.vs['pts'] = node_pos
+    Gr.vs['o'] = centroid_pos
 
-    return N
+    return Gr
 
 class Regions:
     def __init__(self, partition, box):
