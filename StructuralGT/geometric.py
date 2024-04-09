@@ -12,16 +12,17 @@ class Nematic(_Compute):
     def compute(self, network):
         """Computes the nematic tensor of the graph."""
         
-        orientations = np.zeros((network.graph.ecount(), network.dim))
+        _orientations = np.zeros((network.graph.ecount(), network.dim))
         for i,edge in enumerate(network.graph.es):
-            orientations[i] = edge['pts'][0] - edge['pts'][-1]
+            _orientations[i] = edge['pts'][0] - edge['pts'][-1]
         
         if network._2d:
-            orientations = np.hstack((orientations, np.zeros((len(orientations),1))))
+            _orientations = np.hstack((_orientations, np.zeros((len(_orientations),1))))
             
         nematic = freud.order.Nematic()
-        nematic.compute(orientations)
+        nematic.compute(_orientations)
         self._nematic = nematic
+        self._orientations = _orientations
 
     @_Compute._computed_property
     def nematic(self):
@@ -31,3 +32,9 @@ class Nematic(_Compute):
         for more information."""
 
         return self._nematic
+    
+    @_Compute._computed_property
+    def orientations(self):
+        r"""The edge orientations.""" 
+
+        return self._orientations
