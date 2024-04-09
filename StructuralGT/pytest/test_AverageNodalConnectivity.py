@@ -24,7 +24,7 @@ class TestAverageNodalConnectivity:
                                                           neighbors="negative")
                 if val==-1: continue
                 vals.append(val)
-        #Check that the StructuralGT and networkx values are equal
+
         npt.assert_allclose(ComputeModule.average_nodal_connectivity,
                             np.mean(np.asarray(vals)),
                             rtol=1e-2,
