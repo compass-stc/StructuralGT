@@ -484,6 +484,8 @@ class Network:
         s.log["Adj_rows"] = rows
         s.log["Adj_cols"] = columns
         s.log["Adj_values"] = values
+        s.log["Edge_lens"] = list(map(lambda edge: len(edge), self.Gr.es['pts']))
+        s.log["Node_lens"] = list(map(lambda node: len(node), self.Gr.vs['pts']))
 
         for i, particle in enumerate(positions):
             node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[0]
@@ -615,7 +617,7 @@ class Network:
         else: return self.image_stack[:][0]
 
     @classmethod
-    def from_gsd(cls, filename, frame=0, dim=dim, depth=None):
+    def from_gsd(cls, filename, frame=0, depth=None):
         """
         Alternative constructor for returning a Network object that was
         previously stored in a `.gsd` and `.json` file. Assumes file is stored
@@ -629,7 +631,7 @@ class Network:
 
         _dir = os.path.abspath(filename)
         _dir = os.path.split(os.path.split(filename)[0])[0]
-        N = cls(_dir, depth=depth, dim=dim)
+        N = cls(_dir, depth=depth)
 
         name = os.path.splitext(os.path.basename(filename))[0]
         _json = N.stack_dir + '/' + name + '.json'
