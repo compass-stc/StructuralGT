@@ -22,16 +22,16 @@ class Binarizer:
     
         gray_image = cv.imread(self.filename, cv.IMREAD_GRAYSCALE)
         Thresh_dict = {'Global':0, 'Adaptive':1, 'OTSU':2}
-        options_dict = dict(Thresh_method=Thresh_dict[Thresh_method],
+        options = dict(Thresh_method=Thresh_dict[Thresh_method],
                             gamma=gamma,
-                            md_filter=md_filter,
-                            g_blur=g_blur,
-                            autolvl=autolvl,
-                            fg_color=fg_color,
-                            laplacian=laplacian,
-                            scharr=scharr,
-                            sobel=sobel,
-                            lowpass=lowpass,
+                            md_filter=int(md_filter),
+                            g_blur=int(g_blur),
+                            autolvl=int(autolvl),
+                            fg_color=int(fg_color),
+                            laplacian=int(laplacian),
+                            scharr=int(scharr),
+                            sobel=int(sobel),
+                            lowpass=int(lowpass),
                             asize=int(asize)*2+1,
                             bsize=int(bsize)*2+1,
                             wsize=int(wsize)*2+1,
@@ -41,9 +41,9 @@ class Binarizer:
             if self.export_dir is None:
                 self.export_dir = os.path.split(self.filename)[0]
             with open(self.export_dir + '/img_options.json', 'w') as fp:
-                json.dump(options_dict, fp)
+                json.dump(options, fp)
         
-        _, binary_image, _ = process_image.binarize(gray_image, options_dict)
+        _, binary_image, _ = process_image.binarize(gray_image, options)
         plt.imshow(binary_image, cmap='gray')
 
     def __init__(self, filename, export_dir=None):
@@ -75,8 +75,8 @@ class Binarizer:
         sobel = widgets.Checkbox(description='Sobel', value=0, layout=item_layout)
         lowpass = widgets.Checkbox(description='Lowpass', value=0, layout=item_layout)
         thr = widgets.FloatSlider(description='Threshold', value=128, min=0, max=256, layout=item_layout)
-        asize = widgets.FloatSlider(description='Adaptive threshold kernel', value=1, min=1, max=200, layout=item_layout)
-        bsize = widgets.FloatSlider(description='Blurring kernel size', value=0, min=0, max=10, layout=item_layout)
+        asize = widgets.FloatSlider(description='Adaptive threshold kernel', value=1, min=1, max=2000, layout=item_layout)
+        bsize = widgets.FloatSlider(description='Blurring kernel size', value=0, min=0, max=400, layout=item_layout)
         wsize = widgets.FloatSlider(description='Window size', value=0, min=0, max=10, layout=item_layout)
         export=widgets.Checkbox(description='Export', value=0, layout=item_layout)
         w = interactive(self.binarize_widget,
