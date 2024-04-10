@@ -23,14 +23,14 @@ class AverageNodalConnectivity(_Compute):
 
     @_Compute._computed_property
     def average_nodal_connectivity(self):
-        r"""The nodal connectivity $\kappa(i,j)$, is the minimum number of edges
-        that would need to be removed to disconnect nodes $i$ and $j$. The 
+        r"""The nodal connectivity :math:`\kappa(i,j)` , is the minimum number of edges
+        that would need to be removed to disconnect nodes :math:`i` and :math:`j`. The 
         average nodal connectivity is the connectivity value averaged over all
         pairs of nodes:
 
         .. math::
 
-        \bar{\kappa} = 2\frac{\sum_{i \neq j}\kappa(i,j)}{n(n-1)}
+            \bar{\kappa} = 2\frac{\sum_{i \neq j}\kappa(i,j)}{n(n-1)}
 
         """
         return self._average_nodal_connectivity

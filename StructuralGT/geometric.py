@@ -4,7 +4,7 @@ import freud
 
 class Nematic(_Compute):
     """Computes the nematic tensor of the graph. For details on how it 
-    quantifies orientational anisotropy, see :cite:`Mottram`2014."""
+    quantifies orientational anisotropy, see :cite:`Mottram2014`."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

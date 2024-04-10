@@ -119,8 +119,8 @@ class Betweenness(_Compute):
            c_B(v) =\sum_{s\in S,t \in T} \frac{\sigma(s, t|e)}{\sigma(s, t)}
 
         where :math:`S` is the set of sources, :math:`T` is the set of targets,
-        $\sigma(s, t)$ is the number of shortest $(s, t)$-paths,
-        and $\sigma(s, t|e)$ is the number of those paths
+        :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
+        and :math:`\sigma(s, t|e)` is the number of those paths
         passing through edge :math:`e` :cite:`Brandes2008` (which is unity for real 
         value weighted graphs). 
         """
