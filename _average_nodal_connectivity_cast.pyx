@@ -1,5 +1,3 @@
-# distutils: language = c++
-
 from AverageNodalConnectivityCast cimport AverageNodalConnectivityCast
 from cpython.long cimport PyLong_AsVoidPtr
 import numpy as np

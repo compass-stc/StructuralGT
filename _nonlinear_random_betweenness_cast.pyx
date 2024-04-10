@@ -1,5 +1,3 @@
-# distutils: language = c++
-
 from NonLinearRandomBetweennessCast cimport NonLinearRandomBetweennessCast
 from cpython.long cimport PyLong_AsVoidPtr
 import numpy as np
