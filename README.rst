@@ -22,7 +22,7 @@ You will need to install the cython, igraph, and eigen.
    python setup.py install
 
 A conda installation streamlines linking the required dependencies. To avoid 
-using conda, please see :ref:`installation-label` for a more customized installation.
+using conda, please see the documentation for a more customized installation.
 
 Example
 =======
