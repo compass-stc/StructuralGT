@@ -7,7 +7,7 @@ Geometric
 .. autosummary::
     :nosignatures:
 
-    StructuralGT.geometric.Geometric
+    StructuralGT.geometric.Nematic
 
 .. rubric:: Details
 
