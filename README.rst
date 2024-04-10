@@ -6,10 +6,13 @@ Overview
 ========
 A python package for the extraction and analysis of graphs from 2D and 3D experimental micrographs. Image processing techniques taken from `StructuralGT <https://github.com/drewvecchio/StructuralGT>`__.
 
-Use
-===
-To use, clone, build, and install from the `GitHub repository
-<https://github.com/AlainKadar/StructuralGT>`__. You will need to install the cython, igraph, and eigen with conda.
+Installation
+============
+StructuralGT is easiest to from source, using conda to link dependencies.
+To do so, clone, build, 
+and install from the `GitHub repository
+<https://github.com/AlainKadar/StructuralGT>`__.
+You will need to install the cython, igraph, and eigen. 
 
 .. code:: bash
 
@@ -17,6 +20,9 @@ To use, clone, build, and install from the `GitHub repository
    conda install -c conda-forge igraph eigen cython
    cd StructuralGT
    python setup.py install
+
+A conda installation streamlines linking the required dependencies. To avoid 
+using conda, please see :ref:`installation-label` for a more customized installation.
 
 Example
 =======
