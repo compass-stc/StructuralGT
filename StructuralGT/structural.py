@@ -72,7 +72,7 @@ class Structural(_Compute):
     @_Compute._computed_property
     def clustering(self):
         r""":class:`np.ndarray`: Array of clustering coefficients,
-        :math:`\delta_i`s. The clustering coefficient is the fraction of
+        :math:`\delta_{i}` s. The clustering coefficient is the fraction of
         neighbors of a node that are directly connected to each other as well
         (forming a triangle):
 
@@ -127,9 +127,9 @@ class Structural(_Compute):
 
            C_{B}(i) = \sum_{u,v}\frac{\sigma(u,v)}{\sigma(u,v \parallel i)}
         
-        where $\sigma(u,v)$ represents the number of shortest 
+        where :math:`\sigma(u,v)` represents the number of shortest 
         paths that exist between nodes :math:`u` and :math:`v`, with the term
-        $\sigma(u,v \parallel i)$ representing the number of those paths that
+        :math:`\sigma(u,v \parallel i)` representing the number of those paths that
         pass through node :math:`i`. For variations on this parameter, see the
         :class:`Betweenness` module.
         """
@@ -145,7 +145,7 @@ class Structural(_Compute):
 
            C_{C}(i) = \frac{n-1}{\sum_{j=1}^{n-1}L(i,j)}
 
-        where $L(i,j)$ is the shortest path between nodes :math:`i` and :math:`j`. 
+        where :math:`L(i,j)` is the shortest path between nodes :math:`i` and :math:`j`. 
 
         """
         return self.Closeness
