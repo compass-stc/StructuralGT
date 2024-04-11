@@ -4,7 +4,11 @@ import freud
 
 class Nematic(_Compute):
     """Computes the nematic tensor of the graph. For details on how it 
-    quantifies orientational anisotropy, see :cite:`Mottram2014`."""
+    quantifies orientational anisotropy, see :cite:`Mottram2014`. If the edge
+    occupies a single voxel (and therefore has a zero vector orientation),
+    it is not used in calculating the nematic tensor. However it is still
+    returned as past of the orientations array so that the length of the
+    orientations array is equal to the edge count."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -20,7 +24,7 @@ class Nematic(_Compute):
             _orientations = np.hstack((_orientations, np.zeros((len(_orientations),1))))
             
         nematic = freud.order.Nematic()
-        nematic.compute(_orientations)
+        nematic.compute(_orientations[sum(_orientations.T!=0)==3])
         self._nematic = nematic
         self._orientations = _orientations
 

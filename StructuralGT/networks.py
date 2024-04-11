@@ -13,7 +13,7 @@ import time
 import gsd.hoomd
 import warnings
 
-from skimage.morphology import skeletonize_3d
+from skimage.morphology import skeletonize
 from StructuralGT.util import _image_stack, _cropper, _domain, _fname, _abs_path
 
 from matplotlib.colorbar import Colorbar
@@ -322,8 +322,8 @@ class Network:
         self.set_img_bin(crop)
         
         if skeleton:
-            self._skeleton = skeletonize_3d(np.asarray(self._img_bin, dtype=np.dtype('uint8')))
-            self.skeleton_3d = skeletonize_3d(np.asarray(self._img_bin_3d, dtype=np.dtype('uint8')))
+            self._skeleton = skeletonize(np.asarray(self._img_bin, dtype=np.dtype('uint8')))
+            self.skeleton_3d = skeletonize(np.asarray(self._img_bin_3d, dtype=np.dtype('uint8')))
         else:
             self._img_bin = np.asarray(self._img_bin)
             self.skeleton_3d = self._img_bin_3d
