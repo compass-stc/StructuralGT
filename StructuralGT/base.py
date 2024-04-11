@@ -12,7 +12,7 @@ import matplotlib.cm as cm
 import csv
 import scipy
 
-from skimage.morphology import skeletonize, skeletonize_3d, binary_closing, remove_small_objects
+from skimage.morphology import skeletonize, binary_closing, remove_small_objects
 from StructuralGT import process_image, GetWeights_3d, error, convert, skel_ID, sknwEdits, util
 
 def read(name, read_type):
@@ -297,10 +297,10 @@ def debubble(g, elements):
     
     canvas = g.img_bin
     for elem in elements:
-        canvas = skeletonize_3d(canvas)/255
+        canvas = skeletonize(canvas)/255
         canvas = binary_closing(canvas, footprint=elem)
 
-    g._skeleton = skeletonize_3d(canvas)/255
+    g._skeleton = skeletonize(canvas)/255
 
     if g._2d:
         g._skeleton_3d = np.swapaxes(np.array([g._skeleton]), 2, 1)
