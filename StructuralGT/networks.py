@@ -178,7 +178,8 @@ class Network:
                 How to weight the edges. Options include :code:`Length`, 
                 :code:`Width`, :code:`Area`,
                 :code:`FixedWidthConductance`,
-                :code:`VariableWidthConductance`.
+                :code:`VariableWidthConductance`,
+                :code:`PerpBisector`.
         """
 
         G = base.gsd_to_G(self.gsd_name, _2d=self._2d, sub=sub)
