@@ -315,29 +315,20 @@ class _fname():
             raise ValueError('File does not exist.')
         self.name = name
         self.domain = domain
-        num1 = name[-8:-4]
-        num2 = name[-9:-5]
-        if num1.isnumeric() and num2.isnumeric():
-            raise ValueError('Directory contents names ambiguous.')
-        elif num1.isnumeric():
-            self.num = num1
-        elif num2.isnumeric():
-            self.num = num2
-        else:
-            self.num = 'Non-numeric'
-
-    @property
-    def isnumeric(self):
-        """bool: Whether the filename is numeric."""
-        return self.num.isnumeric()
 
     @property
     def isinrange(self):
         """bool: Returns true iff the filename is numeric and within the
         spatial dimensions of the associated :class:`_domain` object.
         """
-        if not self.isnumeric:
-            return False
+        if not self.isimg: return False 
+        base_name = os.path.splitext(os.path.split(self.name)[1])[0]
+        if len(base_name)<4:
+            raise ValueError('For 3D networks, filenames must end in 4 digits, indicating the depth of the slice.')
+        self.num = base_name[-4::]
+
+        if not self.num.isnumeric():
+            raise ValueError('For 3D networks, filenames must end in 4 digits, indicating the depth of the slice.')
         else:
             return (int(self.num) > self.domain.domain[0]
                 and int(self.num) < self.domain.domain[1])
@@ -349,7 +340,9 @@ class _fname():
         """
         return base.Q_img(self.name)
 
-    @property
-    def prefix(self):
-        """str: Returns leading string of the filename."""
-        return os.path.splitext(os.path.basename(self.name))[0]
+    def __contains__(self, item):
+        if item is None:
+            return True
+        else:
+            """str: Returns leading string of the filename."""
+            return item in os.path.splitext(os.path.basename(self.name))[0]

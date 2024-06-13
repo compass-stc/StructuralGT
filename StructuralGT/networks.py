@@ -48,37 +48,46 @@ class Network:
     """
 
     def __init__(self, directory, child_dir="Binarized", depth=None,
-                 prefix="slice", dim=2):
+                 prefix=None, dim=2):
+
+        if dim==2 and depth is not None:
+            raise InvalidArgumentsError('Cannot specify depth arguement for 2D networks. Change dim to 3 if you would like a single slice of a 3D network.')
 
         self.dir = directory
         self.child_dir = '/' + child_dir
         self.stack_dir = os.path.normpath(self.dir + self.child_dir)
         self.depth = depth
-        self.prefix = prefix
+        if prefix is None:
+            self.prefix = 'slice'
+        else:
+            self.prefix = prefix
 
-        #self.img, self.slice_names = [], []
         image_stack = _image_stack()
         for slice_name in sorted(os.listdir(self.dir)):
             fname = _fname(self.dir + '/' + slice_name,
                            domain=_domain(depth))
-            if (dim==2 and fname.isimg):
+            if (dim==2 and fname.isimg and prefix in fname):
+                if len(image_stack)!=0:
+                    warnings.warn("You have specified a 2D network but there are several suitable images in the given directory. By default, StructuralGT will take the first image. To override, specify the prefix argument.")
+                    break
                 _slice = plt.imread(self.dir + "/" + slice_name)
                 image_stack.append(_slice, slice_name)
-                break
-            if (fname.isinrange and
-                fname.isimg and 
-                self.prefix in fname.prefix):
-                image_stack.append(_slice, slice_name)
+            if dim==3:
+                if (fname.isinrange and fname.isimg and prefix in fname):
+                    _slice = plt.imread(self.dir + "/" + slice_name)
+                    image_stack.append(_slice, slice_name)
 
         self.image_stack = image_stack
         self.image_stack.package()
         if len(self.image_stack)==1: 
             self._2d = True
             self.dim = 2
+        elif len(self.image_stack)==0:
+            raise error.ImageDirectoryError("There are no suitable images in the given directory. You may need to specify the prefix argument.")
         else:
             self._2d = False
             self.dim = 3
-
+        
     def binarize(self, options=None):
         """Binarizes stack of experimental images using a set of image
         processing parameters.

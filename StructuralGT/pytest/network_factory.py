@@ -18,7 +18,7 @@ stick_options = {"Thresh_method":0, "gamma": 2, "md_filter": 0, "g_blur": 0,"aut
                "bsize": 11, "wsize": 10, "thresh": 93}
 
 def fibrous(weight_type=None):
-    ANF = networks.Network(_path  + '/pytest/data/ANF')
+    ANF = networks.Network(_path  + '/pytest/data/ANF', prefix='slice', dim=3)
     ANF.binarize(options=anf_options)
     ANF.img_to_skel(crop=[200,300,200,300, 1, 3])
     ANF.set_graph(weight_type=weight_type)
@@ -26,7 +26,7 @@ def fibrous(weight_type=None):
     return ANF
 
 def conductive():
-    AgNWN = networks.Network(_path + '/pytest/data/AgNWN')
+    AgNWN = networks.Network(_path + '/pytest/data/AgNWN', prefix='slice')
     AgNWN.binarize(options=agnwn_options)
     AgNWN.img_to_skel(crop=[149, 868, 408, 1127], rotate=45)
     AgNWN.set_graph(weight_type=['FixedWidthConductance'], R_j=10, rho_dim=2)
@@ -88,7 +88,7 @@ def random_stick(aligned=True):
         img_path = _path + '/pytest/data/Random'
     fig.savefig(img_path + '/slice0000.png',bbox_inches='tight', dpi=300)
 
-    RS = networks.Network(img_path)
+    RS = networks.Network(img_path, prefix='slice')
     RS.binarize(options=stick_options)
     RS.img_to_skel()
     RS.set_graph(sub=False)

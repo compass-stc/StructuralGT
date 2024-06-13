@@ -1,6 +1,6 @@
 #Errors for StructuralGT
 
-class ImageDirectoryError(NotADirectoryError):
+class ImageDirectoryError(ValueError):
     """Raised when a directory is accessed but does not have any images"""
 
     def __init__(self, directory_name):
@@ -8,11 +8,13 @@ class ImageDirectoryError(NotADirectoryError):
 
     def __str__(self):
         """Returns the error message"""
-        return (f'The directory {self.directory_name} has no images.')
+        return (f'The directory {self.directory_name} has no suitable images. You may need to specify the prefix argument.')
 
 class StructuralElementError(TypeError):
     """Raised when single structural element is passed to a deubbling function without parentheses"""
+    pass
 
-    def __str__(self):
-        """Returns the error message"""
-        return ("Single structural elements must be passed as a single item list")
+class InvalidArgumentsError(ValueError):
+    """Raised when incompatible combination of arguments is passed."""
+    pass
+
