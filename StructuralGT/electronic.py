@@ -53,6 +53,8 @@ class Electronic(_Compute):
         print("Sink coordinate is ", sink_coord)
         network.graph_connected.vs[source_id]["o"] = source_coord
         network.graph_connected.vs[sink_id]["o"] = sink_coord
+        network.graph_connected.vs[source_id]["pts"] = source_coord
+        network.graph_connected.vs[sink_id]["pts"] = sink_coord
 
         for node in network.graph_connected.vs:
             if node["o"][axis] >= boundary1[0] and node["o"][axis] <= boundary1[1]:
