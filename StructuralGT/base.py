@@ -72,6 +72,18 @@ def connector(point1, point2):
 
     return edge
 
+def split(array, splitpoints):
+    """Function which splits numpy array into list of arrays, according to 
+    the split points specified in splitpoints (which is a list of the array 
+    lengths."""
+    splitpoints = np.pad(splitpoints, (1, 1), 'constant', constant_values=(0, 0))
+    L=[]
+    k=0
+    for i, j in zip(splitpoints[0:len(splitpoints)], splitpoints[1::]):
+        L.append(array[i+k:i+j+k])
+        k += i
+        
+    return L
 
 def shift(points, _2d=False, _shift=None):
     """Translates all points such that the minimum coordinate in points is
