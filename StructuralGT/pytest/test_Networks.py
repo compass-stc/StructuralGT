@@ -84,6 +84,10 @@ class TestNetwork:
 
         return testNetwork
 
+    @pytest.fixture(scope="session")
+    def test_unweighted_network(self, test_crop):
+        return test_crop
+
     def test_from_gsd(self):
         writeNetwork = Network(Small_path)
         writeNetwork.binarize(options=options.agnwn)
