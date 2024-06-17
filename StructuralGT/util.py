@@ -37,9 +37,10 @@ class _Compute:
             Flag representing whether the compute method has been called.
     """
 
-    def __init__(self, weight_type=None):
+    def __init__(self, node_weight=None, edge_weight=None):
         self._called_compute = False
-        self.weight_type = weight_type
+        self.node_weight = node_weight
+        self.edge_weight = edge_weight
 
     def __getattribute__(self, attr):
         """Compute methods set a flag to indicate that quantities have been
@@ -310,11 +311,23 @@ class _fname():
             The spatial dimensions of the associated Network object.
     """
 
-    def __init__(self, name, domain=_domain(None)):
+    def __init__(self, name, domain=_domain(None), _2d=False):
         if not os.path.exists(name):
             raise ValueError('File does not exist.')
         self.name = name
         self.domain = domain
+        self._2d=_2d
+
+        if self._2d:
+            self.num='0000'
+        else:
+            base_name = os.path.splitext(os.path.split(self.name)[1])[0]
+            if len(base_name)<4:
+                raise ValueError('For 3D networks, filenames must end in 4 digits, indicating the depth of the slice.')
+            self.num = base_name[-4::]
+
+            if not self.num.isnumeric():
+                raise ValueError('For 3D networks, filenames must end in 4 digits, indicating the depth of the slice.')
 
     @property
     def isinrange(self):
@@ -322,13 +335,9 @@ class _fname():
         spatial dimensions of the associated :class:`_domain` object.
         """
         if not self.isimg: return False 
-        base_name = os.path.splitext(os.path.split(self.name)[1])[0]
-        if len(base_name)<4:
-            raise ValueError('For 3D networks, filenames must end in 4 digits, indicating the depth of the slice.')
-        self.num = base_name[-4::]
 
-        if not self.num.isnumeric():
-            raise ValueError('For 3D networks, filenames must end in 4 digits, indicating the depth of the slice.')
+        if self._2d:
+            return True
         else:
             return (int(self.num) > self.domain.domain[0]
                 and int(self.num) < self.domain.domain[1])
