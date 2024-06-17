@@ -128,7 +128,8 @@ def lengthtoedge(m,orth,img_bin):
             i += 1
     
     # returns the length between l1 and l2, which is the width of the fiber associated with an edge, at its midpoint
-    return np.linalg.norm(l1-l2)
+    #return np.linalg.norm(l1-l2)
+    return l1,l2
 
 #By default, weight is proportional to edge thickness.
 #For analysis of electrical networks, volume may be a more appropriate weight. Note that in this case the weight is the inverse resistance (i.e. conductance)
@@ -138,6 +139,7 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
     # Inputs:
     # ge: a list of pts that trace along a graph edge
     # img_bin: the binary image that the graph is derived from
+
 
     # check to see if ge is an empty or unity list, if so, set wt to 1
     if(len(ge)<2):
@@ -152,7 +154,8 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
         m = ge[midindex]
         midpt, orth = findorthogonal(pt1, pt2)
         m.astype(int)
-        pix_width = int(lengthtoedge(m, orth, img_bin)) 
+        l1,l2 = lengthtoedge(m, orth, img_bin)
+        pix_width = int(np.linalg.norm(l1-l2))
         length = len(ge)
     if(weight_type==None):
         wt = pix_width/10
@@ -191,6 +194,8 @@ def assignweights(ge, img_bin, weight_type=None, R_j=0, rho_dim=1):
         wt = len(ge)
     elif(weight_type=='InverseLength'):
         wt = len(ge)**-1
+    elif(weight_type=='PerpBisector'):
+        wt = np.array([l1,l2])
     else:
         raise TypeError('Invalid weight type')
     
