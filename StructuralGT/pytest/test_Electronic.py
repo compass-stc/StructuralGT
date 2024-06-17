@@ -1,5 +1,4 @@
 from StructuralGT.electronic import Electronic
-from network_factory import conductive
 
 import igraph as ig
 import pytest
@@ -10,9 +9,9 @@ _path = StructuralGT.__path__[0]
 
 class TestElectronic:
     @pytest.fixture
-    def test_compute(self):
+    def test_compute(self, conductive):
         #Obtain a conductive graph
-        testNetwork = conductive()
+        testNetwork = conductive
 
         #Instantiate a compute module and run calculation
         ComputeModule = Electronic()
