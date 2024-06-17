@@ -25,7 +25,6 @@ You will need to install cython, igraph, and eigen.
    cd StructuralGT
    python setup.py install
 
-.. _installation-label:
 Linking dependencies without conda
 ----------------------------------
 TODO
