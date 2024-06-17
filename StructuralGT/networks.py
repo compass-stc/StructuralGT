@@ -37,7 +37,7 @@ class Network:
             The (absolute or relative) pathname for the image(s) to be
             analysed. Where 2D analysis is concerned, the directory should
             contain a single image.
-        child_dir (str):
+        binarized_dir (str):
             The pathname relative to directory for storing the binarized 
             stack of images and all subsequent results.
         depth (tuple, optional):
@@ -47,16 +47,19 @@ class Network:
             is not specified.
     """
 
-    def __init__(self, directory, child_dir="Binarized", depth=None,
+    def __init__(self, directory, binarized_dir="Binarized", depth=None,
                  prefix=None, dim=2):
 
         if dim==2 and depth is not None:
-            raise InvalidArgumentsError('Cannot specify depth arguement for 2D networks. Change dim to 3 if you would like a single slice of a 3D network.')
+            raise error.InvalidArgumentsError('Cannot specify depth arguement for 2D networks. Change dim to 3 if you would like a single slice of a 3D network.')
 
         self.dir = directory
-        self.child_dir = '/' + child_dir
-        self.stack_dir = os.path.normpath(self.dir + self.child_dir)
+        self.binarized_dir = '/' + binarized_dir
+        self.stack_dir = os.path.normpath(self.dir + self.binarized_dir)
         self.depth = depth
+        self.dim = 2
+        if self.dim==2: self._2d=True
+        else: self._2d=False
         if prefix is None:
             self.prefix = 'slice'
         else:
@@ -65,7 +68,8 @@ class Network:
         image_stack = _image_stack()
         for slice_name in sorted(os.listdir(self.dir)):
             fname = _fname(self.dir + '/' + slice_name,
-                           domain=_domain(depth))
+                           domain=_domain(depth),
+                           _2d=self._2d)
             if (dim==2 and fname.isimg and prefix in fname):
                 if len(image_stack)!=0:
                     warnings.warn("You have specified a 2D network but there are several suitable images in the given directory. By default, StructuralGT will take the first image. To override, specify the prefix argument.")
@@ -79,16 +83,10 @@ class Network:
 
         self.image_stack = image_stack
         self.image_stack.package()
-        if len(self.image_stack)==1: 
-            self._2d = True
-            self.dim = 2
-        elif len(self.image_stack)==0:
+        if len(self.image_stack)==0:
             raise error.ImageDirectoryError("There are no suitable images in the given directory. You may need to specify the prefix argument.")
-        else:
-            self._2d = False
-            self.dim = 3
         
-    def binarize(self, options=None):
+    def binarize(self, options='img_options.json'):
         """Binarizes stack of experimental images using a set of image
         processing parameters.
 
@@ -100,16 +98,18 @@ class Network:
                 a file called img_options.json, containing the options.
         """
 
-        if options is None:
-            options = self.dir + "/img_options.json"
+        if isinstance(options, str):
+            options = self.dir + '/' + options
             with open(options) as f:
                 options = json.load(f)
+        elif not isinstance(options, dict):
+            raise TypeError('The options argument must be a str or dict')
 
-        if not os.path.isdir(self.dir + self.child_dir):
-            os.mkdir(self.dir + self.child_dir)
+        if not os.path.isdir(self.dir + self.binarized_dir):
+            os.mkdir(self.dir + self.binarized_dir)
 
         for _,name in self.image_stack:
-            fname = _fname(self.dir + '/' + name)
+            fname = _fname(self.dir + '/' + name, _2d=self._2d)
             gray_image = cv.imread(self.dir + '/' + name, cv.IMREAD_GRAYSCALE)
             _, img_bin, _ = process_image.binarize(gray_image, options)
             if self._2d: fname.num = '0000' 
@@ -143,7 +143,8 @@ class Network:
         i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
             fname = _fname(self.stack_dir + "/" + fname, 
-                           domain=_domain(self.cropper._3d))
+                           domain=_domain(self.cropper._3d),
+                           _2d=self._2d)
             if fname.isimg and fname.isinrange:
                 suff = base.quadrupletise(i)
                 img_bin[i - self.cropper.surface] = (
@@ -457,12 +458,16 @@ class Network:
                 (np.zeros((len(centroid_positions), 1)), centroid_positions)
             )
 
-        positions = centroid_positions
+        positions = np.vstack((edge_positions, node_positions, centroid_positions))
+        
+        """
         for edge in edge_positions:
             positions = np.vstack((positions, edge))
         for node in node_positions:
             positions = np.vstack((positions, node))
         positions = np.unique(positions, axis=0)
+        """
+        self.positions = positions
 
         L = list(max(positions.T[i]) * 2 for i in (0, 1, 2))
         node_positions = base.shift(
@@ -481,7 +486,8 @@ class Network:
         s.particles.N = N
         s.particles.position = positions
         s.particles.types = ["Edge", "Node", "Centroid"]
-        s.particles.typeid = [0] * N
+        #s.particles.typeid = [0] * N
+        s.particles.typeid = np.array([0,]*len(edge_positions) + [1,]*len(node_positions) + [2,]*len(centroid_positions))
         s.configuration.box = [L[0] / 2, L[1] / 2, L[2] / 2, 0, 0, 0]
         for label in labels:
             s.log["particles/" + label] = [np.NaN] * N
@@ -496,7 +502,12 @@ class Network:
         s.log["Adj_values"] = values
         s.log["Edge_lens"] = list(map(lambda edge: len(edge), self.Gr.es['pts']))
         s.log["Node_lens"] = list(map(lambda node: len(node), self.Gr.vs['pts']))
-
+        
+        for i in range(len(centroid_positions)):
+            for attribute,label in zip(attributes,labels):
+                    s.log["particles/" + label][len(node_positions)+len(edge_positions)+i] = attribute[i]
+        
+        """
         for i, particle in enumerate(positions):
             node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[0]
             centroid_id = np.where(np.all(positions[i] == centroid_positions, axis=1) == True)[0]
@@ -509,7 +520,8 @@ class Network:
             else:
                 assert len(node_id)!=0
                 s.particles.typeid[i] = 1
-
+        """
+        
         f.append(s)
        
         _dict = {}
@@ -564,6 +576,22 @@ class Network:
             cb.set_label('Value')
 
         return ax
+
+    def graph_plot(self, ax=None, depth=0):
+        """Superimpose the graph and original image.
+
+        Args:
+            ax (:class:`matplotlib.axes.Axes`, optional): 
+                Axis to plot on. If :code:`None`, make a new figure and axis.
+                (Default value = :code:`None`)
+
+            depth (int, optional): If the network is 3D, which slice to plot.
+
+        Returns:
+            (:class:`matplotlib.axes.Axes`): Axis with the plot.
+        """
+
+        return self.node_plot(ax=ax, depth=depth)
 
     def recon(self, axis, surface, depth):
         """Method displays 2D slice of binary image and
@@ -626,8 +654,13 @@ class Network:
         if self._2d: return self.image_stack[0][0]
         else: return self.image_stack[:][0]
 
+    @property
+    def skeleton(self):
+        """:class:`np.ndarray`: The original skeleton."""
+        return self._skeleton
+
     @classmethod
-    def from_gsd(cls, filename, frame=0, depth=None):
+    def from_gsd(cls, filename, frame=0, depth=None, dim=2):
         """
         Alternative constructor for returning a Network object that was
         previously stored in a `.gsd` and `.json` file. Assumes file is stored
@@ -638,10 +671,11 @@ class Network:
         """
 
         assert os.path.exists(filename)
-
         _dir = os.path.abspath(filename)
         _dir = os.path.split(os.path.split(filename)[0])[0]
-        N = cls(_dir, depth=depth)
+        N = cls(_dir, depth=depth, dim=dim)
+        if dim==2: N._2d = True
+        else: N._2d = False
 
         name = os.path.splitext(os.path.basename(filename))[0]
         _json = N.stack_dir + '/' + name + '.json'
@@ -659,14 +693,14 @@ class Network:
         G = ig.Graph()
         N.Gr = G.Weighted_Adjacency(S, mode='upper')
 
-        edge_pos = f.particles.position[f.particles.typeid == 0]
-        node_pos = f.particles.position[f.particles.typeid == 1]
-        centroid_pos = f.particles.position[f.particles.typeid == 2]
-
-        N.Gr.es['pts'] = edge_pos
-        N.Gr.vs['pts'] = node_pos
-        N.Gr.vs['o'] = centroid_pos
-
+        first_axis = {2:1, 3:0}[N.dim]
+        edge_pos = f.particles.position[f.particles.typeid == 0].T[first_axis:3].T
+        node_pos = f.particles.position[f.particles.typeid == 1].T[first_axis:3].T
+        centroid_pos = f.particles.position[f.particles.typeid == 2].T[first_axis:3].T
+        
+        N.Gr.es['pts'] = base.split(base.shift(edge_pos, _2d=N._2d)[0], f.log['Edge_lens'])
+        N.Gr.vs['pts'] = base.split(base.shift(node_pos, _2d=N._2d)[0], f.log['Node_lens'])
+        N.Gr.vs['o'] = base.shift(centroid_pos, _2d=N._2d)[0]
 
         return N
 
