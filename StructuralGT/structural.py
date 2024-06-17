@@ -1,53 +1,36 @@
 from StructuralGT.util import _Compute
 import numpy as np
 
-class Structural(_Compute):
-    """Classical GT parameters. Calculates most of the parameters offered
-    by the StructuralGT GUI :cite:`Vecchio2021`.
+class Size(_Compute):
+    """Classical GT parameters. Calculates common proxies for network size.
+    Edge weights are supported for the calculation of diameter.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def compute(self, network):
-        """Calculates graph diameter, density, assortativity by degree,
-        and average clustering coefficient. Also calculates per node degree,
-        closeness, betweenness, and clustering.
+        """Calculates graph node count, edge count, diameter, density.
 
         Args:
             network (:class:`Network`):
                 The :class:`Network` object.
         """
+        
+        self._number_of_nodes = network.graph.vcount()
+        self._number_of_edges = network.graph.ecount()
+        self._diameter = network.graph.diameter(weights=self.edge_weight)
+        self._density = network.graph.density()
 
-        self.vcount = network.graph.vcount()
+    @_Compute._computed_property
+    def number_of_nodes(self):
+        """int: The total number of nodes."""
+        return self._number_of_nodes
 
-        operations = [
-                network.graph.diameter,
-                network.graph.density,
-                network.graph.transitivity_local_undirected,
-                network.graph.assortativity_degree,
-                network.graph.betweenness,
-                network.graph.closeness,
-                network.graph.degree,
-        ]
-
-        names = [
-                "Diameter",
-                "Density",
-                "Clustering",
-                "Degree_Assortativity",
-                "Betweenness",
-                "Closeness",
-                "Degree"
-        ]
-
-        for operation, name in zip(operations, names):
-            if name in ["Diameter", "Betweenness", "Closeness"]:
-                setattr(self, name, operation(weights=self.weight_type))
-            elif name == "Clustering":
-                setattr(self, name, operation(mode="zero"))
-            else:
-                setattr(self, name, operation())
+    @_Compute._computed_property
+    def number_of_edges(self):
+        """int: The total number of edges."""
+        return self._number_of_edges
 
     @_Compute._computed_property
     def diameter(self):
@@ -55,7 +38,7 @@ class Structural(_Compute):
         one node to any other node. Also referred to as the maximum
         eccentricity, or the longest-shortest path of the graph.
         """
-        return self.Diameter
+        return self._diameter
 
     @_Compute._computed_property
     def density(self):
@@ -67,7 +50,25 @@ class Structural(_Compute):
            \rho = \frac{2e}{n(n-1)}
 
         """
-        return self.Density
+        return self._density
+
+class Clustering(_Compute):
+    """Calculates cluster properties. Weights are not supported."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def compute(self, network):
+        """Computes local and average clustering coefficients.
+
+        Args:
+            network (:class:`Network`):
+                The :class:`Network` object.
+        """
+
+        self._cc = network.graph.transitivity_local_undirected(mode="zero")
+        self._acc = np.mean(self._cc)
+
 
     @_Compute._computed_property
     def clustering(self):
@@ -84,7 +85,7 @@ class Structural(_Compute):
         on node :math:`i`.
 
         """
-        return self.Clustering
+        return self._cc
 
     @_Compute._computed_property
     def average_clustering_coefficient(self):
@@ -95,7 +96,25 @@ class Structural(_Compute):
            \Delta = \frac{\sum_i{\delta}}{n}
 
         """
-        return np.mean(self.clustering)
+        return self._acc
+
+class Assortativity(_Compute):
+    """Assortativity refers to how related a node is to its neighbor's. In this
+    module, similarity refers to similarity by degree.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def compute(self, network):
+        """Calculates assortativity by degree.
+
+        Args:
+            network (:class:`Network`):
+                The :class:`Network` object.
+        """
+
+        self._assortativity = network.graph.assortativity_degree()
 
     @_Compute._computed_property
     def assortativity(self):
@@ -115,25 +134,24 @@ class Structural(_Compute):
         at either end of a randomly chosen edge.
 
         """
-        return self.Degree_Assortativity
+        return self._assortativity
 
-    @_Compute._computed_property
-    def betweenness(self):
-        r""":class:`np.ndarray`: The betweenness centrality of node :math:`i` is a measure of how
-        frequently the shortest path between other nodes :math:`u` and :math:`v` pass 
-        through node :math:`i`:
+class Closeness(_Compute):
+    """Calculates closeness parameters. This module supports edge weights."""
 
-        .. math::
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-           C_{B}(i) = \sum_{u,v}\frac{\sigma(u,v)}{\sigma(u,v \parallel i)}
-        
-        where :math:`\sigma(u,v)` represents the number of shortest 
-        paths that exist between nodes :math:`u` and :math:`v`, with the term
-        :math:`\sigma(u,v \parallel i)` representing the number of those paths that
-        pass through node :math:`i`. For variations on this parameter, see the
-        :class:`Betweenness` module.
+    def compute(self, network):
+        """Computes node closeness and average closeness.
+
+        Args:
+            network (:class:`Network`):
+                The :class:`Network` object.
         """
-        return np.asarray(self.Betweenness)/(self.vcount-1)/(self.vcount-2)*2
+
+        self._closeness = network.graph.closeness(weights=self.edge_weight)
+        self._ac = np.mean(self._closeness)
 
     @_Compute._computed_property
     def closeness(self):
@@ -148,10 +166,45 @@ class Structural(_Compute):
         where :math:`L(i,j)` is the shortest path between nodes :math:`i` and :math:`j`. 
 
         """
-        return self.Closeness
+        return self._closeness
+
+    @_Compute._computed_property
+    def average_closeness(self):
+        r"""float: The average closeness:
+
+        .. math::
+
+           \Delta = \frac{\sum_i{C}}{n}
+
+        """
+        return self._ac
+
+class Degree(_Compute):
+    """Calculates degree. This module support node weights, for the calculation
+    of weighted node degree, sometimes called "strength"."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def compute(self, network):
+        """Computes node degree and average degree.
+
+        Args:
+            network (:class:`Network`):
+                The :class:`Network` object.
+        """
+
+        self._degree = network.graph.strength(weights=self.node_weight)
+        self._ad = np.mean(self._degree)
 
     @_Compute._computed_property
     def degree(self):
         r""":class:`np.ndarray`: The number of edges connected to each node.
         """
-        return self.Degree
+        return self._degree
+
+    @_Compute._computed_property
+    def average_degree(self):
+        r""":class:`np.ndarray`: The average number of edges connected to each node.
+        """
+        return self._ad

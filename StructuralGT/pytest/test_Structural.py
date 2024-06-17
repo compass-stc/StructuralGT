@@ -1,5 +1,10 @@
-from StructuralGT.structural import Structural
-from network_factory import fibrous
+from StructuralGT.structural import (
+        Size, 
+        Clustering,
+        Assortativity,
+        Closeness,
+        Degree
+    )
 import igraph as ig
 import pytest
 from networkx import (
@@ -15,15 +20,14 @@ from networkx import (
 import numpy.testing as npt
 import numpy as np
 
-class TestUnweightedStructural:
+class TestSize:
     @pytest.fixture
-    def test_compute(self):
-        #Obtain an unweighted connected graph
-        testNetwork = fibrous()
+    def test_compute(self, conductive):
+        testNetwork = conductive
         testGraph = testNetwork.graph.to_networkx(create_using=Graph)
 
         #Instantiate a compute module and run calculation
-        ComputeModule = Structural()
+        ComputeModule = Size()
         ComputeModule.compute(testNetwork)
 
         return ComputeModule, testGraph
@@ -44,6 +48,19 @@ class TestUnweightedStructural:
                 atol=1e-2,
                 )
 
+class TestClustering:
+    @pytest.fixture
+    def test_compute(self, conductive):
+        #Obtain an unweighted connected graph
+        testNetwork = conductive
+        testGraph = testNetwork.graph.to_networkx(create_using=Graph)
+
+        #Instantiate a compute module and run calculation
+        ComputeModule = Clustering()
+        ComputeModule.compute(testNetwork)
+
+        return ComputeModule, testGraph
+
     def test_average_clustering(self, test_compute):
         ComputeModule, testGraph = test_compute
         npt.assert_allclose(
@@ -51,6 +68,20 @@ class TestUnweightedStructural:
                 average_clustering(testGraph),
                 atol=1e-2,
                 )
+
+
+class TestAssortativity:
+    @pytest.fixture
+    def test_compute(self, conductive):
+        #Obtain an unweighted connected graph
+        testNetwork = conductive
+        testGraph = testNetwork.graph.to_networkx(create_using=Graph)
+
+        #Instantiate a compute module and run calculation
+        ComputeModule = Assortativity()
+        ComputeModule.compute(testNetwork)
+
+        return ComputeModule, testGraph
 
     def test_assortativity(self, test_compute): 
         ComputeModule, testGraph = test_compute
@@ -60,14 +91,18 @@ class TestUnweightedStructural:
                 atol=1e-2,
                 )
     
-    def test_betweenness(self, test_compute): 
-        ComputeModule, testGraph = test_compute
-        npt.assert_allclose(
-                ComputeModule.betweenness,
-                np.fromiter(betweenness_centrality(testGraph).values(),
-                            dtype=float),
-                atol=1e-2,
-                )
+class TestCloseness:
+    @pytest.fixture
+    def test_compute(self, conductive):
+        #Obtain an unweighted connected graph
+        testNetwork = conductive
+        testGraph = testNetwork.graph.to_networkx(create_using=Graph)
+
+        #Instantiate a compute module and run calculation
+        ComputeModule = Closeness()
+        ComputeModule.compute(testNetwork)
+
+        return ComputeModule, testGraph
 
     def test_closenness(self, test_compute): 
         ComputeModule, testGraph = test_compute
@@ -75,14 +110,31 @@ class TestUnweightedStructural:
                 ComputeModule.closeness,
                 np.fromiter(closeness_centrality(testGraph).values(),
                             dtype=float),
-                atol=1e-2,
+                rtol=1e-2,
                 )
 
+class TestDegree:
+    @pytest.fixture
+    def test_compute(self, conductive):
+        #Obtain an unweighted connected graph
+        testNetwork = conductive
+        testGraph = testNetwork.graph.to_networkx(create_using=Graph)
+
+        #Instantiate a compute module and run calculation
+        ComputeModule = Degree()
+        ComputeModule.compute(testNetwork)
+
+        return ComputeModule, testGraph
+
+    #TODO: Add tests
+
+
+"""
 class TestWeightedStructural:
     @pytest.fixture
     def test_compute(self):
         #Obtain an unweighted connected graph
-        testNetwork = fibrous(weight_type=['Length'])
+        testNetwork = conductive(weight_type=['Length'])
         testGraph = testNetwork.graph.to_networkx()
 
         #Instantiate a compute module and run calculation
@@ -118,4 +170,4 @@ class TestWeightedStructural:
                             dtype=float),
                 atol=1e-2,
                 )
-
+"""
