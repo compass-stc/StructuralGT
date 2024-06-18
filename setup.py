@@ -19,25 +19,7 @@ include_dirs = [os.path.join(PREFIX, 'include', 'igraph'),
 setup(
     name='StructuralGT',
     packages = find_packages(),
-    install_requires=[
-        'numpy>=1.18.5',
-        'scipy',
-        'scikit-image',
-        'matplotlib',
-        'networkx',
-        'opencv-python',
-        'pandas',
-        'Pillow<10.1.0,>=8.3.2',
-        'Cython',
-        'gsd',
-        'python-igraph',
-        'eigen',
-        'pytest',
-        'cmake',
-        freud
-    ],
     setup_requires = ["cython"],
-#    ext_modules=cythonize('convert.pyx'))
     ext_modules=cythonize([
                               Extension(name="StructuralGT._bounded_betweenness_cast",
                               sources=["_bounded_betweenness_cast.pyx"],
