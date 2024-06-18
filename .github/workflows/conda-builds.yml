@@ -20,7 +20,7 @@ jobs:
       uses: conda-incubator/setup-miniconda@v2
       with:
         python-version: ${{ matrix.python-version }}
-        environment-file: .github/workflows/conda-envs/env.yml
+        environment-file: .github/workflows/conda-envs/conda-lock.yml
         channels: conda-forge,defaults
         activate-environment: test
         auto-update-conda: false
