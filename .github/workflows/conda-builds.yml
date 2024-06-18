@@ -30,7 +30,7 @@ jobs:
     - name: Install package
       shell: bash -l {0}  # conda stetup requires this special shell
       run: |
-        python setup.py install
+        pip install --no-deps
     - name: Run tests
       shell: bash -l {0}  # conda setup requires this special shell
       run: |
