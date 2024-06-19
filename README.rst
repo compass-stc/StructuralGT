@@ -30,7 +30,7 @@ The following minimal example shows how the package can be used to calculate the
 
 .. code:: python
 
-   from StructuralGT.structural import Structural
+   from StructuralGT.structural import Degree
    from StructuralGT.networks import Network
 
    Nanofibre3DNetwork = Network('Nanofibre_Image_Stack')
@@ -38,6 +38,6 @@ The following minimal example shows how the package can be used to calculate the
    Nanofibre3DNetwork.img_to_skel(crop=[0,500,0,500,0,500])
    Nanofibre3DNetwork.set_graph(weight_type=['Length'])
 
-   S = Structural()
+   S = Degree()
    S.compute(Nanofibre3DNetwork)
-   print(S.diameter)
+   print(S.average_degree)
