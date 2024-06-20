@@ -7,11 +7,11 @@ opencv
 pandas
 Pillow<10.1.0,>=8.3.2
 Cython
-gsd
+gsd>=3.0.0
 python-igraph
 igraph
 eigen
 pytest
 cmake
-freud
+freud-analysis
 ipywidgets
