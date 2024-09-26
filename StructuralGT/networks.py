@@ -577,6 +577,53 @@ class Network:
 
         return ax
 
+    def edge_plot(self, parameter=None, ax=None, depth=0,
+                  im_cmap='plasma', edge_cmap='plasma', plot_img=True, **kwargs):
+        """Superimpose the skeleton, image, and nodal graph theory parameters.
+        If no parameter provided, simply imposes skeleton and image.
+
+        Args:
+            parameter (:class:`numpy.ndarray`, optional):
+                The value of node parameters
+            ax (:class:`matplotlib.axes.Axes`, optional): 
+                Axis to plot on. If :code:`None`, make a new figure and axis.
+                (Default value = :code:`None`)
+
+        Returns:
+            (:class:`matplotlib.axes.Axes`): Axis with the plot.
+        """
+        
+        _parameter = True
+        if parameter is None:
+            parameter = np.ones(self.Gr.ecount(), dtype=np.intc)
+            _parameter = False
+
+        assert self.Gr.ecount() == len(parameter)
+
+        if ax is None:
+            fig = plt.figure()
+            ax = fig.subplots()
+
+        ax.set_xticks([])
+        ax.set_yticks([])
+        if plot_img: ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap=im_cmap)
+        _max = np.max(parameter)
+        _min = np.min(parameter)
+
+        for param,edge in zip(parameter,self.graph.es):
+            e = edge['pts'].T
+            sp=ax.scatter(e[1], e[0], s=3, marker='s', edgecolors='none', c=[param,]*len(edge['pts']),
+                         vmin=_min, vmax=_max, cmap=edge_cmap, **kwargs)
+
+        y,x = np.array(self.graph.vs['o']).T
+        sp=ax.scatter(x,y, s=10, marker='o', edgecolors='none', c='red')
+        
+        if _parameter: 
+            cb = colorbar(sp)
+            cb.set_label('Value')
+
+        return fig, ax
+
     def graph_plot(self, ax=None, depth=0):
         """Superimpose the graph and original image.
 
