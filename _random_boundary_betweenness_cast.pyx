@@ -1,4 +1,4 @@
-from NonLinearRandomBetweennessCast cimport NonLinearRandomBetweennessCast
+from RandomBoundaryBetweennessCast cimport RandomBoundaryBetweennessCast
 from cpython.long cimport PyLong_AsVoidPtr
 import numpy as np
 
@@ -12,13 +12,13 @@ from libcpp.vector cimport vector
 # when its elements need to be accessed in a discontinous manner should the
 # attribute be set as a std::vector
 cdef class PyCast:
-    cdef NonLinearRandomBetweennessCast c_cast  # Hold a C++ instance which we're wrapping
+    cdef RandomBoundaryBetweennessCast c_cast  # Hold a C++ instance which we're wrapping
     
     def __init__(self, long long ptr):
-        self.c_cast = NonLinearRandomBetweennessCast()
+        self.c_cast = RandomBoundaryBetweennessCast()
         self.c_cast.G_ptr = PyLong_AsVoidPtr(ptr)
 
-    def nonlinear_random_betweenness_compute(self, long[:] sources,
+    def random_boundary_betweenness_compute(self, long[:] sources,
                                              long[:] targets, long[:] incoming,
                                              int num_edges, double[:] weights):
 
@@ -47,17 +47,28 @@ cdef class PyCast:
 
         cdef double[:] weights_memview = weights
         self.c_cast.weights_ptr = &weights_memview[0]
-        self.c_cast.nonlinear_random_betweenness_compute()
+        self.c_cast.random_boundary_betweenness_compute()
 
         
     @property
-    def nonlinear_random_betweenness(self):
-        _random_betweennesses = np.zeros((self.c_cast.num_edges-self.c_cast.targets_len),
+    def linear_random_boundary_betweenness(self):
+        _betweennesses = np.zeros((self.c_cast.num_edges-self.c_cast.targets_len),
                                          dtype=np.double)
         #Return all elements of the betweenness vector, except the final
         #elements connecting the targets and to the ghost
         for i in range(self.c_cast.num_edges-self.c_cast.targets_len):
-            _random_betweennesses[i] = self.c_cast.betweennesses[i]
+            _betweennesses[i] = self.c_cast.linear_betweennesses[i]
 
-        return _random_betweennesses
+        return _betweennesses
+
+    @property
+    def nonlinear_random_boundary_betweenness(self):
+        _betweennesses = np.zeros((self.c_cast.num_edges-self.c_cast.targets_len),
+                                         dtype=np.double)
+        #Return all elements of the betweenness vector, except the final
+        #elements connecting the targets and to the ghost
+        for i in range(self.c_cast.num_edges-self.c_cast.targets_len):
+            _betweennesses[i] = self.c_cast.nonlinear_betweennesses[i]
+
+        return _betweennesses
 

@@ -1,11 +1,11 @@
 from libcpp.vector cimport vector
 
-cdef extern from "BoundedBetweennessCast.cpp":
+cdef extern from "VertexBoundaryBetweennessCast.cpp":
     pass
 
 # Declare the class with cdef
-cdef extern from "BoundedBetweennessCast.h" namespace "interface":
-    cdef cppclass BoundedBetweennessCast:
+cdef extern from "VertexBoundaryBetweennessCast.h" namespace "interface":
+    cdef cppclass VertexBoundaryBetweennessCast:
         void* G_ptr
         long long* sources_ptr
         long long* targets_ptr
@@ -16,6 +16,7 @@ cdef extern from "BoundedBetweennessCast.h" namespace "interface":
         int targets_len
         vector[float] betweennesses
         int num_edges
-        BoundedBetweennessCast() except +
-        void bounded_betweenness_compute() except +
+        int num_vertices
+        VertexBoundaryBetweennessCast() except +
+        void vertex_boundary_betweenness_compute() except +
         

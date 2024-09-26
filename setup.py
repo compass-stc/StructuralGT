@@ -21,22 +21,22 @@ setup(
     packages = find_packages(),
     setup_requires = ["cython"],
     ext_modules=cythonize([
-                              Extension(name="StructuralGT._bounded_betweenness_cast",
-                              sources=["_bounded_betweenness_cast.pyx"],
+                              Extension(name="StructuralGT._boundary_betweenness_cast",
+                              sources=["_boundary_betweenness_cast.pyx"],
                               include_dirs=include_dirs,
                               language="c++",
                               extra_objects=[extra_obj]
                                         ),
 
-                              Extension(name="StructuralGT._random_betweenness_cast",
-                              sources=["_random_betweenness_cast.pyx"],
+                              Extension(name="StructuralGT._vertex_boundary_betweenness_cast",
+                              sources=["_vertex_boundary_betweenness_cast.pyx"],
                               include_dirs=include_dirs,
                               language="c++",
                               extra_objects=[extra_obj]
                                         ),
 
-                              Extension(name="StructuralGT._nonlinear_random_betweenness_cast",
-                              sources=["_nonlinear_random_betweenness_cast.pyx"],
+                              Extension(name="StructuralGT._random_boundary_betweenness_cast",
+                              sources=["_random_boundary_betweenness_cast.pyx"],
                               include_dirs=include_dirs,
                               language="c++",
                               extra_objects=[extra_obj]

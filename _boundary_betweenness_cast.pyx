@@ -1,4 +1,4 @@
-from BoundedBetweennessCast cimport BoundedBetweennessCast
+from BoundaryBetweennessCast cimport BoundaryBetweennessCast
 from cpython.long cimport PyLong_AsVoidPtr
 import numpy as np
 
@@ -8,13 +8,13 @@ from libcpp.vector cimport vector
 # as an attribute and create a bunch of forwarding methods
 # Python extension type.
 cdef class PyCast:
-    cdef BoundedBetweennessCast c_cast  # Hold a C++ instance which we're wrapping
+    cdef BoundaryBetweennessCast c_cast  # Hold a C++ instance which we're wrapping
     
     def __init__(self, long long ptr):
-        self.c_cast = BoundedBetweennessCast()
+        self.c_cast = BoundaryBetweennessCast()
         self.c_cast.G_ptr = PyLong_AsVoidPtr(ptr)
 
-    def bounded_betweenness_compute(self, long long[:] sources,
+    def boundary_betweenness_compute(self, long long[:] sources,
                                     long long[:] targets, int num_edges,
                                     double[:] weights):
         
@@ -48,14 +48,14 @@ cdef class PyCast:
         self.c_cast.targets_ptr = &targets_memview[0]
         self.c_cast.weights_ptr = &weights_memview[0]
 
-        self.c_cast.bounded_betweenness_compute()
+        self.c_cast.boundary_betweenness_compute()
 
     @property
-    def bounded_betweenness(self):
-        _bounded_betweennesses = np.zeros((self.c_cast.num_edges),
+    def boundary_betweenness(self):
+        _boundary_betweennesses = np.zeros((self.c_cast.num_edges),
                                           dtype=np.double)
         for i in range(self.c_cast.num_edges):
-            _bounded_betweennesses[i] = self.c_cast.betweennesses[i]
+            _boundary_betweennesses[i] = self.c_cast.betweennesses[i]
 
-        return _bounded_betweennesses
+        return _boundary_betweennesses
 

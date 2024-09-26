@@ -2,94 +2,134 @@ from StructuralGT.util import _Compute
 import numpy as np
 import copy
 
-from StructuralGT import _bounded_betweenness_cast
-from StructuralGT import _random_betweenness_cast
-from StructuralGT import _nonlinear_random_betweenness_cast
+from StructuralGT import _boundary_betweenness_cast
+from StructuralGT import _random_boundary_betweenness_cast
+from StructuralGT import _vertex_boundary_betweenness_cast
 
-class Betweenness(_Compute):
+class VertexBoundaryBetweenness(_Compute):
     """A module for calculating different extension of the classical
     edge betweenness centrality measure. In particular, calculates
     betweennesses which include geometric features of the network via weights
     and boundary conditions.
     """
-    def __init__(self):
-        pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    def bounded_betweenness(self, network, sources, targets, weights=None):
+    def compute(self, network, sources, targets):
+        r"""Compute different edge betweenness centralities of the graph.
+
+        Args:
+            network (:class:`Network`):
+                The :class:`Network` object.
+            sources (list):
+                The set of source nodes, :math:`S`.
+            targets (list):
+                The set of target nodes, :math:`T`.
+        """
+
+        num_edges = network.Gr.ecount()
+        _copy = copy.deepcopy(network.Gr)
+
+        if self.edge_weight is None:
+            weights = np.ones(num_edges, dtype=np.double)
+        else:
+            weights = np.array(_copy.es[self.edge_weight], dtype=np.double)
+
+        cast = _vertex_boundary_betweenness_cast.PyCast(_copy._raw_pointer())
+
+        cast.vertex_boundary_betweenness_compute(
+            np.array(sources, dtype=np.longlong),
+            np.array(targets, dtype=np.longlong),
+            num_edges,
+            weights,
+        )
+
+        self._vertex_boundary_betweenness = cast.vertex_boundary_betweenness         
+
+    @_Compute._computed_property
+    def vertex_boundary_betweenness(self):
+        r"""Edge betweenness centrality over a subset of nodes.
+        Sometimes called betweenness subset.
+
+        .. math::
+
+           c_B(v) =\sum_{s\in S,t \in T} \frac{\sigma(s, t|e)}{\sigma(s, t)}
+
+        where :math:`S` is the set of sources, :math:`T` is the set of targets,
+        :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
+        and :math:`\sigma(s, t|e)` is the number of those paths
+        passing through edge :math:`e` :cite:`Brandes2008` (which is unity for real 
+        value weighted graphs). 
+        """
+        return self._vertex_boundary_betweenness
+
+class BoundaryBetweenness(_Compute):
+    """A module for calculating different extension of the classical
+    edge betweenness centrality measure. In particular, calculates
+    betweennesses which include geometric features of the network via weights
+    and boundary conditions.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def compute(self, network, sources, targets):
+        r"""Compute different edge betweenness centralities of the graph.
+
+        Args:
+            network (:class:`Network`):
+                The :class:`Network` object.
+            sources (list):
+                The set of source nodes, :math:`S`.
+            targets (list):
+                The set of target nodes, :math:`T`.
+        """
 
         num_edges = network.Gr.ecount()
         _copy = copy.deepcopy(network.Gr)
 
-        if weights is None:
+        if self.edge_weight is None:
             weights = np.ones(num_edges, dtype=np.double)
         else:
-            weights = np.array(_copy.es[weights], dtype=np.double)
+            weights = np.array(_copy.es[self.edge_weight], dtype=np.double)
 
-        cast = _bounded_betweenness_cast.PyCast(_copy._raw_pointer())
+        cast = _boundary_betweenness_cast.PyCast(_copy._raw_pointer())
 
-        cast.bounded_betweenness_compute(
+        cast.boundary_betweenness_compute(
             np.array(sources, dtype=np.longlong),
             np.array(targets, dtype=np.longlong),
             num_edges,
             weights,
         )
 
-        return cast.bounded_betweenness
+        self._boundary_betweenness = cast.boundary_betweenness         
 
-    def random_betweenness(self, network, sources, targets, weights=None):
+    @_Compute._computed_property
+    def boundary_betweenness(self):
+        r"""Edge betweenness centrality over a subset of nodes.
+        Sometimes called betweenness subset.
 
-        num_edges = network.Gr.ecount()
-        _copy = copy.deepcopy(network.Gr)
-        if weights is None:
-            weights = np.ones(num_edges, dtype=np.double)
-        else:
-            weights = np.array(_copy.es[weights], dtype=np.double)
+        .. math::
 
-        cast = _random_betweenness_cast.PyCast(_copy._raw_pointer())
+           c_B(v) =\sum_{s\in S,t \in T} \frac{\sigma(s, t|e)}{\sigma(s, t)}
 
-        cast.random_betweenness_compute(
-            np.array(sources, dtype=np.longlong),
-            np.array(targets, dtype=np.longlong),
-            num_edges,
-            weights,
-        )
+        where :math:`S` is the set of sources, :math:`T` is the set of targets,
+        :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
+        and :math:`\sigma(s, t|e)` is the number of those paths
+        passing through edge :math:`e` :cite:`Brandes2008` (which is unity for real 
+        value weighted graphs). 
+        """
+        return self._boundary_betweenness
 
-        return cast.random_betweenness
+class RandomBoundaryBetweenness(_Compute):
+    """A module for calculating different extension of the classical
+    edge betweenness centrality measure. In particular, calculates
+    betweennesses which include geometric features of the network via weights
+    and boundary conditions.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    def nonlinear_random_betweenness(self, network, sources, targets, incoming,
-                                     weights=None):
-        _copy = copy.deepcopy(network.Gr)
-
-        #Add ghost node and edges from targets to ghost
-        _copy.add_vertex(1)
-        for target in targets:
-            _copy.add_edge(network.Gr.vcount()-1,target)
-        num_edges = _copy.ecount()
-
-        #When passing weight vector, must add additional weights for edges
-        #between targets and ghost node (added in cpp file)
-        if weights is None:
-            weights = np.ones(num_edges, dtype=np.double)
-        else:
-            mean = np.mean(np.array(network.Gr.es[weights]))
-
-            weights = np.append(np.array(network.Gr.es[weights], dtype=np.double),
-                                np.full(len(targets), mean, dtype=np.double)).astype(np.double)
-            assert len(weights) == _copy.ecount()
-        cast = _nonlinear_random_betweenness_cast.PyCast(_copy._raw_pointer())
-
-        cast.nonlinear_random_betweenness_compute(
-            np.array(sources, dtype=np.longlong),
-            np.array(targets, dtype=np.longlong),
-            np.array(np.ones(len(sources)), dtype=np.longlong),
-            num_edges,
-            weights,
-        )
-
-        return cast.nonlinear_random_betweenness
-
-    def compute(self, network, sources, targets, skips=None, incoming=None,
-                weights=None):
+    def compute(self, network, sources, targets):
         r"""Compute different edge betweenness centralities of the graph.
 
         Args:
@@ -104,43 +144,52 @@ class Betweenness(_Compute):
                 random walks. If omitted, an unweighted network is used.
 
         """
+        _copy = copy.deepcopy(network.Gr)
 
-        self._bounded_betweenness = self.bounded_betweenness(network, sources, targets, weights)
-        self._random_betweenness = self.random_betweenness(network, sources, targets, weights)
-        self._nonlinear_random_betweenness = self.nonlinear_random_betweenness(network, sources, targets, weights)
+        #Add ghost node and edges from targets to ghost
+        _copy.add_vertex(1)
+        for target in targets:
+            _copy.add_edge(network.Gr.vcount()-1,target)
+        num_edges = _copy.ecount()
+
+        #When passing weight vector, must add additional weights for edges
+        #between targets and ghost node (added in cpp file)
+        if self.edge_weight is None:
+            weights = np.ones(num_edges, dtype=np.double)
+        else:
+            mean = np.mean(np.array(network.Gr.es[self.edge_weight]))
+
+            weights = np.append(np.array(network.Gr.es[self.edge_weight], dtype=np.double),
+                                np.full(len(targets), mean, dtype=np.double)).astype(np.double)
+            assert len(weights) == _copy.ecount()
+        cast = _random_boundary_betweenness_cast.PyCast(_copy._raw_pointer())
+
+        cast.random_boundary_betweenness_compute(
+            np.array(sources, dtype=np.longlong),
+            np.array(targets, dtype=np.longlong),
+            np.array(np.ones(len(sources)), dtype=np.longlong),
+            num_edges,
+            weights,
+        )
+
+        self._linear_betweenness = cast.linear_random_boundary_betweenness
+        self._nonlinear_betweenness = cast.nonlinear_random_boundary_betweenness
+
 
     @_Compute._computed_property
-    def bounded(self):
-        r"""Edge betweenness centrality over a subset of nodes.
-        Sometimes called betweenness subset.
-
-        .. math::
-
-           c_B(v) =\sum_{s\in S,t \in T} \frac{\sigma(s, t|e)}{\sigma(s, t)}
-
-        where :math:`S` is the set of sources, :math:`T` is the set of targets,
-        :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
-        and :math:`\sigma(s, t|e)` is the number of those paths
-        passing through edge :math:`e` :cite:`Brandes2008` (which is unity for real 
-        value weighted graphs). 
-        """
-        return self._bounded_betweenness
-
-    @_Compute._computed_property
-    def random_walk(self):
-        r"""Compute random walk betweenness of edges. Adapted from
-        :cite:`Newman2005` to calculate net random walker flow through `edges`
-        instead of `nodes`. Also adapted to include several source and target
-        nodes at once. To converse flow, number of source and target nodes
-        must be equal. Full details given in :cite:`Martinez2024`.
-        """
-        return self._random_betweenness
-
-    @_Compute._computed_property
-    def nonlinear(self):
+    def linear_betweenness(self):
         """Similar to :meth:`random_walk` except flow is conserved by
         adding a ghost node and attaching it to all the target nodes. Flow
         constraints are enforced only at the source and ghost node. Full
         details are given in :cite:`Martinez2024`.
         """
-        return self._nonlinear_random_betweenness
+        return self._linear_betweenness
+
+    @_Compute._computed_property
+    def nonlinear_betweenness(self):
+        """Similar to :meth:`random_walk` except flow is conserved by
+        adding a ghost node and attaching it to all the target nodes. Flow
+        constraints are enforced only at the source and ghost node. Full
+        details are given in :cite:`Martinez2024`.
+        """
+        return self._nonlinear_betweenness

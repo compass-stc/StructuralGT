@@ -1,10 +1,10 @@
 #include <vector>
 
-#ifndef BOUNDEDBETWEENNESSCAST_H
-#define BOUNDEDBETWEENNESSCAST_H
+#ifndef VERTEXBOUNDARYBETWEENNESSCAST_H
+#define VERTEXBOUNDARYBETWEENNESSCAST_H
 
 namespace interface {
-    class BoundedBetweennessCast {
+    class VertexBoundaryBetweennessCast {
         public:
             void* G_ptr;
             long long* sources_ptr;
@@ -14,9 +14,10 @@ namespace interface {
             double* weights_ptr;
             int sources_len;
             int targets_len;
-            BoundedBetweennessCast();
-            ~BoundedBetweennessCast();
-            void bounded_betweenness_compute();
+            VertexBoundaryBetweennessCast();
+            ~VertexBoundaryBetweennessCast();
+            void vertex_boundary_betweenness_compute();
+            int num_vertices;
             int num_edges;
             std::vector<float> betweennesses;
     };

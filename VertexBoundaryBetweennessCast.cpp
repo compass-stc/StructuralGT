@@ -1,8 +1,10 @@
 #include <igraph.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "BoundedBetweennessCast.h"
+#include "VertexBoundaryBetweennessCast.h"
 #include "Util.h"
+
+#include <chrono>
 
 #if IGRAPH_INTEGER_SIZE==64
 typedef int64_t IG_LONG;
@@ -13,18 +15,19 @@ typedef int32_t IG_LONG;
 namespace interface {
 
 // Default constructor
-BoundedBetweennessCast::BoundedBetweennessCast () {}
+VertexBoundaryBetweennessCast::VertexBoundaryBetweennessCast () {}
 
-BoundedBetweennessCast::~BoundedBetweennessCast () {}
+VertexBoundaryBetweennessCast::~VertexBoundaryBetweennessCast () {}
 
-void BoundedBetweennessCast::bounded_betweenness_compute () {
+void VertexBoundaryBetweennessCast::vertex_boundary_betweenness_compute () {
     igraph_t* g = (igraph_t*)this->G_ptr;
     
+    num_vertices = igraph_vcount(g);
     num_edges = igraph_ecount(g);
     
     igraph_vector_int_t sources_vec, targets_vec;
     igraph_vector_t res, weights_vec;
-    igraph_vector_init(&res, num_edges);
+    igraph_vector_init(&res, num_vertices);
     igraph_vs_t ig_sources, ig_targets;
 
     igraph_integer_t* sources_arr = (IG_LONG*)sources_ptr;
@@ -37,14 +40,16 @@ void BoundedBetweennessCast::bounded_betweenness_compute () {
     igraph_real_t* weights_arr = (double *)weights_ptr;
     igraph_vector_init_array(&weights_vec, weights_arr, num_edges);
     
-
-    igraph_edge_betweenness_subset(g,
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    igraph_betweenness_subset(g,
         &res, /*igraph_vector_t *res*/
-        igraph_ess_all(IGRAPH_EDGEORDER_ID), /*igraph_es_t eids*/
+        igraph_vss_all(), /*igraph_es_t eids*/
         false, /*igraph_bool_t directed*/
         ig_sources, /*igraph_vs_t sources*/
         ig_targets, /*igraph_vs_t targets*/
         &weights_vec); /*igraph_vector_t *weights*/
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    //printf("Complete in %lld\n", std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
 
     betweennesses <<= res;
 
