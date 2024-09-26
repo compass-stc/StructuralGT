@@ -24,7 +24,7 @@ class Nematic(_Compute):
             _orientations = np.hstack((_orientations, np.zeros((len(_orientations),1))))
             
         nematic = freud.order.Nematic()
-        nematic.compute(_orientations[sum(_orientations.T!=0)==3])
+        nematic.compute(_orientations[np.where(_orientations.any(axis=1))[0]])
         self._nematic = nematic
         self._orientations = _orientations
 
