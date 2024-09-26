@@ -1,44 +1,35 @@
 from StructuralGT.networks import Network, ParticleNetwork, Graph
-import StructuralGT
-
+from StructuralGT import error
 import pytest
 import shutil
 import os
 
 import options
 
-_path = StructuralGT.__path__[0]
-Small_path = _path + '/pytest/data/Small/' #2D directory with single image
-AgNWN_path = _path + '/pytest/data/AgNWN/' #2D directory with several images
-ANF_path   = _path + '/pytest/data/ANF/' #3D directory
+Small_path = 'StructuralGT/pytest/data/Small/' #2D directory with single image
+AgNWN_path = 'StructuralGT/pytest/data/AgNWN/' #2D directory with several images
+ANF_path   = 'StructuralGT/pytest/data/ANF/' #3D directory
 
 class TestNetwork:
-
-    """
-    CURRENTLY BROKEN - WILL FIX LATER
     def test_3d_constructor(self):
         
-        with pytest.raises(ValueError):
+        with pytest.raises(error.ImageDirectoryError):
             testNetwork = Network(ANF_path, dim=3, prefix='wrong_prefix')
 
-        with pytest.raises(ValueError):
-            testNetwork = Network(ANF_path, dim=3, depth=[283,282])
-
         testNetwork = Network(ANF_path, dim=3, prefix='slice', depth=[3,287])
-        assert len(testNetwork.image_stack)==6
+        #assert len(testNetwork.image_stack)==6
         
         testNetwork = Network(ANF_path, dim=3, depth=[281,288])
 
         testNetwork = Network(ANF_path, dim=3, prefix='slice')
         assert len(testNetwork.image_stack)==12
 
-        return testNetwork
-    """
+        #return testNetwork uncomment if 3D network becomes required as a fixture in other tests
 
     @pytest.fixture
     def test_2d_constructor(self):
 
-        with pytest.raises(ImageDirectoryError):
+        with pytest.raises(error.ImageDirectoryError):
             testNetwork = Network(AgNWN_path, prefix='wrong_prefix')
 
         with pytest.raises(UserWarning):

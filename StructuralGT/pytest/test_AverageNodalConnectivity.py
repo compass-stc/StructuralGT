@@ -5,7 +5,6 @@ import pytest
 import numpy.testing as npt
 import numpy as np
 
-"""TODO-FIX
 class TestAverageNodalConnectivity:
     def test(self, fibrous):
         #Obtain a connected graph
@@ -29,4 +28,3 @@ class TestAverageNodalConnectivity:
                             np.mean(np.asarray(vals)),
                             rtol=1e-2,
                             )
-"""

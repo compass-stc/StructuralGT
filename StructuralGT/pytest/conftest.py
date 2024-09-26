@@ -1,4 +1,4 @@
-from StructuralGT import networks
+from StructuralGT.networks import Network
 import numpy as np
 import matplotlib.pyplot as plt
 import pytest
@@ -20,7 +20,7 @@ stick_options = {"Thresh_method":0, "gamma": 2, "md_filter": 0, "g_blur": 0,"aut
 
 @pytest.fixture(scope="session")
 def fibrous(weight_type=None):
-    ANF = networks.Network(_path  + '/pytest/data/ANF', prefix='slice', dim=3)
+    ANF = Network('StructuralGT/pytest/data/ANF', prefix='slice', dim=3)
     ANF.binarize(options=anf_options)
     ANF.img_to_skel(crop=[200,300,200,300, 1, 3])
     ANF.set_graph(weight_type=weight_type)
@@ -29,7 +29,7 @@ def fibrous(weight_type=None):
 
 @pytest.fixture(scope="session")
 def conductive():
-    AgNWN = networks.Network(_path + '/pytest/data/AgNWN', prefix='slice')
+    AgNWN = Network('StructuralGT/pytest/data/AgNWN', prefix='slice')
     AgNWN.binarize(options=agnwn_options)
     AgNWN.img_to_skel(crop=[149, 868, 408, 800])
     AgNWN.set_graph(weight_type=['FixedWidthConductance'], R_j=10, rho_dim=2)
@@ -85,10 +85,10 @@ def main(aligned=False, num_sticks=210, stick_length=300.0):
 @pytest.fixture(scope="session")
 def random_stick():
     fig = main(aligned=False)
-    img_path = _path + '/pytest/data/Random'
+    img_path = 'StructuralGT/pytest/data/Random'
     fig.savefig(img_path + '/slice0000.png',bbox_inches='tight', dpi=300)
 
-    RS = networks.Network(img_path, prefix='slice')
+    RS = Network(img_path, prefix='slice')
     RS.binarize(options=stick_options)
     RS.img_to_skel()
     RS.set_graph(sub=False)
@@ -98,10 +98,10 @@ def random_stick():
 @pytest.fixture(scope="session")
 def aligned_stick():
     fig = main(aligned=True)
-    img_path = _path + '/pytest/data/Aligned'
+    img_path = 'StructuralGT/pytest/data/Aligned'
     fig.savefig(img_path + '/slice0000.png',bbox_inches='tight', dpi=300)
 
-    RS = networks.Network(img_path, prefix='slice')
+    RS = Network(img_path, prefix='slice')
     RS.binarize(options=stick_options)
     RS.img_to_skel()
     RS.set_graph(sub=False)
