@@ -40,7 +40,6 @@ void VertexBoundaryBetweennessCast::vertex_boundary_betweenness_compute () {
     igraph_real_t* weights_arr = (double *)weights_ptr;
     igraph_vector_init_array(&weights_vec, weights_arr, num_edges);
     
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     igraph_betweenness_subset(g,
         &res, /*igraph_vector_t *res*/
         igraph_vss_all(), /*igraph_es_t eids*/
@@ -48,7 +47,6 @@ void VertexBoundaryBetweennessCast::vertex_boundary_betweenness_compute () {
         ig_sources, /*igraph_vs_t sources*/
         ig_targets, /*igraph_vs_t targets*/
         &weights_vec); /*igraph_vector_t *weights*/
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     //printf("Complete in %lld\n", std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
 
     betweennesses <<= res;
