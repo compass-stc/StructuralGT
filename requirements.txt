@@ -1,11 +1,10 @@
-numpy>=1.18.5
+numpy>=2.0
 scipy
 scikit-image
 matplotlib
 networkx
 opencv
 pandas
-Pillow<10.1.0,>=8.3.2
 Cython
 gsd>=3.0.0
 python-igraph
@@ -13,5 +12,5 @@ igraph
 eigen
 pytest
 cmake
-freud-analysis
+freud-analysis>=3.1.0
 ipywidgets
