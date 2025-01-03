@@ -51,16 +51,11 @@ void RandomBoundaryBetweennessCast::random_boundary_betweenness_compute () {
     }
     
     /*Invert Laplacian*/
-    std::chrono::steady_clock::time_point begin, end;
-    begin = std::chrono::steady_clock::now();
     Eigen::MatrixXf pinv(num_verts, num_verts);
     pinv = eigL.completeOrthogonalDecomposition().pseudoInverse();
-    end = std::chrono::steady_clock::now();
-    printf("Inversion complete in %lld\n", std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
     //std::cout << pinv << "\n";
 
     /*LINEAR RANDOM BOUNDARY BETWEENNESS*/
-    begin = std::chrono::steady_clock::now();
     std::vector<float> V(num_verts, 0);
     linear_betweennesses.resize(num_edges);
     igraph_integer_t from, to;
@@ -77,8 +72,6 @@ void RandomBoundaryBetweennessCast::random_boundary_betweenness_compute () {
             }
         }
     }
-    end = std::chrono::steady_clock::now();
-    printf("Linear Complete in %lld\n", std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
     */
     //New method
     float V_from, V_to;
@@ -99,7 +92,6 @@ void RandomBoundaryBetweennessCast::random_boundary_betweenness_compute () {
      * location of non-zero elements a priori)
      * Note that, for nonlinear random betweenness, the target vertex has
      * changed to the ghost vertex*/
-    begin = std::chrono::steady_clock::now();
     float sum = 0;
     std::fill(V.begin(), V.end(), 0);
     for (int i=0; i<num_verts; i++) {
@@ -151,8 +143,6 @@ void RandomBoundaryBetweennessCast::random_boundary_betweenness_compute () {
         nonlinear_betweennesses[i] = abs(V[int(from)] - V[int(to)])*igraph_sparsemat_get(
                     &A, from, to);
     }
-    end = std::chrono::steady_clock::now();
-    printf("NL Complete in %lld\n", std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
     igraph_destroy(g);
 }
 

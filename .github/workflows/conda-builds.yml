@@ -8,10 +8,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # drop testing on macOS because of hours limits for private repos
-        #os: [ubuntu-latest, windows-latest] #, macOS-latest]
-        os: [macOS-latest]
-        python-version: ["3.13"]
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        python-version: ["3.12","3.13"]
 
     steps:
     - name: Checkout Code
@@ -27,6 +25,7 @@ jobs:
         auto-update-conda: false
         auto-activate-base: false
         show-channel-urls: true
+        miniforge-version: latest
 
     - name: Install package
       shell: bash -l {0}  # conda stetup requires this special shell
