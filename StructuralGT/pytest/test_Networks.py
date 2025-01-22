@@ -80,12 +80,12 @@ class TestNetwork:
         return test_crop
 
     def test_from_gsd(self):
-        writeNetwork = Network(Small_path)
+        writeNetwork = Network(Small_path, binarized_dir='HighThresh')
         writeNetwork.binarize(options=options.agnwn)
         writeNetwork.img_to_skel()
         writeNetwork.set_graph()
 
-        testNetwork = Network.from_gsd(Small_path + 'Binarized/network.gsd')
+        testNetwork = Network.from_gsd(Small_path + 'HighThresh/network.gsd')
 
         testNetwork.Gr.vs['o'][0]
 

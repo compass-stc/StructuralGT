@@ -720,7 +720,8 @@ class Network:
         assert os.path.exists(filename)
         _dir = os.path.abspath(filename)
         _dir = os.path.split(os.path.split(filename)[0])[0]
-        N = cls(_dir, depth=depth, dim=dim)
+        binarized_dir = os.path.split(os.path.split(filename)[0])[-1]
+        N = cls(_dir, depth=depth, dim=dim, binarized_dir=binarized_dir)
         if dim==2: N._2d = True
         else: N._2d = False
 
