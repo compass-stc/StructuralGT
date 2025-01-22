@@ -2,6 +2,30 @@ from StructuralGT.util import _Compute
 import numpy as np
 import freud
 
+def LargestRotatingCrop(image_shape):
+    """Returns the crop coordinates for the largest square that would remain 
+    inside during any rotation of the image. Supports 2D images only.
+
+    Args:
+        image_shape (tuple): The dimensions of the image to be cropped.
+
+    Returns:
+        (list): The coordinates of the crop in the format [L1,L2,L3,L4], where 
+        L1 and L2 are the lower and upper x-coordinates of the crop, and L3 and 
+        L4 are the lower and upper y-coordinates of the crop.
+    """
+
+    short_length = image_shape[image_shape == max(image_shape)]
+    long_length = max(image_shape)
+    rotated_diagonal_length = (short_length**2/2)**0.5
+    
+    L1 = int((short_length - rotated_diagonal_length)/2)
+    L2 = int(rotated_diagonal_length+L1)
+    L3 = int((long_length - rotated_diagonal_length)/2)
+    L4 = int(rotated_diagonal_length+L3)
+    
+    return [L1,L2,L3,L4]
+
 class Nematic(_Compute):
     """Computes the nematic tensor of the graph. For details on how it 
     quantifies orientational anisotropy, see :cite:`Mottram2014`. If the edge
