@@ -6,38 +6,39 @@ Overview
 ========
 A python package for the extraction and analysis of graphs from 2D and 3D experimental micrographs. Image processing techniques taken from `StructuralGT <https://github.com/drewvecchio/StructuralGT>`__.
 
-Installation
-============
-StructuralGT is easiest to from source, using conda to link dependencies.
-To do so, clone, build, 
-and install from the `GitHub repository
-<https://github.com/AlainKadar/StructuralGT>`__.
-You will need to install the cython, igraph, and eigen. 
+Installation guide
+==================
+StructuralGT can be built from source, via the
+[public repository](https://github.com/compass-stc/StructuralGT).
+Prior to install, you will need to install some dependencies into your conda
+environment. Total installation time should be no longer than a few minutes on
+a standard desktop computer. Note that installation will most likely be
+successful if carried out in a new conda environment. While it is posisble to
+obtain some of these dependencies with pip, installation will most likely be
+sucessful when all dependencies are obtained with conda.
 
 .. code:: bash
 
-   git clone https://github.com/AlainKadar/StructuralGT
-   conda install -c conda-forge igraph eigen cython
+   git clone https://github.com/compass-stc/StructuralGT.git
+   conda install eigen igraph cython tbb tbb-devel numpy cython scikit-build cmake
    cd StructuralGT
-   python setup.py install
+   python3 -m pip install .
 
-A conda installation streamlines linking the required dependencies. To avoid 
-using conda, please see the documentation for a more customized installation.
+You can verify successful installation by installing pytest and running the
+included tests:
 
-Example
-=======
-The following minimal example shows how the package can be used to calculate the graph theoretic parameters of a 3D structural nanofibre network:
+.. code:: bash
 
-.. code:: python
+   conda install pytest
+   pytest
 
-   from StructuralGT.structural import Degree
-   from StructuralGT.networks import Network
+Examples
+========
+For a tutorial on the software's use, consult our
+[examples repository](https://github.com/compass-stc/StructuralGT-Examples).
 
-   Nanofibre3DNetwork = Network('Nanofibre_Image_Stack')
-   Nanofibre3DNetwork.binarize()
-   Nanofibre3DNetwork.img_to_skel(crop=[0,500,0,500,0,500])
-   Nanofibre3DNetwork.set_graph(weight_type=['Length'])
-
-   S = Degree()
-   S.compute(Nanofibre3DNetwork)
-   print(S.average_degree)
+Documentation
+=============
+To extend the above examples to novel analysis in your own work, you should
+consult the documentation, which is avaiable at ... . You can also build the
+documentation from source.
