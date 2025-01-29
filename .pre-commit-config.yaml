@@ -1,0 +1,120 @@
+ci:
+  autoupdate_schedule: quarterly
+
+exclude: (?:^extern/)
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 'v5.0.0'
+    hooks:
+      - id: end-of-file-fixer
+        exclude: |
+          (?x)^(
+            ^.*\.ai|
+            ^.*\.txt\
+            ^extern/
+          )
+      - id: trailing-whitespace
+        exclude: |
+          (?x)^(
+            ^.*\.ai|
+            ^.*\.txt|
+            ^extern/|
+            ^setup.cfg
+          )
+      - id: check-builtin-literals
+      - id: check-executables-have-shebangs
+      - id: check-json
+      - id: check-yaml
+      - id: debug-statements
+      - id: requirements-txt-fixer
+  - repo: https://github.com/glotzerlab/fix-license-header
+    rev: v0.4.1
+    hooks:
+      - id: fix-license-header
+        name: Fix License Headers (Python)
+        exclude: |
+          (?x)(
+              ^doc/|
+              ^extern/|
+              ^requirements/
+              )
+        types_or: [python, cython]
+        args:
+          - --license-file=LICENSE
+          - --start=0
+          - --num=1
+          - --add=This file is from the StructuralGT project, released under the BSD 3-Clause
+          - --add=License.
+          - --keep-before=#!
+      - id: fix-license-header
+        name: Fix License Headers (C++)
+        types_or: [c, c++]
+        args:
+          - --license-file=LICENSE
+          - --start=0
+          - --num=1
+          - --add=This file is from the StructuralGT project, released under the BSD 3-Clause
+          - --add=License.
+          - --comment-prefix=//
+  - repo: https://github.com/asottile/pyupgrade
+    rev: 'v3.17.0'
+    hooks:
+      - id: pyupgrade
+        args:
+          - --py36-plus
+  - repo: https://github.com/PyCQA/isort
+    rev: '5.13.2'
+    hooks:
+      - id: isort
+  - repo: https://github.com/PyCQA/flake8
+    rev: '7.1.1'
+    hooks:
+      - id: flake8
+        exclude: StructuralGT/__init__\.py$
+        types: ["file"]
+        types_or: ["python"]
+        additional_dependencies: ["flake8-force"]
+        args:
+        - --show-source
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: 'v19.1.1'
+    hooks:
+      - id: clang-format
+        exclude: Util\.h$
+        types_or: [c, c++]
+# The following pre-commit hooks should only be run manually because they have
+# dependencies that cannot be pip installed.
+  - repo: local
+    hooks:
+    - id: clang-tidy
+      stages: [manual]  # Requires clang-tidy.
+      name: clang-tidy
+      entry: clang-tidy
+      language: system
+      types: [c++]
+      exclude: |
+        (?x)^(
+          ^extern/
+        )
+      args:
+      - --warnings-as-errors=*
+    - id: cppcheck
+      stages: [manual]  # Requires cppcheck.
+      # Ignore external files and those taken verbatim from HOOMD.
+      name: cppcheck
+      entry: cppcheck
+      language: system
+      types: [c++]
+      exclude: |
+        (?x)^(
+          ^extern/
+        )
+      args:
+      - cpp/
+      - --enable=warning,style,performance,portability # Ignore unused (could be used by Cython).
+      - --std=c++14
+      - --language=c++ # Force C++ for .h header files.
+      - --inline-suppr # Enable inline suppresions of warnings.
+      - --suppress=*:extern/*
+      - --error-exitcode=1

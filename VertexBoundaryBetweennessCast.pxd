@@ -1,4 +1,45 @@
+# Copyright (c) 2023-2024 The Regents of the University of Michigan.
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
 from libcpp.vector cimport vector
+
 
 cdef extern from "VertexBoundaryBetweennessCast.cpp":
     pass
@@ -19,4 +60,3 @@ cdef extern from "VertexBoundaryBetweennessCast.h" namespace "interface":
         int num_vertices
         VertexBoundaryBetweennessCast() except +
         void vertex_boundary_betweenness_compute() except +
-        

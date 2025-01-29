@@ -1,5 +1,11 @@
-from StructuralGT.util import _Compute
+# Copyright (c) 2023-2024 The Regents of the University of Michigan.
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
 import numpy as np
+
+from StructuralGT.util import _Compute
+
 
 class Size(_Compute):
     """Classical GT parameters. Calculates common proxies for network size.
@@ -16,7 +22,7 @@ class Size(_Compute):
             network (:class:`Network`):
                 The :class:`Network` object.
         """
-        
+
         self._number_of_nodes = network.graph.vcount()
         self._number_of_edges = network.graph.ecount()
         self._diameter = network.graph.diameter(weights=self.edge_weight)
@@ -34,8 +40,8 @@ class Size(_Compute):
 
     @_Compute._computed_property
     def diameter(self):
-        """int: The maximum number of edges that have to be traversed to get from 
-        one node to any other node. Also referred to as the maximum
+        """int: The maximum number of edges that have to be traversed to get
+        from one node to any other node. Also referred to as the maximum
         eccentricity, or the longest-shortest path of the graph.
         """
         return self._diameter
@@ -51,6 +57,7 @@ class Size(_Compute):
 
         """
         return self._density
+
 
 class Clustering(_Compute):
     """Calculates cluster properties. Weights are not supported."""
@@ -69,7 +76,6 @@ class Clustering(_Compute):
         self._cc = network.graph.transitivity_local_undirected(mode="zero")
         self._acc = np.mean(self._cc)
 
-
     @_Compute._computed_property
     def clustering(self):
         r""":class:`np.ndarray`: Array of clustering coefficients,
@@ -81,8 +87,8 @@ class Clustering(_Compute):
 
            \delta_i = \frac{2*T_i}{k_i(k_i-1)}
 
-        Where :math:`T_i` is the number of connected triples (visually triangles)
-        on node :math:`i`.
+        Where :math:`T_i` is the number of connected triples (visually
+        triangles) on node :math:`i`.
 
         """
         return self._cc
@@ -97,6 +103,7 @@ class Clustering(_Compute):
 
         """
         return self._acc
+
 
 class Assortativity(_Compute):
     """Assortativity refers to how related a node is to its neighbor's. In this
@@ -136,6 +143,7 @@ class Assortativity(_Compute):
         """
         return self._assortativity
 
+
 class Closeness(_Compute):
     """Calculates closeness parameters. This module supports edge weights."""
 
@@ -155,15 +163,16 @@ class Closeness(_Compute):
 
     @_Compute._computed_property
     def closeness(self):
-        r""":class:`np.ndarray`: The closeness centrality of node :math:`i` is the
-        reciprocal of the average shortest distance from node :math:`i` to all 
-        other nodes:
+        r""":class:`np.ndarray`: The closeness centrality of node :math:`i` is
+        the reciprocal of the average shortest distance from node :math:`i` to
+        all other nodes:
 
         .. math::
 
            C_{C}(i) = \frac{n-1}{\sum_{j=1}^{n-1}L(i,j)}
 
-        where :math:`L(i,j)` is the shortest path between nodes :math:`i` and :math:`j`. 
+        where :math:`L(i,j)` is the shortest path between nodes :math:`i` and
+        :math:`j`.
 
         """
         return self._closeness
@@ -178,6 +187,7 @@ class Closeness(_Compute):
 
         """
         return self._ac
+
 
 class Degree(_Compute):
     """Calculates degree. This module support node weights, for the calculation
@@ -199,12 +209,11 @@ class Degree(_Compute):
 
     @_Compute._computed_property
     def degree(self):
-        r""":class:`np.ndarray`: The number of edges connected to each node.
-        """
+        r""":class:`np.ndarray`: The number of edges connected to each node."""
         return self._degree
 
     @_Compute._computed_property
     def average_degree(self):
-        r""":class:`np.ndarray`: The average number of edges connected to each node.
-        """
+        r""":class:`np.ndarray`: The average number of edges connected to each
+        node."""
         return self._ad

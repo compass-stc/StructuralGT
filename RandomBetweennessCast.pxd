@@ -1,4 +1,45 @@
+# Copyright (c) 2023-2024 The Regents of the University of Michigan.
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause License.
+
 from libcpp.vector cimport vector
+
 
 cdef extern from "RandomBetweennessCast.cpp":
     pass
@@ -16,4 +57,3 @@ cdef extern from "RandomBetweennessCast.h" namespace "interface":
         int num_edges
         RandomBetweennessCast() except +
         void random_betweenness_compute() except +
-        

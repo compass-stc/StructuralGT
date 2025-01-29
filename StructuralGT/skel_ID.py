@@ -1,3 +1,7 @@
+# Copyright (c) 2023-2024 The Regents of the University of Michigan.
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
 """skel_ID: A collection of methods and tools for analyzing
 and altering a skeletal image.  Prepares the skeleton for
 conversion into a graph object.
@@ -23,61 +27,41 @@ Contact email: vecdrew@umich.edu
 
 import numpy as np
 from scipy import ndimage
-from skimage.morphology import skeletonize
-from skimage.morphology import disk, remove_small_objects
 from skimage.morphology import binary_dilation as dilate
+from skimage.morphology import disk, skeletonize
+
 
 def branchedPoints(skel):
-
     # defining branch shapes to locate nodes
     # overexplained this section a bit
-    xbranch0 = np.array([[1,0,1],
-                         [0,1,0],
-                         [1,0,1]])
+    xbranch0 = np.array([[1, 0, 1], [0, 1, 0], [1, 0, 1]])
 
-    xbranch1 = np.array([[0,1,0],
-                         [1,1,1],
-                         [0,1,0]])
+    xbranch1 = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
 
-    tbranch0 = np.array([[0,0,0],
-                         [1,1,1],
-                         [0,1,0]])
-
-    # flipud is flipping them up-down
-    # tbranch2 is tbranch0 transposed, which permutes it in all directions (might not be using that word right)
-    # tbranch3 is tbranch2 flipped left right
-    # those 3 functions are used to create all possible branches with just a few starting arrays below
+    tbranch0 = np.array([[0, 0, 0], [1, 1, 1], [0, 1, 0]])
 
     tbranch1 = np.flipud(tbranch0)
     tbranch2 = tbranch0.T
     tbranch3 = np.fliplr(tbranch2)
 
-    tbranch4 = np.array([[1,0,1],
-                         [0,1,0],
-                         [1,0,0]])
+    tbranch4 = np.array([[1, 0, 1], [0, 1, 0], [1, 0, 0]])
     tbranch5 = np.flipud(tbranch4)
     tbranch6 = np.fliplr(tbranch4)
     tbranch7 = np.fliplr(tbranch5)
 
-    ybranch0 = np.array([[1,0,1],
-                         [0,1,0],
-                         [0,1,0]])
+    ybranch0 = np.array([[1, 0, 1], [0, 1, 0], [0, 1, 0]])
 
     ybranch1 = np.flipud(ybranch0)
     ybranch2 = ybranch0.T
     ybranch3 = np.fliplr(ybranch2)
 
-    ybranch4 = np.array([[0,1,0],
-                         [1,1,0],
-                         [0,0,1]])
+    ybranch4 = np.array([[0, 1, 0], [1, 1, 0], [0, 0, 1]])
 
     ybranch5 = np.flipud(ybranch4)
     ybranch6 = np.fliplr(ybranch4)
     ybranch7 = np.fliplr(ybranch5)
 
-    offbranch0 = np.array([[0,1,0],
-                           [1,1,0],
-                           [1,0,1]])
+    offbranch0 = np.array([[0, 1, 0], [1, 1, 0], [1, 0, 1]])
 
     offbranch1 = np.flipud(offbranch0)
     offbranch2 = np.fliplr(offbranch0)
@@ -87,33 +71,25 @@ def branchedPoints(skel):
     offbranch6 = np.fliplr(offbranch4)
     offbranch7 = np.fliplr(offbranch5)
 
-    clustbranch0 = np.array([[0,1,1],
-                             [0,1,1],
-                             [1,0,0]])
+    clustbranch0 = np.array([[0, 1, 1], [0, 1, 1], [1, 0, 0]])
 
     clustbranch1 = np.flipud(clustbranch0)
     clustbranch2 = np.fliplr(clustbranch0)
     clustbranch3 = np.fliplr(clustbranch1)
 
-    clustbranch4 = np.array([[1,1,1],
-                             [0,1,1],
-                             [1,0,0]])
+    clustbranch4 = np.array([[1, 1, 1], [0, 1, 1], [1, 0, 0]])
 
     clustbranch5 = np.flipud(clustbranch4)
     clustbranch6 = np.fliplr(clustbranch4)
     clustbranch7 = np.fliplr(clustbranch5)
 
-    clustbranch8 = np.array([[1,1,1],
-                             [0,1,1],
-                             [1,0,1]])
+    clustbranch8 = np.array([[1, 1, 1], [0, 1, 1], [1, 0, 1]])
 
     clustbranch9 = np.flipud(clustbranch8)
     clustbranch10 = np.fliplr(clustbranch8)
     clustbranch11 = np.fliplr(clustbranch9)
 
-    crossbranch0 = np.array([[1,0,0],
-                             [1,1,1],
-                             [0,1,0]])
+    crossbranch0 = np.array([[1, 0, 0], [1, 1, 1], [0, 1, 0]])
 
     crossbranch1 = np.flipud(crossbranch0)
     crossbranch2 = np.fliplr(crossbranch0)
@@ -122,7 +98,6 @@ def branchedPoints(skel):
     crossbranch5 = np.flipud(crossbranch4)
     crossbranch6 = np.fliplr(crossbranch4)
     crossbranch7 = np.fliplr(crossbranch5)
-
 
     # finding the location of all the branch points based on the arrays above
     br1 = ndimage.binary_hit_or_miss(skel, xbranch0)
@@ -172,48 +147,76 @@ def branchedPoints(skel):
     br45 = ndimage.binary_hit_or_miss(skel, crossbranch6)
     br46 = ndimage.binary_hit_or_miss(skel, crossbranch7)
 
-    br = br1+br2+br3+br4+br5+br6+br7+br8+br9+br10+br11+br12+br13+br14+br15+br16+br17+br18+br19+br20+br21+br22+br23+br24\
-         +br25+br26+br27+br28+br29+br30+br31+br32+br33+br34+br35+br36+br37+br38+br39+br40+br41+br42+br43+br44+br45+br46
+    br = (
+        br1
+        + br2
+        + br3
+        + br4
+        + br5
+        + br6
+        + br7
+        + br8
+        + br9
+        + br10
+        + br11
+        + br12
+        + br13
+        + br14
+        + br15
+        + br16
+        + br17
+        + br18
+        + br19
+        + br20
+        + br21
+        + br22
+        + br23
+        + br24
+        + br25
+        + br26
+        + br27
+        + br28
+        + br29
+        + br30
+        + br31
+        + br32
+        + br33
+        + br34
+        + br35
+        + br36
+        + br37
+        + br38
+        + br39
+        + br40
+        + br41
+        + br42
+        + br43
+        + br44
+        + br45
+        + br46
+    )
     return br
 
+
 def endPoints(skel):
-
     # defining different types of endpoints
-    endpoint1 = np.array([[0, 0, 0],
-                          [0, 1, 0],
-                          [0, 1, 0]])
+    endpoint1 = np.array([[0, 0, 0], [0, 1, 0], [0, 1, 0]])
 
-    endpoint2 = np.array([[0, 0, 0],
-                          [0, 1, 0],
-                          [0, 0, 1]])
+    endpoint2 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 1]])
 
-    endpoint3 = np.array([[0, 0, 0],
-                          [0, 1, 1],
-                          [0, 0, 0]])
+    endpoint3 = np.array([[0, 0, 0], [0, 1, 1], [0, 0, 0]])
 
-    endpoint4 = np.array([[0, 0, 1],
-                          [0, 1, 0],
-                          [0, 0, 0]])
+    endpoint4 = np.array([[0, 0, 1], [0, 1, 0], [0, 0, 0]])
 
-    endpoint5 = np.array([[0, 1, 0],
-                          [0, 1, 0],
-                          [0, 0, 0]])
+    endpoint5 = np.array([[0, 1, 0], [0, 1, 0], [0, 0, 0]])
 
-    endpoint6 = np.array([[1, 0, 0],
-                          [0, 1, 0],
-                          [0, 0, 0]])
+    endpoint6 = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 0]])
 
-    endpoint7 = np.array([[0, 0, 0],
-                          [1, 1, 0],
-                          [0, 0, 0]])
+    endpoint7 = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 0]])
 
-    endpoint8 = np.array([[0, 0, 0],
-                          [0, 1, 0],
-                          [1, 0, 0]])
+    endpoint8 = np.array([[0, 0, 0], [0, 1, 0], [1, 0, 0]])
 
-    endpoint9 = np.array([[0, 0, 0],
-                          [0, 1, 0],
-                          [0, 0, 0]])
+    endpoint9 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 
     # finding all the locations of the endpoints
     ep1 = ndimage.binary_hit_or_miss(skel, endpoint1)
@@ -228,32 +231,31 @@ def endPoints(skel):
     ep = ep1 + ep2 + ep3 + ep4 + ep5 + ep6 + ep7 + ep8 + ep9
     return ep
 
+
 def pruning(skeleton, size):
-    branchpoints = branchedPoints(skeleton*1)
-    #remove iteratively end points "size" times from the skeleton
+    branchpoints = branchedPoints(skeleton * 1)
+    # remove iteratively end points "size" times from the skeleton
     for i in range(0, size):
         endpoints = endPoints(skeleton)
         points = np.logical_and(endpoints, branchpoints)
         endpoints = np.logical_xor(endpoints, points)
         endpoints = np.logical_not(endpoints)
-        skeleton = np.logical_and(skeleton,endpoints)
+        skeleton = np.logical_and(skeleton, endpoints)
 
     return skeleton
 
-def merge_nodes(skeleton, disk_size):
 
-    # overlay a disk over each branch point and find the overlaps to combine nodes
+def merge_nodes(skeleton, disk_size):
     skeleton_integer = 1 * skeleton
     mask_elem = disk(disk_size)
     BpSk = branchedPoints(skeleton_integer)
-    BpSk = 1*(dilate(BpSk, mask_elem))
+    BpSk = 1 * (dilate(BpSk, mask_elem))
 
     # widenodes is initially an empty image the same size as the skeleton image
     sh = skeleton_integer.shape
-    widenodes = np.zeros(sh, dtype='int')
+    widenodes = np.zeros(sh, dtype="int")
 
     # this overlays the two skeletons
-    # skeleton_integer is the full map, BpSk is just the branch points blown up to a larger size
     for x in range(sh[0]):
         for y in range(sh[1]):
             if skeleton_integer[x, y] == 0 and BpSk[x, y] == 0:
@@ -261,6 +263,5 @@ def merge_nodes(skeleton, disk_size):
             else:
                 widenodes[x, y] = 1
 
-    # reskeletonzing widenodes and returning it, nearby nodes in radius 2 of each other should have been merged
     newskel = skeletonize(widenodes)
     return newskel

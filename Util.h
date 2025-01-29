@@ -1,9 +1,13 @@
+// Copyright (c) 2023-2024 The Regents of the University of Michigan.
+// This file is from the StructuralGT project, released under the BSD 3-Clause
+// License.
+
 #include <igraph.h>
 #include <vector>
 #include <Eigen/Dense>
 
-//Casts an igraph vector to a std::vector. The assignemnet operator may not 
-//be overloaded for a class that had been defined elsewhere. Hence I am using 
+//Casts an igraph vector to a std::vector. The assignemnet operator may not
+//be overloaded for a class that had been defined elsewhere. Hence I am using
 //<<= instead.
 std::vector<float>& operator<<=(std::vector<float>& V, igraph_vector_t& I) {
     for (int i=0; i<igraph_vector_size(&I); i++) {
@@ -12,7 +16,7 @@ std::vector<float>& operator<<=(std::vector<float>& V, igraph_vector_t& I) {
     return V;
 }
 
-//Casts a square igraph matrix to a vector of std::vectors. 
+//Casts a square igraph matrix to a vector of std::vectors.
 std::vector<std::vector<float> >& operator<<=(std::vector<std::vector<float> >& V, igraph_matrix_t& I) {
     std::vector<float> _V(igraph_matrix_nrow(&I));
     for (int i=0; i<igraph_matrix_nrow(&I); i++) {

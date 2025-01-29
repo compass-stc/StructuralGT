@@ -1,33 +1,40 @@
-import numpy as np
-import os
-import cv2 as cv
-from StructuralGT import error, base, process_image
-import json
-import scipy
-import freud
-import igraph as ig
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
+# Copyright (c) 2023-2024 The Regents of the University of Michigan.
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
 import copy
+import json
+import os
 import time
-import gsd.hoomd
 import warnings
-
-from skimage.morphology import skeletonize
-from StructuralGT.util import _image_stack, _cropper, _domain, _fname, _abs_path
-
-from matplotlib.colorbar import Colorbar
-
 from collections.abc import Sequence
 
-def colorbar(mappable, *args, **kwargs):
+import cv2 as cv
+import freud
+import gsd.hoomd
+import igraph as ig
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy
+from matplotlib.colorbar import Colorbar
+from skimage.morphology import skeletonize
+
+from StructuralGT import base, error, process_image
+from StructuralGT.util import (_abs_path, _cropper, _domain, _fname,
+                               _image_stack)
+
+
+def colorbar(mappable, ax, *args, **kwargs):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
-    ax = mappable.axes
+
+    # ax = mappable.axes
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes('right', size="5%", pad=0.05)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = Colorbar(cax, mappable)
     ax.set(*args, **kwargs)
     return cbar
+
 
 class Network:
     """Generic class to represent networked image data.
@@ -38,55 +45,76 @@ class Network:
             analysed. Where 2D analysis is concerned, the directory should
             contain a single image.
         binarized_dir (str):
-            The pathname relative to directory for storing the binarized 
+            The pathname relative to directory for storing the binarized
             stack of images and all subsequent results.
         depth (tuple, optional):
-            The file range from which files should be extracted from the 
+            The file range from which files should be extracted from the
             directory. This is primarily used to analyse a subset of a large
             directory. Cropping can be carried out after, if this argument
             is not specified.
     """
 
-    def __init__(self, directory, binarized_dir="Binarized", depth=None,
-                 prefix=None, dim=2):
-
-        if dim==2 and depth is not None:
-            raise error.InvalidArgumentsError('Cannot specify depth arguement for 2D networks. Change dim to 3 if you would like a single slice of a 3D network.')
+    def __init__(
+        self,
+        directory,
+        binarized_dir="Binarized",
+        depth=None,
+        prefix=None,
+        dim=2,
+    ):
+        if dim == 2 and depth is not None:
+            raise error.InvalidArgumentsError(
+                "Cannot specify depth arguement for 2D networks. \
+                Change dim to 3 if you would like a single slice of a 3D \
+                network."
+            )
 
         self.dir = directory
-        self.binarized_dir = '/' + binarized_dir
+        self.binarized_dir = "/" + binarized_dir
         self.stack_dir = os.path.normpath(self.dir + self.binarized_dir)
         self.depth = depth
         self.dim = 2
-        if self.dim==2: self._2d=True
-        else: self._2d=False
+        if self.dim == 2:
+            self._2d = True
+        else:
+            self._2d = False
         if prefix is None:
-            self.prefix = 'slice'
+            self.prefix = "slice"
         else:
             self.prefix = prefix
 
         image_stack = _image_stack()
         for slice_name in sorted(os.listdir(self.dir)):
-            fname = _fname(self.dir + '/' + slice_name,
-                           domain=_domain(depth),
-                           _2d=self._2d)
-            if (dim==2 and fname.isimg and prefix in fname):
-                if len(image_stack)!=0:
-                    warnings.warn("You have specified a 2D network but there are several suitable images in the given directory. By default, StructuralGT will take the first image. To override, specify the prefix argument.")
+            fname = _fname(
+                self.dir + "/" + slice_name,
+                domain=_domain(depth),
+                _2d=self._2d,
+            )
+            if dim == 2 and fname.isimg and prefix in fname:
+                if len(image_stack) != 0:
+                    warnings.warn(
+                        "You have specified a 2D network but there are \
+                        several suitable images in the given directory. \
+                        By default, StructuralGT will take the first image.\
+                        To override, specify the prefix argument."
+                    )
                     break
                 _slice = plt.imread(self.dir + "/" + slice_name)
                 image_stack.append(_slice, slice_name)
-            if dim==3:
-                if (fname.isinrange and fname.isimg and prefix in fname):
+            if dim == 3:
+                if fname.isinrange and fname.isimg and prefix in fname:
                     _slice = plt.imread(self.dir + "/" + slice_name)
                     image_stack.append(_slice, slice_name)
 
         self.image_stack = image_stack
         self.image_stack.package()
-        if len(self.image_stack)==0:
-            raise error.ImageDirectoryError("There are no suitable images in the given directory. You may need to specify the prefix argument.")
-        
-    def binarize(self, options='img_options.json'):
+        if len(self.image_stack) == 0:
+            raise error.ImageDirectoryError(
+                "There are no suitable images in the given directory. You \
+                may need to specify the prefix argument."
+            )
+
+    def binarize(self, options="img_options.json"):
         """Binarizes stack of experimental images using a set of image
         processing parameters.
 
@@ -99,31 +127,32 @@ class Network:
         """
 
         if isinstance(options, str):
-            options = self.dir + '/' + options
+            options = self.dir + "/" + options
             with open(options) as f:
                 options = json.load(f)
         elif not isinstance(options, dict):
-            raise TypeError('The options argument must be a str or dict')
+            raise TypeError("The options argument must be a str or dict")
 
         if not os.path.isdir(self.dir + self.binarized_dir):
             os.mkdir(self.dir + self.binarized_dir)
 
-        for _,name in self.image_stack:
-            fname = _fname(self.dir + '/' + name, _2d=self._2d)
-            gray_image = cv.imread(self.dir + '/' + name, cv.IMREAD_GRAYSCALE)
+        for _, name in self.image_stack:
+            fname = _fname(self.dir + "/" + name, _2d=self._2d)
+            gray_image = cv.imread(self.dir + "/" + name, cv.IMREAD_GRAYSCALE)
             _, img_bin, _ = process_image.binarize(gray_image, options)
-            if self._2d: fname.num = '0000' 
+            if self._2d:
+                fname.num = "0000"
             plt.imsave(
                 self.stack_dir + "/" + self.prefix + fname.num + ".tiff",
                 img_bin,
-                cmap=cm.gray,
+                cmap=mpl.cm.gray,
             )
 
         self.options = options
 
     def set_img_bin(self, crop):
         """Sets the :attr:`img_bin` and :attr:`img_bin_3d` attributes, which
-        are numpy arrays of pixels and voxels which represent the binarized 
+        are numpy arrays of pixels and voxels which represent the binarized
         image. Called internally by subclasses of :class:`Network`.
 
         Args:
@@ -142,14 +171,16 @@ class Network:
 
         i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
-            fname = _fname(self.stack_dir + "/" + fname, 
-                           domain=_domain(self.cropper._3d),
-                           _2d=self._2d)
+            fname = _fname(
+                self.stack_dir + "/" + fname,
+                domain=_domain(self.cropper._3d),
+                _2d=self._2d,
+            )
             if fname.isimg and fname.isinrange:
-                suff = base.quadrupletise(i)
                 img_bin[i - self.cropper.surface] = (
                     base.read(
-                        self.stack_dir + "/" + self.prefix + fname.num + ".tiff",
+                        self.stack_dir + "/" + self.prefix + fname.num +
+                        ".tiff",
                         cv.IMREAD_GRAYSCALE,
                     )[self.cropper._2d]
                     / 255
@@ -167,7 +198,8 @@ class Network:
         # 3d for 3d images, 2d otherwise
         self._img_bin = np.squeeze(self._img_bin)
 
-    def set_graph(self, sub=True, weight_type=None, write='network.gsd', **kwargs):
+    def set_graph(self, sub=True, weight_type=None, write="network.gsd",
+                  **kwargs):
         """Sets :class:`Graph` object as an attribute by reading the
         skeleton file written by :meth:`img_to_skel`.
 
@@ -176,7 +208,7 @@ class Network:
                 Whether to onlyh assign the largest connected component as the
                 :class:`igraph.Graph` object.
             weight_type (optional, str):
-                How to weight the edges. Options include :code:`Length`, 
+                How to weight the edges. Options include :code:`Length`,
                 :code:`Width`, :code:`Area`,
                 :code:`FixedWidthConductance`,
                 :code:`VariableWidthConductance`,
@@ -214,7 +246,8 @@ class Network:
 
             drop_list = []
             for i in range(self.Gr.vcount()):
-                if not base.isinside(np.asarray([node_positions[i]]), inner_crop):
+                if not base.isinside(np.asarray([node_positions[i]]),
+                                     inner_crop):
                     drop_list.append(i)
                     continue
 
@@ -226,20 +259,20 @@ class Network:
                 list(self.Gr.vs[i]["o"] for i in range(self.Gr.vcount()))
             )
             final_shift = np.asarray(
-                list(min(node_positions.T[i]) for i in (0, 1, 2)[0 : self.dim])
+                list(min(node_positions.T[i]) for i in (0, 1, 2)[0: self.dim])
             )
             edge_positions_list = np.asarray(
                 list(
                     base.oshift(self.Gr.es[i]["pts"], _shift=centre)
                     for i in range(self.Gr.ecount())
-                ), dtype=object
+                ),
+                dtype=object,
             )
             for i, edge in enumerate(edge_positions_list):
                 edge_position = np.vstack((edge.T, np.zeros(len(edge)))).T
                 edge_position = np.matmul(edge_position, self.rotate).T[0:2].T
-                edge_position = base.shift(edge_position, _shift=-centre + final_shift)[
-                    0
-                ]
+                edge_position = base.shift(edge_position,
+                                           _shift=-centre + final_shift)[0]
                 self.Gr.es[i]["pts"] = edge_position
 
             node_positions = base.shift(node_positions, _shift=final_shift)[0]
@@ -252,10 +285,11 @@ class Network:
 
         self.shape = list(
             max(list(self.Gr.vs[i]["o"][j] for i in range(self.Gr.vcount())))
-            for j in (0, 1, 2)[0 : self.dim]
+            for j in (0, 1, 2)[0: self.dim]
         )
 
-        if write: self.Node_labelling([], [], write)
+        if write:
+            self.Node_labelling([], [], write)
 
     def img_to_skel(
         self,
@@ -269,11 +303,10 @@ class Network:
         prune=None,
         remove_objects=None,
     ):
-
-        """Writes calculates and writes the skeleton to a :code:`.gsd` file. 
+        """Writes calculates and writes the skeleton to a :code:`.gsd` file.
 
         Note: if the rotation argument is given, this writes the union of all
-        of the graph which can be obtained from cropping after rotation about 
+        of the graph which can be obtained from cropping after rotation about
         the origin. The rotated skeleton can be written after the :attr:`graph`
         attribute has been set.
 
@@ -331,10 +364,14 @@ class Network:
             crop = self.inner_cropper._outer_crop
 
         self.set_img_bin(crop)
-        
+
         if skeleton:
-            self._skeleton = skeletonize(np.asarray(self._img_bin, dtype=np.dtype('uint8')))
-            self.skeleton_3d = skeletonize(np.asarray(self._img_bin_3d, dtype=np.dtype('uint8')))
+            self._skeleton = skeletonize(
+                np.asarray(self._img_bin, dtype=np.dtype("uint8"))
+            )
+            self.skeleton_3d = skeletonize(
+                np.asarray(self._img_bin_3d, dtype=np.dtype("uint8"))
+            )
         else:
             self._img_bin = np.asarray(self._img_bin)
             self.skeleton_3d = self._img_bin_3d
@@ -342,7 +379,7 @@ class Network:
 
         positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
         self.shape = np.asarray(
-            list(max(positions.T[i]) + 1 for i in (2, 1, 0)[0 : self.dim])
+            list(max(positions.T[i]) + 1 for i in (2, 1, 0)[0: self.dim])
         )
         self.positions = positions
 
@@ -401,10 +438,11 @@ class Network:
         else:
             self.rotate = None
 
-    def Node_labelling(self, attributes, labels, filename, edge_weight=None, mode="w"):
-        """Method saves a new :code:`.gsd` which labels the :attr:`graph` 
+    def Node_labelling(self, attributes, labels, filename, edge_weight=None,
+                       mode="w"):
+        """Method saves a new :code:`.gsd` which labels the :attr:`graph`
         attribute with the given node attribute values. Method saves the
-        :attr:`graph`  attribute in the :code:`.gsd` file in the form of a 
+        :attr:`graph`  attribute in the :code:`.gsd` file in the form of a
         sparse adjacency matrix (therefore edge/node attributes are not saved).
 
         Args:
@@ -423,8 +461,12 @@ class Network:
             self.Gr = self.Gr[0]
 
         if not isinstance(labels, list):
-            labels = [labels,]
-            attributes = [attributes,]
+            labels = [
+                labels,
+            ]
+            attributes = [
+                attributes,
+            ]
 
         if filename[0] == "/":
             save_name = filename
@@ -442,10 +484,13 @@ class Network:
         node_positions = np.empty((0, self.dim))
         edge_positions = np.empty((0, self.dim))
         for i in range(len(self.Gr.vs())):
-            node_positions = np.vstack((node_positions, self.Gr.vs()[i]["pts"]))
-            centroid_positions = np.vstack((centroid_positions, self.Gr.vs()[i]["o"]))
+            node_positions = np.vstack((node_positions,
+                                        self.Gr.vs()[i]["pts"]))
+            centroid_positions = np.vstack((centroid_positions,
+                                            self.Gr.vs()[i]["o"]))
         for i in range(len(self.Gr.es())):
-            edge_positions = np.vstack((edge_positions, self.Gr.es()[i]["pts"]))
+            edge_positions = np.vstack((edge_positions,
+                                        self.Gr.es()[i]["pts"]))
 
         if self._2d:
             node_positions = np.hstack(
@@ -458,15 +503,10 @@ class Network:
                 (np.zeros((len(centroid_positions), 1)), centroid_positions)
             )
 
-        positions = np.vstack((edge_positions, node_positions, centroid_positions))
-        
-        """
-        for edge in edge_positions:
-            positions = np.vstack((positions, edge))
-        for node in node_positions:
-            positions = np.vstack((positions, node))
-        positions = np.unique(positions, axis=0)
-        """
+        positions = np.vstack((edge_positions,
+                               node_positions,
+                               centroid_positions))
+
         self.positions = positions
 
         L = list(max(positions.T[i]) * 2 for i in (0, 1, 2))
@@ -479,15 +519,29 @@ class Network:
         centroid_positions = base.shift(
             centroid_positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4)
         )[0]
-        positions = base.shift(positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4))[0]
-        
+        positions = base.shift(positions,
+                               _shift=(L[0] / 4, L[1] / 4, L[2] / 4))[0]
+
         s = gsd.hoomd.Frame()
         N = len(positions)
         s.particles.N = N
         s.particles.position = positions
         s.particles.types = ["Edge", "Node", "Centroid"]
-        #s.particles.typeid = [0] * N
-        s.particles.typeid = np.array([0,]*len(edge_positions) + [1,]*len(node_positions) + [2,]*len(centroid_positions))
+        # s.particles.typeid = [0] * N
+        s.particles.typeid = np.array(
+            [
+                0,
+            ]
+            * len(edge_positions)
+            + [
+                1,
+            ]
+            * len(node_positions)
+            + [
+                2,
+            ]
+            * len(centroid_positions)
+        )
         s.configuration.box = [L[0] / 2, L[1] / 2, L[2] / 2, 0, 0, 0]
         for label in labels:
             s.log["particles/" + label] = [np.NaN] * N
@@ -500,36 +554,25 @@ class Network:
         s.log["Adj_rows"] = rows
         s.log["Adj_cols"] = columns
         s.log["Adj_values"] = values
-        s.log["Edge_lens"] = list(map(lambda edge: len(edge), self.Gr.es['pts']))
-        s.log["Node_lens"] = list(map(lambda node: len(node), self.Gr.vs['pts']))
-        
+        s.log["Edge_lens"] = list(map(lambda edge: len(edge),
+                                      self.Gr.es["pts"]))
+        s.log["Node_lens"] = list(map(lambda node: len(node),
+                                      self.Gr.vs["pts"]))
+
         for i in range(len(centroid_positions)):
-            for attribute,label in zip(attributes,labels):
-                    s.log["particles/" + label][len(node_positions)+len(edge_positions)+i] = attribute[i]
-        
-        """
-        for i, particle in enumerate(positions):
-            node_id = np.where(np.all(positions[i] == node_positions, axis=1) == True)[0]
-            centroid_id = np.where(np.all(positions[i] == centroid_positions, axis=1) == True)[0]
-            if len(node_id) == 0 and len(centroid_id)==0:
-                continue
-            elif len(centroid_id)!=0:
-                s.particles.typeid[i] = 2
-                for attribute,label in zip(attributes,labels):
-                    s.log["particles/" + label][i] = attribute[centroid_id[0]]
-            else:
-                assert len(node_id)!=0
-                s.particles.typeid[i] = 1
-        """
-        
+            for attribute, label in zip(attributes, labels):
+                s.log["particles/" + label][
+                    len(node_positions) + len(edge_positions) + i
+                ] = attribute[i]
+
         f.append(s)
-       
+
         _dict = {}
-        for attr in ('stack_dir', '_2d', 'dim', 'cropper'):
+        for attr in ("stack_dir", "_2d", "dim", "cropper"):
             _dict[attr] = str(getattr(self, attr))
 
         name = os.path.splitext(os.path.basename(filename))[0]
-        with open(self.stack_dir + '/' + name + '.json', "w") as json_file:
+        with open(self.stack_dir + "/" + name + ".json", "w") as json_file:
             json.dump(_dict, json_file)
 
     def node_plot(self, parameter=None, ax=None, depth=0):
@@ -539,7 +582,7 @@ class Network:
         Args:
             parameter (:class:`numpy.ndarray`, optional):
                 The value of node parameters
-            ax (:class:`matplotlib.axes.Axes`, optional): 
+            ax (:class:`matplotlib.axes.Axes`, optional):
                 Axis to plot on. If :code:`None`, make a new figure and axis.
                 (Default value = :code:`None`)
 
@@ -560,39 +603,54 @@ class Network:
 
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap='plasma')
-        
-        e = np.empty((0,2))
-        for edge in self.graph.es:
-            e = np.vstack((e,edge['pts']))
-        ax.scatter(e.T[1], e.T[0], c='k', s=3, marker='s', edgecolors='none')
-        
-        y,x = np.array(self.graph.vs['o']).T
-        sp=ax.scatter(x,y, c=parameter, s=10, marker='o', cmap='plasma',
-                      edgecolors='none')
+        ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap="plasma")
 
-        if _parameter: 
+        e = np.empty((0, 2))
+        for edge in self.graph.es:
+            e = np.vstack((e, edge["pts"]))
+        ax.scatter(e.T[1], e.T[0], c="k", s=3, marker="s", edgecolors="none")
+
+        y, x = np.array(self.graph.vs["o"]).T
+        sp = ax.scatter(
+            x,
+            y,
+            c=parameter,
+            s=10,
+            marker="o",
+            cmap="plasma",
+            edgecolors="none",
+        )
+
+        if _parameter:
             cb = colorbar(sp)
-            cb.set_label('Value')
+            cb.set_label("Value")
 
         return ax
 
-    def edge_plot(self, parameter=None, ax=None, depth=0,
-                  im_cmap='plasma', edge_cmap='plasma', plot_img=True, **kwargs):
+    def edge_plot(
+        self,
+        parameter=None,
+        ax=None,
+        depth=0,
+        im_cmap="plasma",
+        edge_cmap="plasma",
+        plot_img=True,
+        **kwargs,
+    ):
         """Superimpose the skeleton, image, and nodal graph theory parameters.
         If no parameter provided, simply imposes skeleton and image.
 
         Args:
             parameter (:class:`numpy.ndarray`, optional):
                 The value of node parameters
-            ax (:class:`matplotlib.axes.Axes`, optional): 
+            ax (:class:`matplotlib.axes.Axes`, optional):
                 Axis to plot on. If :code:`None`, make a new figure and axis.
                 (Default value = :code:`None`)
 
         Returns:
             (:class:`matplotlib.axes.Axes`): Axis with the plot.
         """
-        
+
         _parameter = True
         if parameter is None:
             parameter = np.ones(self.Gr.ecount(), dtype=np.intc)
@@ -606,21 +664,38 @@ class Network:
 
         ax.set_xticks([])
         ax.set_yticks([])
-        if plot_img: ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap=im_cmap)
+        if plot_img:
+            ax.imshow(self.image_stack[depth][0][self.cropper._2d],
+                      cmap=im_cmap)
         _max = np.max(parameter)
         _min = np.min(parameter)
 
-        for param,edge in zip(parameter,self.graph.es):
-            e = edge['pts'].T
-            sp=ax.scatter(e[1], e[0], s=3, marker='s', edgecolors='none', c=[param,]*len(edge['pts']),
-                         vmin=_min, vmax=_max, cmap=edge_cmap, **kwargs)
+        for param, edge in zip(parameter, self.graph.es):
+            e = edge["pts"].T
+            ax.scatter(
+                e[1],
+                e[0],
+                s=3,
+                marker="s",
+                edgecolors="none",
+                c=[
+                    param,
+                ]
+                * len(edge["pts"]),
+                vmin=_min,
+                vmax=_max,
+                cmap=edge_cmap,
+                **kwargs,
+            )
 
-        y,x = np.array(self.graph.vs['o']).T
-        sp=ax.scatter(x,y, s=10, marker='o', edgecolors='none', c='red')
-        
-        if _parameter: 
-            cb = colorbar(sp)
-            cb.set_label('Value')
+        y, x = np.array(self.graph.vs["o"]).T
+        ax.scatter(x, y, s=10, marker="o", edgecolors="none", c="red")
+
+        norm = mpl.colors.Normalize(vmin=_min, vmax=_max)
+        mappable = mpl.cm.ScalarMappable(norm=norm, cmap=edge_cmap)
+        if _parameter:
+            cb = colorbar(mappable, ax)
+            cb.set_label("Value")
 
         return fig, ax
 
@@ -628,7 +703,7 @@ class Network:
         """Superimpose the graph and original image.
 
         Args:
-            ax (:class:`matplotlib.axes.Axes`, optional): 
+            ax (:class:`matplotlib.axes.Axes`, optional):
                 Axis to plot on. If :code:`None`, make a new figure and axis.
                 (Default value = :code:`None`)
 
@@ -651,7 +726,7 @@ class Network:
 
         axis_0 = abs(axis - 2)
 
-        display_img = np.swapaxes(self._img_bin_3d, 0, axis_0)[surface]
+        np.swapaxes(self._img_bin_3d, 0, axis_0)[surface]
         drop_list = []
         for i in range(self.Gr.vcount()):
             if (
@@ -670,36 +745,41 @@ class Network:
         for edge in self.Gr.es():
             positions = np.vstack((positions, edge["pts"]))
 
-        fig = plt.figure(figsize=(10, 25))
-        plt.scatter(node_positions.T[2], node_positions.T[1], s=10, color="red")
+        plt.figure(figsize=(10, 25))
+        plt.scatter(node_positions.T[2], node_positions.T[1], s=10,
+                    color="red")
         plt.scatter(positions.T[2], positions.T[1], s=2)
-        plt.imshow(self._img_bin[axis], cmap=cm.gray)
+        plt.imshow(self._img_bin[axis], cmap=mpl.cm.gray)
         plt.show()
 
         self.Gr = Gr_copy
 
     @property
     def img_bin(self):
-        """:class:`np.ndarray`: The binary image from which the graph was 
+        """:class:`np.ndarray`: The binary image from which the graph was
         extracted"""
         return self._img_bin
 
     @img_bin.setter
     def img_bin(self, value):
-        warnings.warn("Setting the binary image should not be necessary if \
-                      the raw data has been binarized.")
+        warnings.warn(
+            "Setting the binary image should not be necessary if \
+                      the raw data has been binarized."
+        )
 
     @property
     def graph(self):
-        """:class:`igraph.Graph`: The Graph object extracted from the 
+        """:class:`igraph.Graph`: The Graph object extracted from the
         skeleton"""
         return self.Gr
 
     @property
     def image(self):
         """:class:`np.ndarray`: The original image used to obtain the graph."""
-        if self._2d: return self.image_stack[0][0]
-        else: return self.image_stack[:][0]
+        if self._2d:
+            return self.image_stack[0][0]
+        else:
+            return self.image_stack[:][0]
 
     @property
     def skeleton(self):
@@ -722,38 +802,48 @@ class Network:
         _dir = os.path.split(os.path.split(filename)[0])[0]
         binarized_dir = os.path.split(os.path.split(filename)[0])[-1]
         N = cls(_dir, depth=depth, dim=dim, binarized_dir=binarized_dir)
-        if dim==2: N._2d = True
-        else: N._2d = False
+        if dim == 2:
+            N._2d = True
+        else:
+            N._2d = False
 
         name = os.path.splitext(os.path.basename(filename))[0]
-        _json = N.stack_dir + '/' + name + '.json'
-        with open(_json, "r") as json_file:
+        _json = N.stack_dir + "/" + name + ".json"
+        with open(_json) as json_file:
             data = json.load(json_file)
 
         N.cropper = _cropper.from_string(N, domain=data["cropper"])
         N._2d = bool(data["cropper"])
         N.dim = int(data["dim"])
-        f = gsd.hoomd.open(name=filename, mode='r')[frame]
-        rows =   f.log['Adj_rows']
-        cols =   f.log['Adj_cols']
-        values = f.log['Adj_values']
-        S = scipy.sparse.csr_matrix((values, (rows,cols)))
+        f = gsd.hoomd.open(name=filename, mode="r")[frame]
+        rows = f.log["Adj_rows"]
+        cols = f.log["Adj_cols"]
+        values = f.log["Adj_values"]
+        S = scipy.sparse.csr_matrix((values, (rows, cols)))
         G = ig.Graph()
-        N.Gr = G.Weighted_Adjacency(S, mode='upper')
+        N.Gr = G.Weighted_Adjacency(S, mode="upper")
 
-        first_axis = {2:1, 3:0}[N.dim]
-        edge_pos = f.particles.position[f.particles.typeid == 0].T[first_axis:3].T
-        node_pos = f.particles.position[f.particles.typeid == 1].T[first_axis:3].T
-        centroid_pos = f.particles.position[f.particles.typeid == 2].T[first_axis:3].T
-        
-        N.Gr.es['pts'] = base.split(base.shift(edge_pos, _2d=N._2d)[0], f.log['Edge_lens'])
-        N.Gr.vs['pts'] = base.split(base.shift(node_pos, _2d=N._2d)[0], f.log['Node_lens'])
-        N.Gr.vs['o'] = base.shift(centroid_pos, _2d=N._2d)[0]
+        first_axis = {2: 1, 3: 0}[N.dim]
+        edge_pos = f.particles.position[f.particles.typeid == 0].T[
+                first_axis:3].T
+        node_pos = f.particles.position[f.particles.typeid == 1].T[
+                first_axis:3].T
+        centroid_pos = f.particles.position[f.particles.typeid == 2].T[
+                first_axis:3].T
+
+        N.Gr.es["pts"] = base.split(
+            base.shift(edge_pos, _2d=N._2d)[0], f.log["Edge_lens"]
+        )
+        N.Gr.vs["pts"] = base.split(
+            base.shift(node_pos, _2d=N._2d)[0], f.log["Node_lens"]
+        )
+        N.Gr.vs["o"] = base.shift(centroid_pos, _2d=N._2d)[0]
 
         return N
 
+
 def Graph(filename, frame=0):
-    """Functions which returns an `igraph.Graph` object from a gsd, with 
+    """Functions which returns an `igraph.Graph` object from a gsd, with
     node and edge position attributes. Useful when a `Network` object is not
     required. Unlike `Network.from_gsd`, it makes no assumptions about the
     path of the `gsd` file.
@@ -766,51 +856,61 @@ def Graph(filename, frame=0):
         (`igraph.Graph`): igraph Graph object.
     """
 
-    f = gsd.hoomd.open(name=filename, mode='r')[frame]
-    rows =   f.log['Adj_rows']
-    cols =   f.log['Adj_cols']
-    values = f.log['Adj_values']
-    S = scipy.sparse.csr_matrix((values, (rows,cols)))
-    Gr = ig.Graph.Weighted_Adjacency(S, mode='upper')
+    f = gsd.hoomd.open(name=filename, mode="r")[frame]
+    rows = f.log["Adj_rows"]
+    cols = f.log["Adj_cols"]
+    values = f.log["Adj_values"]
+    S = scipy.sparse.csr_matrix((values, (rows, cols)))
+    Gr = ig.Graph.Weighted_Adjacency(S, mode="upper")
 
     edge_pos = f.particles.position[f.particles.typeid == 0]
     node_pos = f.particles.position[f.particles.typeid == 1]
     centroid_pos = f.particles.position[f.particles.typeid == 2]
 
-    Gr.es['pts'] = edge_pos
-    Gr.vs['pts'] = node_pos
-    Gr.vs['o'] = centroid_pos
+    Gr.es["pts"] = edge_pos
+    Gr.vs["pts"] = node_pos
+    Gr.vs["o"] = centroid_pos
 
     return Gr
 
+
 class Regions:
     def __init__(self, partition, box):
-        if partition==0:
+        if partition == 0:
             self.regions = [
-                [(-box[0]/2,box[0]/2),(-box[1]/2,box[1]/2),(-box[2]/2,box[2]/2)]
+                [
+                    (-box[0] / 2, box[0] / 2),
+                    (-box[1] / 2, box[1] / 2),
+                    (-box[2] / 2, box[2] / 2),
+                ]
             ]
-        elif partition==1:
+        elif partition == 1:
             self.regions = [
-                [(-box[0]/2,0),(-box[1]/2,0),(-box[2]/2,0)],
-                [(-box[0]/2,0),(-box[1]/2,0),(0,box[2]/2)],
-                [(-box[0]/2,0),(0,box[1]/2),(-box[2]/2,0)],
-                [(-box[0]/2,0),(0,box[1]/2),(0,box[2]/2)],
-                [(0,box[0]/2),(-box[1]/2,0),(-box[2]/2,0)],
-                [(0,box[0]/2),(-box[1]/2,0),(0,box[2]/2)],
-                [(0,box[0]/2),(0,box[1]/2),(-box[2]/2,0)],
-                [(0,box[0]/2),(0,box[1]/2),(0,box[2]/2)],
+                [(-box[0] / 2, 0), (-box[1] / 2, 0), (-box[2] / 2, 0)],
+                [(-box[0] / 2, 0), (-box[1] / 2, 0), (0, box[2] / 2)],
+                [(-box[0] / 2, 0), (0, box[1] / 2), (-box[2] / 2, 0)],
+                [(-box[0] / 2, 0), (0, box[1] / 2), (0, box[2] / 2)],
+                [(0, box[0] / 2), (-box[1] / 2, 0), (-box[2] / 2, 0)],
+                [(0, box[0] / 2), (-box[1] / 2, 0), (0, box[2] / 2)],
+                [(0, box[0] / 2), (0, box[1] / 2), (-box[2] / 2, 0)],
+                [(0, box[0] / 2), (0, box[1] / 2), (0, box[2] / 2)],
             ]
-            
+
     def inregion(self, region, p):
-        mask = np.array(p.T[0]>region[0][0]) & np.array(p.T[0]<region[0][1]) \
-             & np.array(p.T[1]>region[1][0]) & np.array(p.T[1]<region[1][1]) \
-             & np.array(p.T[2]>region[2][0]) & np.array(p.T[2]<region[2][1])
-             
+        mask = (
+            np.array(p.T[0] > region[0][0])
+            & np.array(p.T[0] < region[0][1])
+            & np.array(p.T[1] > region[1][0])
+            & np.array(p.T[1] < region[1][1])
+            & np.array(p.T[2] > region[2][0])
+            & np.array(p.T[2] < region[2][1])
+        )
+
         return p[mask]
-            
+
+
 class ParticleNetwork(Sequence):
     def __init__(self, trajectory, cutoff, partition=0, periodic=False):
-
         self.traj = gsd.hoomd.open(trajectory)
         self.cutoff = cutoff
         self.periodic = periodic
@@ -820,27 +920,28 @@ class ParticleNetwork(Sequence):
 
     def __getitem__(self, key):
         self._graph_list = []
-        if isinstance(key, int): _iter=[self.traj[key]]
-        else: _iter=self.traj[key]
+        if isinstance(key, int):
+            _iter = [self.traj[key]]
+        else:
+            _iter = self.traj[key]
         for frame in _iter:
-            _first=True
+            _first = True
             for region in self.regions.regions:
-                positions = self.regions.inregion(region, frame.particles.position)
-                box = frame.configuration.box * {False:2, True:1}[self.periodic]
+                positions = self.regions.inregion(region,
+                                                  frame.particles.position)
+                box = frame.configuration.box * {False: 2, True: 1}[
+                        self.periodic]
                 aq = freud.locality.AABBQuery(box, positions)
                 nlist = aq.query(
                     positions,
-                    {
-                        "r_max": self.cutoff,
-                        "exclude_ii": True
-                    },
+                    {"r_max": self.cutoff, "exclude_ii": True},
                 ).toNeighborList()
-                nlist.filter(nlist.query_point_indices<nlist.point_indices)
+                nlist.filter(nlist.query_point_indices < nlist.point_indices)
                 if _first:
                     _graph = ig.Graph.TupleList(nlist[:], directed=False)
-                    _first=False
+                    _first = False
                 else:
-                    nlist = nlist[:]+_graph.vcount()
+                    nlist = nlist[:] + _graph.vcount()
                     __graph = ig.Graph.TupleList(nlist[:], directed=False)
                     _graph = ig.operators.union([_graph, __graph])
 

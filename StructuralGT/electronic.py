@@ -1,10 +1,16 @@
-from StructuralGT import base
-from StructuralGT.util import _Compute
-import numpy as np
+# Copyright (c) 2023-2024 The Regents of the University of Michigan.
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
 import os
 
-class Electronic(_Compute):
+import numpy as np
 
+from StructuralGT import base
+from StructuralGT.util import _Compute
+
+
+class Electronic(_Compute):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -24,12 +30,14 @@ class Electronic(_Compute):
         boundary2 = boundary_conditions[1]
         network.graph_connected = network.graph
         if network.R_j != "infinity":
-            weight_array = np.asarray(network.graph.es["Conductance"]).astype(float)
+            weight_array = np.asarray(
+                    network.graph.es["Conductance"]).astype(float)
             weight_array = weight_array[~np.isnan(weight_array)]
-            #self.edge_weights = weight_array
+            # self.edge_weights = weight_array
             weight_avg = np.mean(weight_array)
         else:
-            network.graph_connected.es["Conductance"] = np.ones(network.graph.ecount())
+            network.graph_connected.es["Conductance"] = \
+                    np.ones(network.graph.ecount())
             weight_avg = 1
 
         # Add source and sink nodes:
@@ -38,7 +46,7 @@ class Electronic(_Compute):
         network.graph_connected.add_vertices(2)
 
         print("Graph has shape ", network.shape)
-        axes = np.array([0, 1, 2])[0 : network.dim]
+        axes = np.array([0, 1, 2])[0: network.dim]
         indices = axes[axes != axis]
         axis_centre1 = np.zeros(network.dim, dtype=int)
         delta = np.zeros(network.dim, dtype=int)
@@ -57,22 +65,24 @@ class Electronic(_Compute):
         network.graph_connected.vs[sink_id]["pts"] = sink_coord
 
         for node in network.graph_connected.vs:
-            if node["o"][axis] >= boundary1[0] and node["o"][axis] <= boundary1[1]:
+            if (node["o"][axis] >= boundary1[0]
+                    and node["o"][axis] <= boundary1[1]):
                 network.graph_connected.add_edges([(node.index, source_id)])
-                network.graph_connected.es[network.graph_connected.get_eid(node.index, source_id)][
-                    "Conductance"
-                ] = weight_avg
-                network.graph_connected.es[network.graph_connected.get_eid(node.index, source_id)][
-                    "pts"
-                ] = base.connector(source_coord, node["o"])
-            if node["o"][axis] >= boundary2[0] and node["o"][axis] <= boundary2[1]:
+                network.graph_connected.es[
+                    network.graph_connected.get_eid(node.index, source_id)
+                ]["Conductance"] = weight_avg
+                network.graph_connected.es[
+                    network.graph_connected.get_eid(node.index, source_id)
+                ]["pts"] = base.connector(source_coord, node["o"])
+            if (node["o"][axis] >= boundary2[0]
+                    and node["o"][axis] <= boundary2[1]):
                 network.graph_connected.add_edges([(node.index, sink_id)])
-                network.graph_connected.es[network.graph_connected.get_eid(node.index, sink_id)][
-                    "Conductance"
-                ] = weight_avg
-                network.graph_connected.es[network.graph_connected.get_eid(node.index, sink_id)][
-                    "pts"
-                ] = base.connector(sink_coord, node["o"])
+                network.graph_connected.es[
+                    network.graph_connected.get_eid(node.index, sink_id)
+                ]["Conductance"] = weight_avg
+                network.graph_connected.es[
+                    network.graph_connected.get_eid(node.index, sink_id)
+                ]["pts"] = base.connector(sink_coord, node["o"])
 
         # Write skeleton connected to external node
         connected_name = (
@@ -85,7 +95,8 @@ class Electronic(_Compute):
         if network.R_j == "infinity":
             network.L = np.asarray(network.graph.laplacian())
         else:
-            network.L = np.asarray(network.graph.laplacian(weights="Conductance"))
+            network.L = np.asarray(network.graph.laplacian(
+                weights="Conductance"))
 
         F = np.zeros(sink_id + 1)
         F[source_id] = 1
@@ -104,8 +115,11 @@ class Electronic(_Compute):
 
         """
 
-        return self.Q[self.source, self.source] + self.Q[self.sink, self.sink] \
-        - 2 * self.Q[self.source, self.sink]
+        return (
+            self.Q[self.source, self.source]
+            + self.Q[self.sink, self.sink]
+            - 2 * self.Q[self.source, self.sink]
+        )
 
     @_Compute._computed_property
     def P(self):

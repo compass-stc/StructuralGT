@@ -1,15 +1,26 @@
-import numpy as np
+# Copyright (c) 2023-2024 The Regents of the University of Michigan.
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
+#
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
 import os
-import cv2 as cv
-import scipy
-from StructuralGT import error, base, process_image
-import json
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import time
-import gsd.hoomd
-import warnings
 from functools import wraps
+
+import numpy as np
+
+from StructuralGT import base, error
+
 
 class _Compute:
     r"""Parent class for all compute classes in StructuralGT. Modelled after
@@ -46,7 +57,7 @@ class _Compute:
         """Compute methods set a flag to indicate that quantities have been
         computed. Compute must be called before plotting."""
         attribute = object.__getattribute__(self, attr)
-        if attr == 'compute':
+        if attr == "compute":
             # Set the attribute *after* computing. This enables
             # self._called_compute to be used in the compute method itself.
             compute = attribute
@@ -56,16 +67,19 @@ class _Compute:
                 return_value = compute(*args, **kwargs)
                 self._called_compute = True
                 return return_value
+
             return compute_wrapper
-        elif attr == 'plot':
+        elif attr == "plot":
             if not self._called_compute:
                 raise AttributeError(
-                    "The compute method must be called before calling plot.")
+                    "The compute method must be called before calling plot."
+                )
         return attribute
 
     @staticmethod
     def _computed_property(prop):
-        r"""Decorator that makes a class method to be a property with limited access.
+        r"""Decorator that makes a class method to be a property with limited
+        access.
 
         Args:
             prop (callable): The property function.
@@ -79,9 +93,13 @@ class _Compute:
         def wrapper(self, *args, **kwargs):
             if not self._called_compute:
                 raise AttributeError(
-                    "Property not computed. Call compute first.")
+                    "Property not computed. Call compute \
+                                     first."
+                )
             return prop(self, *args, **kwargs)
+
         return wrapper
+
 
 def _abs_path(network, name):
     if name[0] == "/":
@@ -143,7 +161,7 @@ class _cropper:
             self.surface = 0
         elif domain is None:
             self.surface = int(
-                _fname(Network.dir + '/' + Network.image_stack[0][1]).num
+                _fname(Network.dir + "/" + Network.image_stack[0][1]).num
             )  # Strip file type and 'slice' then convert to int
         else:
             self.surface = domain[4]
@@ -172,7 +190,7 @@ class _cropper:
                 self.crop = (slice(domain[2], domain[3]),
                              slice(domain[0], domain[1]))
                 self.dims = (1, domain[3] - domain[2], domain[1] - domain[0])
-                self.domain = (domain[2],domain[3],domain[0],domain[1])
+                self.domain = (domain[2], domain[3], domain[0], domain[1])
 
             else:
                 self.crop = (
@@ -186,23 +204,26 @@ class _cropper:
                     domain[5] - domain[4],
                 )
                 self.domain = (
-                        domain[0], domain[1],
-                        domain[2], domain[3],
-                        domain[4], domain[5],
-                        )
+                    domain[0],
+                    domain[1],
+                    domain[2],
+                    domain[3],
+                    domain[4],
+                    domain[5],
+                )
 
     @classmethod
     def from_string(cls, Network, domain):
-        if domain=="None":
+        if domain == "None":
             return cls(Network, domain=None)
         else:
-            domain=domain.split(',')
-        if len(domain)==4:
+            domain = domain.split(",")
+        if len(domain) == 4:
             _0 = int(domain[0][1:])
             _1 = int(domain[1])
             _2 = int(domain[2])
             _3 = int(domain[3][:-1])
-            return cls(Network, domain=[_0,_1,_2,_3])
+            return cls(Network, domain=[_0, _1, _2, _3])
 
     def intergerise(self):
         """Method casts decimal values in the _croppers crop attribute to
@@ -252,7 +273,7 @@ class _cropper:
     @property
     def _outer_crop(self):
         """Method supports square 2D crops only. It calculates the crop which
-        could contain any rotation about the origin of the _cropper's crop 
+        could contain any rotation about the origin of the _cropper's crop
         attribute.
 
         Returns:
@@ -260,17 +281,21 @@ class _cropper:
         """
 
         if self.dim != 2:
-            raise ValueError('Only 2D crops are supported')
+            raise ValueError("Only 2D crops are supported")
         if self.crop == slice(None):
-            raise ValueError('No crop associated with this _cropper')
+            raise ValueError("No crop associated with this _cropper")
 
         centre = (
-            self.crop[0].start + 0.5 * (self.crop[0].stop - self.crop[0].start),
-            self.crop[1].start + 0.5 * (self.crop[1].stop - self.crop[1].start),
+            self.crop[0].start + 0.5 *
+            (self.crop[0].stop - self.crop[0].start),
+            self.crop[1].start + 0.5 *
+            (self.crop[1].stop - self.crop[1].start),
         )
 
-        diagonal = ((self.crop[0].stop - self.crop[0].start) ** 2
-                    + (self.crop[1].stop - self.crop[1].start) ** 2) ** 0.5
+        diagonal = (
+            (self.crop[0].stop - self.crop[0].start) ** 2
+            + (self.crop[1].stop - self.crop[1].start) ** 2
+        ) ** 0.5
 
         outer_crop = np.array(
             [
@@ -285,7 +310,7 @@ class _cropper:
         return outer_crop
 
 
-class _domain():
+class _domain:
     """Helper class which returns an infinitely large space when no explicit
     space is associated with the :class:`_domain`
     """
@@ -297,7 +322,7 @@ class _domain():
             self.domain = domain
 
 
-class _fname():
+class _fname:
     """Class to represent file names of 2D image slices, with helper
     functions.
 
@@ -313,34 +338,43 @@ class _fname():
 
     def __init__(self, name, domain=_domain(None), _2d=False):
         if not os.path.exists(name):
-            raise ValueError('File does not exist.')
+            raise ValueError("File does not exist.")
         self.name = name
         self.domain = domain
-        self._2d=_2d
+        self._2d = _2d
 
         if self._2d:
-            self.num='0000'
+            self.num = "0000"
         else:
             base_name = os.path.splitext(os.path.split(self.name)[1])[0]
-            if len(base_name)<4:
-                raise ValueError('For 3D networks, filenames must end in 4 digits, indicating the depth of the slice.')
+            if len(base_name) < 4:
+                raise ValueError(
+                    "For 3D networks, filenames must end in 4 digits, \
+                    indicating the depth of the slice."
+                )
             self.num = base_name[-4::]
 
             if not self.num.isnumeric():
-                raise ValueError('For 3D networks, filenames must end in 4 digits, indicating the depth of the slice.')
+                raise ValueError(
+                    "For 3D networks, filenames must end in 4 digits, \
+                    indicating the depth of the slice."
+                )
 
     @property
     def isinrange(self):
         """bool: Returns true iff the filename is numeric and within the
         spatial dimensions of the associated :class:`_domain` object.
         """
-        if not self.isimg: return False 
+        if not self.isimg:
+            return False
 
         if self._2d:
             return True
         else:
-            return (int(self.num) > self.domain.domain[0]
-                and int(self.num) < self.domain.domain[1])
+            return (
+                int(self.num) > self.domain.domain[0]
+                and int(self.num) < self.domain.domain[1]
+            )
 
     @property
     def isimg(self):

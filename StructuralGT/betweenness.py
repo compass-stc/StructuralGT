@@ -1,10 +1,16 @@
-from StructuralGT.util import _Compute
-import numpy as np
+# Copyright (c) 2023-2024 The Regents of the University of Michigan.
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
 import copy
 
-from StructuralGT import _boundary_betweenness_cast
-from StructuralGT import _random_boundary_betweenness_cast
-from StructuralGT import _vertex_boundary_betweenness_cast
+import numpy as np
+
+from StructuralGT import (_boundary_betweenness_cast,
+                          _random_boundary_betweenness_cast,
+                          _vertex_boundary_betweenness_cast)
+from StructuralGT.util import _Compute
+
 
 class VertexBoundaryBetweenness(_Compute):
     """A module for calculating different extension of the classical
@@ -12,6 +18,7 @@ class VertexBoundaryBetweenness(_Compute):
     betweennesses which include geometric features of the network via weights
     and boundary conditions.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -44,7 +51,7 @@ class VertexBoundaryBetweenness(_Compute):
             weights,
         )
 
-        self._vertex_boundary_betweenness = cast.vertex_boundary_betweenness         
+        self._vertex_boundary_betweenness = cast.vertex_boundary_betweenness
 
     @_Compute._computed_property
     def vertex_boundary_betweenness(self):
@@ -58,10 +65,11 @@ class VertexBoundaryBetweenness(_Compute):
         where :math:`S` is the set of sources, :math:`T` is the set of targets,
         :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
         and :math:`\sigma(s, t|e)` is the number of those paths
-        passing through edge :math:`e` :cite:`Brandes2008` (which is unity for real 
-        value weighted graphs). 
+        passing through edge :math:`e` :cite:`Brandes2008` (which is unity for
+        real value weighted graphs).
         """
         return self._vertex_boundary_betweenness
+
 
 class BoundaryBetweenness(_Compute):
     """A module for calculating different extension of the classical
@@ -69,6 +77,7 @@ class BoundaryBetweenness(_Compute):
     betweennesses which include geometric features of the network via weights
     and boundary conditions.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -101,7 +110,7 @@ class BoundaryBetweenness(_Compute):
             weights,
         )
 
-        self._boundary_betweenness = cast.boundary_betweenness         
+        self._boundary_betweenness = cast.boundary_betweenness
 
     @_Compute._computed_property
     def boundary_betweenness(self):
@@ -115,10 +124,11 @@ class BoundaryBetweenness(_Compute):
         where :math:`S` is the set of sources, :math:`T` is the set of targets,
         :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
         and :math:`\sigma(s, t|e)` is the number of those paths
-        passing through edge :math:`e` :cite:`Brandes2008` (which is unity for real 
-        value weighted graphs). 
+        passing through edge :math:`e` :cite:`Brandes2008` (which is unity for
+        real value weighted graphs).
         """
         return self._boundary_betweenness
+
 
 class RandomBoundaryBetweenness(_Compute):
     """A module for calculating different extension of the classical
@@ -126,6 +136,7 @@ class RandomBoundaryBetweenness(_Compute):
     betweennesses which include geometric features of the network via weights
     and boundary conditions.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -146,21 +157,23 @@ class RandomBoundaryBetweenness(_Compute):
         """
         _copy = copy.deepcopy(network.Gr)
 
-        #Add ghost node and edges from targets to ghost
+        # Add ghost node and edges from targets to ghost
         _copy.add_vertex(1)
         for target in targets:
-            _copy.add_edge(network.Gr.vcount()-1,target)
+            _copy.add_edge(network.Gr.vcount() - 1, target)
         num_edges = _copy.ecount()
 
-        #When passing weight vector, must add additional weights for edges
-        #between targets and ghost node (added in cpp file)
+        # When passing weight vector, must add additional weights for edges
+        # between targets and ghost node (added in cpp file)
         if self.edge_weight is None:
             weights = np.ones(num_edges, dtype=np.double)
         else:
             mean = np.mean(np.array(network.Gr.es[self.edge_weight]))
 
-            weights = np.append(np.array(network.Gr.es[self.edge_weight], dtype=np.double),
-                                np.full(len(targets), mean, dtype=np.double)).astype(np.double)
+            weights = np.append(
+                np.array(network.Gr.es[self.edge_weight], dtype=np.double),
+                np.full(len(targets), mean, dtype=np.double),
+            ).astype(np.double)
             assert len(weights) == _copy.ecount()
         cast = _random_boundary_betweenness_cast.PyCast(_copy._raw_pointer())
 
@@ -173,8 +186,8 @@ class RandomBoundaryBetweenness(_Compute):
         )
 
         self._linear_betweenness = cast.linear_random_boundary_betweenness
-        self._nonlinear_betweenness = cast.nonlinear_random_boundary_betweenness
-
+        self._nonlinear_betweenness =\
+            cast.nonlinear_random_boundary_betweenness
 
     @_Compute._computed_property
     def linear_betweenness(self):

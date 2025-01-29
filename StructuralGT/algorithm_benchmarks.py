@@ -1,6 +1,9 @@
-import base
+# Copyright (c) 2023-2024 The Regents of the University of Michigan.
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
 import timeit
-import network
+
 import numpy as np
 
 """Benchmarks for vaious SGT algorithms and functions"""
@@ -10,10 +13,11 @@ def effective_resistance():
     """Benchmark for comparing 2 different approaches for finding the effective
     resistance between 2 vertices in a resistive network
 
-    1. Klein, D. J. & Randić, M. Resistance distance. J. Math. Chem. 1993 121 12, 81–95 (1993)
+    1. Klein, D. J. & Randić, M. Resistance distance.
+    J. Math. Chem. 1993 121 12, 81–95 (1993)
     From the pseudoinverse of the weighted Laplacian matrix
 
-    2. 
+    2.
     From the determinants of submatrices of the weighted Laplacian matrix
     """
 
@@ -28,14 +32,14 @@ def effective_resistance():
     """
 
     def Klein(G, source, sink):
-        L = np.asarray(G.laplacian(weights='weight'))
+        L = np.asarray(G.laplacian(weights="weight"))
         Linv = np.linalg.pinv(L)
 
-        rij = Linv[source,source] + Linv[sink,sink] - 2*Linv[source,sink]
+        rij = Linv[source, source] + Linv[sink, sink] - 2 * Linv[source, sink]
         print(rij)
 
     def Bapat(G, source, sink):
-        L=np.asarray(G.laplacian(weights='weight'))
+        L = np.asarray(G.laplacian(weights="weight"))
         Li = np.delete(np.delete(L, source, axis=0), source, axis=1)
         Lij = np.delete(np.delete(Li, sink, axis=0), sink, axis=1)
 
@@ -44,10 +48,10 @@ def effective_resistance():
         (signij, logdetij) = np.linalg.slogdet(Lij)
         detij = signij * np.exp(logdetij)
 
-        #deti = np.linalg.det(Li)
-        #detij = np.linalg.det(Lij)
+        # deti = np.linalg.det(Li)
+        # detij = np.linalg.det(Lij)
 
-        rij = detij/deti
+        rij = detij / deti
         print(rij)
 
     tests = {
@@ -60,7 +64,7 @@ def effective_resistance():
         times = timeit.repeat(
             setup=setup, stmt=test_stmt, repeat=1, number=1, globals=globals()
         )
-        #avg_time = sum(times) / len(times)
+        # avg_time = sum(times) / len(times)
         results[test_name] = times
 
     for test_name, result in sorted(results.items(), key=lambda x: x[1]):
