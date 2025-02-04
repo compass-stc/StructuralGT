@@ -24,7 +24,7 @@ dependencies = [
         'eigen',
         'pytest',
         'cmake',
-        'freud-analysis>=3.1.0',
+        'freud>=3.1.0',
         'ipywidgets',
 ]
 
