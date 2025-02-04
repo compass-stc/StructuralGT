@@ -2,28 +2,9 @@
 # This file is from the StructuralGT project, released under the BSD 3-Clause
 # License.
 
-"""process_image: A collection of methods and tools for image
-processing, computer vision, and thresholding.  Aims to return
-a binary image of a network from a input grayscale image.
-
-Copyright (C) 2021, The Regents of the University of Michigan.
-
-This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-Contributers: Drew Vecchio, Samuel Mahler, Mark D. Hammig, Nicholas A. Kotov
-Contact email: vecdrew@umich.edu
-"""
+# This file is a modified copy of the process_image.py file from the
+# original StructuralGT project, which can be found at
+# https://github.com/drewvecchio/StructuralGT.
 
 import cv2
 import numpy as np
