@@ -7,6 +7,7 @@ import os
 
 import cv2 as cv
 import matplotlib.pyplot as plt
+from IPython.display import display
 from ipywidgets import Layout, interactive, widgets
 
 from StructuralGT import process_image
@@ -67,7 +68,9 @@ class Binarizer:
                 json.dump(options, fp)
 
         _, binary_image, _ = process_image.binarize(gray_image, options)
-        plt.imshow(binary_image, cmap="gray")
+        _, self.ax = plt.subplots()
+        self.ax.imshow(binary_image, cmap="gray")
+        plt.show()
 
     def __init__(self, filename, export_dir=None):
         """Method for generating the interactive binarization widget.
@@ -143,7 +146,8 @@ class Binarizer:
         )
         export = widgets.Checkbox(description="Export", value=0,
                                   layout=item_layout)
-        w = interactive(
+
+        self.w = interactive(
             self.binarize_widget,
             Thresh_method=Thresh_method,
             gamma=gamma,
@@ -163,10 +167,12 @@ class Binarizer:
             filename=self.filename,
         )
 
-        w.layout = Layout(
+        self.w.layout = Layout(
             display="flex",
             flex_flow="row wrap",
             border="solid 2px",
             align_items="stretch",
             width="38%",
         )
+
+        display(self.w)
