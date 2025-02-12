@@ -9,4 +9,4 @@ build:
 conda:
   environment: doc/readthedocs-env.yaml
 sphinx:
-   configuration: doc/source/conf.py
+  configuration: doc/source/conf.py
