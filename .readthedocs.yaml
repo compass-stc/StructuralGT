@@ -3,10 +3,10 @@ build:
   os: ubuntu-24.04
   tools:
     python: "mambaforge-23.11"
+  jobs:
+    install:
+      - pip install . --no-deps
 conda:
   environment: doc/readthedocs-env.yaml
-python:
-   commands:
-     - pip install . --no-deps
 sphinx:
    configuration: doc/source/conf.py
