@@ -6,8 +6,7 @@ build:
 conda:
   environment: doc/readthedocs-env.yaml
 python:
-   install:
-     - method: pip
-       path: .
+   commands:
+     - pip install . --no-deps
 sphinx:
    configuration: doc/source/conf.py
