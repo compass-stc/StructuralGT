@@ -214,6 +214,10 @@ class Network:
                 :code:`VariableWidthConductance`,
                 :code:`PerpBisector`.
         """
+        
+        if not hasattr(self, '_skeleton'):
+            raise AttributeError("Network has no skeleton. You should call \
+                                 img_to_skel before calling set_graph.")
 
         G = base.gsd_to_G(self.gsd_name, _2d=self._2d, sub=sub)
 

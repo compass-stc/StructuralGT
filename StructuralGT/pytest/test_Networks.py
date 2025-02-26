@@ -21,7 +21,6 @@ class TestNetwork:
             testNetwork = Network(ANF_path, dim=3, prefix="wrong_prefix")
 
         testNetwork = Network(ANF_path, dim=3, prefix="slice", depth=[3, 287])
-        # assert len(testNetwork.image_stack)==6
 
         testNetwork = Network(ANF_path, dim=3, depth=[281, 288])
 
@@ -44,7 +43,7 @@ class TestNetwork:
         return testNetwork
 
     @pytest.fixture
-    def test_binarize(self, test_2d_constructor):
+    def test_graph(self, test_2d_constructor):
         shutil.rmtree(AgNWN_path + "Binarized", ignore_errors=True)
         shutil.rmtree(AgNWN_path + "HighThresh", ignore_errors=True)
 
@@ -53,6 +52,10 @@ class TestNetwork:
 
         HighThresh = Network(AgNWN_path, child_dir="HighThresh")
         HighThresh.binarize(options=options.agnwn_high_thresh)
+
+        with pytest.raises(AttributeError):
+            HighThresh.set_graph()
+
         HighThresh.img_to_skel()
         HighThresh.set_graph(write=False)
 
