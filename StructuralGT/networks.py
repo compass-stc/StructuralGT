@@ -10,7 +10,7 @@ import warnings
 from collections.abc import Sequence
 
 import cv2 as cv
-import freud
+#import freud
 import gsd.hoomd
 import igraph as ig
 import matplotlib as mpl
@@ -289,7 +289,7 @@ class Network:
         )
 
         if write:
-            self.Node_labelling([], [], write)
+            self.node_labelling([], [], write)
 
     def img_to_skel(
         self,
@@ -438,7 +438,7 @@ class Network:
         else:
             self.rotate = None
 
-    def Node_labelling(self, attributes, labels, filename, edge_weight=None,
+    def node_labelling(self, attributes, labels, filename, edge_weight=None,
                        mode="w"):
         """Method saves a new :code:`.gsd` which labels the :attr:`graph`
         attribute with the given node attribute values. Method saves the
@@ -793,8 +793,6 @@ class Network:
         previously stored in a `.gsd` and `.json` file. Assumes file is stored
         in the same directory as *StructuralGT* wrote it to. I.e. assumed name
         given as `.../dir/Binarized/name.gsd`.
-
-        TODO: Assign edge position attributes if neccessary
         """
 
         assert os.path.exists(filename)
@@ -832,12 +830,12 @@ class Network:
                 first_axis:3].T
 
         N.Gr.es["pts"] = base.split(
-            base.shift(edge_pos, _2d=N._2d)[0], f.log["Edge_lens"]
+            base.shift(edge_pos, _2d=N._2d)[0].astype(int), f.log["Edge_lens"]
         )
         N.Gr.vs["pts"] = base.split(
-            base.shift(node_pos, _2d=N._2d)[0], f.log["Node_lens"]
+            base.shift(node_pos, _2d=N._2d)[0].astype(int), f.log["Node_lens"]
         )
-        N.Gr.vs["o"] = base.shift(centroid_pos, _2d=N._2d)[0]
+        N.Gr.vs["o"] = base.shift(centroid_pos, _2d=N._2d)[0].astype(int)
 
         return N
 
