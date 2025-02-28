@@ -607,7 +607,7 @@ class Network:
 
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap="plasma")
+        ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap="gray")
 
         e = np.empty((0, 2))
         for edge in self.graph.es:
@@ -636,7 +636,6 @@ class Network:
         parameter=None,
         ax=None,
         depth=0,
-        im_cmap="plasma",
         edge_cmap="plasma",
         plot_img=True,
         **kwargs,
@@ -670,7 +669,7 @@ class Network:
         ax.set_yticks([])
         if plot_img:
             ax.imshow(self.image_stack[depth][0][self.cropper._2d],
-                      cmap=im_cmap)
+                      cmap="gray")
         _max = np.max(parameter)
         _min = np.min(parameter)
 
