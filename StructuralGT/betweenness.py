@@ -11,6 +11,37 @@ from StructuralGT import (_boundary_betweenness_cast,
                           _vertex_boundary_betweenness_cast)
 from StructuralGT.util import _Compute
 
+class NodeBetwenness(_Compute):
+    """Module for conventional vertex betweenness."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def compute(self, network):
+        r"""Compute vertex betweenness centralities of the graph.
+
+        Args:
+            network (:class:`Network`):
+                The :class:`Network` object.
+        """
+
+        self._vertex_betweenness = network.betweenness()
+
+    @_Compute._computed_property
+    def node_betweenness(self):
+        r"""Node betweenness centrality.
+
+        .. math::
+
+           c_B(v) =\sum_{s\in N,t \in N} \frac{\sigma(s, t|v)}{\sigma(s, t)}
+
+        where :math:`S` is the set of sources, :math:`T` is the set of targets,
+        :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
+        and :math:`\sigma(s, t|v)` is the number of those paths
+        passing through node :math:`v` :cite:`Brandes2008` (which is unity for
+        real value weighted graphs).
+        """
+        return self._vertex_betweenness
 
 class VertexBoundaryBetweenness(_Compute):
     """A module for calculating different extension of the classical
