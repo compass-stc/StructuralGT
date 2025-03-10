@@ -8,11 +8,17 @@ A python package for the extraction and analysis of graphs from 2D and 3D experi
 
 Installation guide
 ==================
-StructuralGT can be built from source, via the
+**StructuralGT** is available on conda-forge for the *linux-64*, *osx-64*, and *win-64*
+architectures. Install with
+
+.. code:: bash
+
+   conda install conda-forge::structuralgt
+
+**StructuralGT** can also be built from source, via the
 [public repository](https://github.com/compass-stc/StructuralGT).
 Prior to install, you will need to install some dependencies into your conda
-environment. Total installation time should be no longer than a few minutes on
-a standard desktop computer. Note that installation will most likely be
+environment. Note that installation will most likely be
 successful if carried out in a new conda environment. While it is posisble to
 obtain some of these dependencies with pip, installation will most likely be
 sucessful when all dependencies are obtained with conda.
