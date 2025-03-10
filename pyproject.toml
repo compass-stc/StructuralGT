@@ -2,13 +2,13 @@
 requires = ["setuptools",
             "wheel",
             "numpy>=2.0.0rc1",
-            "cython>=3.0.2",
+            "cython>=3.0.11",
             "igraph",
             "eigen",
 ]
 
 [project]
-name = "StructuralGT"
+name = "StructuralGT-API"
 version = "0.0.1"
 dependencies = [
         'numpy>=2.0',
@@ -18,15 +18,25 @@ dependencies = [
         'networkx',
         'opencv-python',
         'pandas',
-        'Cython',
+        'Cython>=3.0.11',
         'gsd>=3.0.0',
         'python-igraph',
         'eigen',
         'pytest',
         'cmake',
-        'freud>=3.1.0',
+        'freud-analysis>=3.1.0',
         'ipywidgets',
+	'tbb',
+	'tbb-devel' 
 ]
+
+#[tool.setuptools]
+#ext-modules = [
+#  {name = "StructuralGT._boundary_betweenness_cast", sources = ["_boundary_betweenness_cast.cpp"]},
+#  {name = "StructuralGT._vertex_boundary_betweenness_cast", sources = ["_vertex_boundary_betweenness_cast.cpp"]},
+#  {name = "StructuralGT._random_boundary_betweenness_cast", sources = ["_random_boundary_betweenness_cast.cpp"]},
+#  {name = "StructuralGT._average_nodal_connectivity_cast", sources = ["_average_nodal_connectivity_cast.cpp"], language="c++"},
+#]
 
 [tool.ruff]
 include = ["*.py", "*.ipynb"]
@@ -66,7 +76,6 @@ convention = "numpy"
 
 [tool.ruff.lint.isort]
 known-third-party = ["hypothesis", "pytest"]
-known-first-party = ["parsnip"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D", "B018", "F811"]
