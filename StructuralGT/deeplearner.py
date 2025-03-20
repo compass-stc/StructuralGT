@@ -1,30 +1,35 @@
-import gc
+# Copyright (c) 2023-2024 The Regents of the University of Michigan.
+# This file is from the StructuralGT project, released under the BSD 3-Clause
+# License.
+
+# Much of this file is adapted from the bellybuttonseg repository at
+# https://github.com/sdillavou/bellybuttonseg
+
+import configparser
 import copy
-import matplotlib.pyplot as plt
+import gc
 import os
 from pathlib import Path
-import numpy as np
+
 import cv2
-import configparser
-
+import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
-from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.backend import clear_session
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras import layers, Input, Model
-
-
 from scipy.signal import convolve2d
+from tensorflow.keras import Input, Model, layers
+from tensorflow.keras.backend import clear_session
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.utils import to_categorical
 
 from StructuralGT import base
 
 
 class BBinputGenerator(tf.keras.utils.Sequence):
 
-    def __init__(self, S_half=20, batch_size=32, flip=True, rotate=True, scales=1, scalefactor=2, randomize = True,**kwargs):    
+    def __init__(self, S_half=20, batch_size=32, flip=True, rotate=True, scales=1, scalefactor=2, randomize = True,**kwargs):
         super().__init__(**kwargs)
-        
+
         self.S2 = S_half
         self.S = S_half*2+1
         self.batch_size = batch_size
@@ -39,52 +44,52 @@ class BBinputGenerator(tf.keras.utils.Sequence):
         self.scalefactor = scalefactor
         self.padding = scalefactor**(scales-1)*S_half+1 # this is how far away the image edge must be from AOI
         self.input_shape = None # defined when first image is added
-          
+
         # flag for changing mask to categorical, randomizing order, and adding weights.
-        self.data_prepared = False 
+        self.data_prepared = False
         # this is performed on the first call of __getitem__, and undone whenever new data is added (add_img or add_img_vec)
-               
+
         if not int(batch_size/self.mult) == batch_size/self.mult:
             raise Exception('When manipulation (flipping/rotating) is on, batch size must be multiple of these manipulations.')
 
         self.dim3 = None # no images added yet!
 
-       
+
         # Placeholder fields to be filled with add_image() method
         self.imgs = [] # first index is image number
         self.img_paddings = []
-        
-        
+
+
         # vectors to create output data (must always keep same order as each other)
         self.img_num = []
         self.rows = []
         self.cols = []
         self.label_list = [] # innie vs outie
         self.labels = None # this is in "categorical" terms, to be added by the first __getitem__ call
-    
-    # Add an image to the dataset (along with mask (innie/outie), AOI) 
+
+    # Add an image to the dataset (along with mask (innie/outie), AOI)
     # Uses add_img_vec after processing 2D data.
     def add_img(self,img, mask, AOI=None):
 
         img = np.copy(img)
-                
+
         shp = np.shape(img)[:2]
         # reshape to 3D (with 3rd dimension 1), and record 2D shape
         #if len(np.shape(img)) == 2:
         assert len(np.shape(img)) == 2
         img = np.reshape(img,(shp[0],shp[1],1))
-        
+
         # generate dummy mask and total AOI if needed
         if mask is None: # if not provided, we just need a space filler
-            mask = np.ones(shp)  
+            mask = np.ones(shp)
         if AOI is None: # if not provided, everything is in the area of interest
-            AOI = np.ones(np.shape(mask))   
+            AOI = np.ones(np.shape(mask))
 
         if (not shp == np.shape(mask)) or (not shp == np.shape(AOI)):
             raise Exception('img, mask, AOI, must have the same 2D shape')
-                                                                     
+
         rowmat,colmat = np.mgrid[0:np.size(img,0),0:np.size(img,1)]
-        
+
         # flatten AOI and check for multiple counts on a single pixel.
         # pixels will be repeated in the generator n = AOI[r,c] times
         AOI = np.ndarray.flatten(AOI)
@@ -95,154 +100,154 @@ class BBinputGenerator(tf.keras.utils.Sequence):
             idx_used += list(np.argwhere(AOIbool))
 
         idx_used = np.ndarray.flatten(np.array(idx_used))
-        
+
         # flatten all matrices, and use AOI to trim/duplicate indicees correctly
         rows = np.ndarray.flatten(rowmat)[idx_used]
         cols = np.ndarray.flatten(colmat)[idx_used]
         labels = np.ndarray.flatten(mask)[idx_used]
-        
+
         # use method below to add the data to the generator!
-        self.add_img_vec(img, rows, cols, labels)     
-        
+        self.add_img_vec(img, rows, cols, labels)
+
         gc.collect()
-    
+
     # Add an image to the dataset (along with rows, columns, and labels of points to generate data from)
     def add_img_vec(self,img, rows, cols, labels):
-        
+
         if (not len(rows)==len(labels)) or (not len(cols) == len(labels)):
             raise Exception('rows, cols, and labels must have the same length L and be Lx1')
-        
+
         shp = np.shape(img)
         if len(shp) == 2:
             self.imgs.append(np.copy(img).reshape(shp[0],shp[1],1))
             shp = np.array([shp[0],shp[1],1])
         else:
             self.imgs.append(np.copy(img))
-          
-      
+
+
         if self.dim3 is None:
             self.dim3 = shp[2]
             self.input_shape = self.S,self.S,self.scales*self.dim3
 
         elif not self.dim3 == shp[2]:
             raise Exception('Added images must have same 3rd dimension: '+str(self.dim3))
-            
+
         #if weights is None:
         #    weights = np.ones(np.shape(rows)).astype(float)
-          
-        
-        # determine how far away the AOI is from the edges of the image 
+
+
+        # determine how far away the AOI is from the edges of the image
         # (for rows and columns separately) then add padding to the image
         toppad = max(self.padding-np.min(rows),0)
         bottompad = max(self.padding-(shp[0]-np.max(rows)),0)
         leftpad = max(self.padding-np.min(cols),0)
         rightpad = max(self.padding-(shp[1]-np.max(cols)),0)
-        padinstruction = ((toppad, bottompad), (leftpad, rightpad),(0,0)) # 3D 
-        
+        padinstruction = ((toppad, bottompad), (leftpad, rightpad),(0,0)) # 3D
+
         self.imgs[-1] = np.pad(self.imgs[-1],padinstruction)
         self.img_paddings.append(padinstruction)
-        
+
         rows = np.array(rows)+toppad # correct rows and columns  (labels are unchanged)
         cols = np.array(cols)+leftpad
-        
-            
-        # add blurred version(s) of image to accomodate easy fetching of scaled up images    
+
+
+        # add blurred version(s) of image to accomodate easy fetching of scaled up images
         # note that padding happens before blurring. However because blurred images are always subsampled
         # at the same frequency as the blur, this order does not effect the eventual outputs.
         baseimg = np.copy(self.imgs[-1])
         for scale in range(1,self.scales): # for every scale except 1 (powers of scalefactor)
-            
+
             n = self.scalefactor**scale
             newimg = np.zeros(np.shape(baseimg))
-            
+
             # blur at many scales and stack (concatenate) the images along the color axis
-            for dim in range(self.dim3):   
+            for dim in range(self.dim3):
                 newimg[:,:,dim] = convolve2d(baseimg[:,:,dim],np.ones((n,n))/(n**2), boundary='symm', mode='same')
-            
+
             self.imgs[-1] = np.concatenate([self.imgs[-1],newimg],axis=2)
-            
-        
+
+
         self.rows = np.concatenate([self.rows,rows], axis=0).astype(int)
         self.cols = np.concatenate([self.cols,cols], axis=0).astype(int)
         self.img_num = np.concatenate([self.img_num,[len(self.imgs)-1 for _ in rows]], axis=0).astype(int)
         self.label_list = np.concatenate([self.label_list, labels], axis=0).astype(int)
-        
+
         self.data_prepared = False # adding more images makes the entire data set no longer prepped!
-    
+
     # returns a 2D map of innie vs outie mask (with any added padding removed)
-    def get_masks(self,idx=0): 
+    def get_masks(self,idx=0):
         out = np.zeros(np.shape(self.imgs[idx])[:2]) # same 2D shape as image, no channels.
         want = self.img_num == idx
         out[self.rows[want],self.cols[want]] = self.label_list[want]
         p = self.get_padding_array(idx)
         return out[p[0]:p[1],p[2]:p[3]]
-    
+
     # returns a 2D map of Area of Interest (AOI) for image idx (with any added padding removed)
-    def get_AOI(self,idx=0): 
+    def get_AOI(self,idx=0):
         out = np.zeros(np.shape(self.imgs[idx])[:2]) # same 2D shape as image, no channels.
         want = self.img_num == idx
         out[self.rows[want],self.cols[want]] = 1
         p = self.get_padding_array(idx)
         return out[p[0]:p[1],p[2]:p[3]]
-    
+
     # returns an input image with any added padding removed
-    def get_img(self,idx=0):      
+    def get_img(self,idx=0):
         p = self.get_padding_array(idx)
         return self.imgs[idx][p[0]:p[1],p[2]:p[3],:self.dim3] # cut out scalings
-    
+
     # returns array with indicees required to remove padding from an image
     def get_padding_array(self,idx):
         p = np.ndarray.flatten(np.array(self.img_paddings[idx]))
         p[1] = np.shape(self.imgs[idx])[0]-p[1]
         p[3] = np.shape(self.imgs[idx])[1]-p[3]
         return p
-    
+
     # normalize all images in this generator -- sends maxval to 0.5 and minval to -0.5
     def normalize_images(self):
         maxval,minval = np.max(self.get_img(0)),np.min(self.get_img(0))
         for idx in range(1,len(self.imgs)):
             maxval = np.max([maxval,np.max(self.get_img(idx))])
             minval = np.min([minval,np.min(self.get_img(idx))])
-        
+
         self.maxval = maxval
         self.minval = minval
-        
+
         #for idx in range(np.shape(self.imgs)[0]):
         for idx in range(len(self.imgs)):
             self.imgs[idx] = (self.imgs[idx]-self.minval)/(self.maxval-self.minval) - 0.5
-        
+
     # returns an array of 2D predictions for each image in self.imgs, based on the model given.
     def get_prediction(self,model):
-        
-        #Models with these features will generate multiple predictions per pixel and will not match with the 
+
+        #Models with these features will generate multiple predictions per pixel and will not match with the
         # internal arrays like self.rows/self.cols. It will be massively inefficient and is thus prevented.
         if self.rotate or self.flip:
             raise Exception('This generator has flips or rotates and should not be used as a prediction generator.')
-        
-        # do the prediction!     
+
+        # do the prediction!
         outputs = model.predict(self)
-        class_vec = outputs[:,1] 
-        
+        class_vec = outputs[:,1]
+
 
         predictions = []
         #for idx in range(np.shape(self.imgs)[0]): # for every image, find predictions
         for idx in range(len(self.imgs)): # for every image, find predictions
             want = self.img_num == idx # identify which elements are for this image
-            dummy_img = np.zeros(np.shape(self.imgs[idx])[:2]) 
+            dummy_img = np.zeros(np.shape(self.imgs[idx])[:2])
             dummy_img[self.rows[want],self.cols[want]] = class_vec[want] # place predictions in 2D
 
             # remove padding
             p = np.ndarray.flatten(np.array(self.img_paddings[idx]))
             p[1] = np.shape(self.imgs[idx])[0]-p[1]
             p[3] = np.shape(self.imgs[idx])[1]-p[3]
-            
+
             # add to overall output array
             predictions.append(dummy_img[p[0]:p[1],p[2]:p[3]])
-           
+
         return predictions
-        
+
     def shuffle(self):
-        
+
         ordr = np.arange(len(self.rows))
         np.random.shuffle(ordr)
 
@@ -250,45 +255,45 @@ class BBinputGenerator(tf.keras.utils.Sequence):
         self.rows = self.rows[ordr]
         self.cols = self.cols[ordr]
         self.img_num = self.img_num[ordr]
-        
- 
+
+
     # return the number of batches to pull for an epoch of training
     def __len__(self):
         return np.ceil(self.mult*len(self.label_list)/self.batch_size).astype(int)
-  
+
     # return a batch of data. This may include rotations and flips, as well as multiple channels and/or scales
     def __getitem__(self, idx00):
-        
+
         self.getcount += 1
         if self.getcount >= self.maxgetcount:
             gc.collect()
             self.getcount=0
-        
+
         if not self.data_prepared: # happens only on the first call.
 
             self.label_list = self.label_list>0        # create binary categorization
-            
+
             if self.randomize: # if randomization is in the cards, deal.
                 self.shuffle()
-        
+
             self.labels = to_categorical(self.label_list) # make Keras-friendly labels
-            
+
             self.data_prepared = True # data is now prepped.
-        
-        
+
+
         # identify what the unique index and number of unique elements in the batch is (repeats are flips/rots)
         idx0 = idx00/self.mult
         batch = self.batch_size/self.mult
-        
+
         # Indices of the data to be pulled.
         # Repeat self.mult times and sort to give an ordered list [32,32,...,32,83,83...,83,120,...]
         vec = sorted(np.repeat(np.arange((idx0*batch),np.min([(idx0+1)*batch,len(self.labels)]),dtype='int'),self.mult))
 
         # Scales to pull. If self.scales=1, this will just be 1.
         scalevec = np.power(self.scalefactor,np.arange(self.scales)) # e.g. 1,2,4,8, etc
-     
-        # create stacked image output. 
-        # Images may have multiple channels (e.g. colors) and scales: these are stacked in the same dimension (3 in this stack). 
+
+        # create stacked image output.
+        # Images may have multiple channels (e.g. colors) and scales: these are stacked in the same dimension (3 in this stack).
         # There will also be self.mult repeats of every such color and scale stack (for later rotation/flipping).
         # Output stack dimensions are [self.batch_size,self.S,self.S,self.dim3*self.scales] with [batch] unique elements.
 
@@ -298,7 +303,7 @@ class BBinputGenerator(tf.keras.utils.Sequence):
                              self.cols[idx]-self.S2*s:self.cols[idx]+self.S2*s+1:s, \
                              self.dim3*snum:self.dim3*(snum+1)].reshape(self.S,self.S,self.dim3) \
                 for s,snum in zip(scalevec,range(self.scales))], axis=2) for idx in vec] ,axis=0)
-                     
+
         # If rotations/flips are used, go through stack and modify unaltered images to create these new data.
         if self.flip or self.rotate:
             multiscaledim3= self.scales*self.dim3
@@ -307,18 +312,18 @@ class BBinputGenerator(tf.keras.utils.Sequence):
             for idx in range(len(vec)):
                 # reshape image so that it can use numpy rotation/flip functions
                 snap = self.outstack[idx,:,:,:].reshape(self.S,self.S,multiscaledim3)
-                
+
                 # rotate 90 degrees for every additional index (stack is sorted by index, so this achieves desired effect)
                 if self.rotate:
                     snap = np.rot90(snap,idx%4)
-                
+
                 # flip half of the images if self.flip
                 if self.flip and (idx%self.mult)>=self.mult/2:
                     snap = np.fliplr(snap)
-                    
+
                 # reshape to put back into stack
-                self.outstack[idx,:,:,:] = snap.reshape([1,self.S,self.S,multiscaledim3])       
-        
+                self.outstack[idx,:,:,:] = snap.reshape([1,self.S,self.S,multiscaledim3])
+
         return  np.copy(self.outstack), np.array(self.labels[vec])
 
 
@@ -649,11 +654,11 @@ def generate_network(input_shape):
 
 
 def CreateGenerator(img_path, root, param, want=None, count=-1, train_test_predict=0, index = -1, chatter = False):
-    
+
     # determine type of generator
     if train_test_predict == 0: # training generator: include manipulations of data and shuffle data
         flip,rotate,randomize = param['flips'],param['rotations'],True
-    elif train_test_predict == 1 or train_test_predict == 2: # testing/prediction generator: leave data alone 
+    elif train_test_predict == 1 or train_test_predict == 2: # testing/prediction generator: leave data alone
         flip,rotate,randomize = False,False,False
     else:
         raise Exception('train_test_predict parameter must be 0 (training), 1 (testing), or 2 (predicting).')
@@ -664,10 +669,10 @@ def CreateGenerator(img_path, root, param, want=None, count=-1, train_test_predi
                                       scales=param['scales'], \
                                       scalefactor=param['scalefactor'], \
                                       flip=flip, rotate=rotate, randomize=randomize,)
-    
+
     # load images specified in inputs
     img_names = get_image_list(img_path, want=want, count=count)
-    
+
     if train_test_predict == 0 and len(img_names)==0:
         raise Exception('Attempt to create training generator without any images!')
 
@@ -679,9 +684,9 @@ def CreateGenerator(img_path, root, param, want=None, count=-1, train_test_predi
     imgs = load_image_list(img_path, img_names, RGB_to_gray=param['images_to_grayscale'], chatter = chatter)
     if chatter:
         print('[BB] -- '+img_path+' images: '+list_imgs_and_sizes(img_names,imgs))
-        
+
     # if training or testing, we need masks, find names
-    if train_test_predict < 2: 
+    if train_test_predict < 2:
         mask_folder = root+'/masks' #!!!!!!!!!!!!!!!!!!
         assert os.path.exists(mask_folder)
         mask_names = find_matching_masks(img_names, get_image_list(mask_folder))
@@ -690,41 +695,41 @@ def CreateGenerator(img_path, root, param, want=None, count=-1, train_test_predi
             print('[BB] -- '+root+' masks: '+list_imgs_and_sizes(mask_names,masks))
     else:
         masks = [None for k in imgs]
-        
+
     # look for AOIs, load them (allow only 1's and 0's)
     AOI_folder = root+'/areas_of_interest' #!!!!!!!!!!!!!!!!!!
     if not os.path.exists(AOI_folder):
         os.mkdir(AOI_folder)
-        
+
     AOI_names = find_matching_masks(img_names, get_image_list(AOI_folder), raise_issues=False,use_default=True)
-    AOIs = load_image_list(AOI_folder, AOI_names, binarize=True)  
-    
+    AOIs = load_image_list(AOI_folder, AOI_names, binarize=True)
+
     # for all non-defined AOIs, assume entire image is fair game
-    for k,img in enumerate(imgs): 
+    for k,img in enumerate(imgs):
         if AOIs[k] is None:
             AOIs[k] = np.ones(np.shape(img))
 
     if chatter:
         print('[BB] -- '+root+' AOIs: '+list_imgs_and_sizes(AOI_names,AOIs))
-    
+
     # Enforce specified fraction of data if training set
     if train_test_predict == 0:
         AOIs = fractionalize_AOI(masks, AOIs, param['fraction'],param['balance_classes'])
 
-        
+
     # if there are masks and track_outies flag is true, alert user and invert masks
     if param['track_outies'] and np.sum([not m is None for m in masks])>0:
         if chatter:
             print('[BB] -- Inverting masks to track zero-valued pixels.')
         masks = [1*(m == 0) if (not m is None) else None for m in masks]
-    
+
     # create HP inputs
     for k,img in enumerate(imgs):
         #dataGenerator.add_ID_img(img, mask=masks[k], AOI=AOIs[k], neighborhood_radius=param['border_radius'], particle_border_mult=param['particle_border_weighting'], two_particle_mult=param['two_particle_border_weighting'],  img_edge_mult = param['image_border_weighting'])
         dataGenerator.add_img(img, mask=masks[k], AOI=AOIs[k])#, neighborhood_radius=param['border_radius'])
-    
+
     dataGenerator.normalize_images()
-    
+
     return dataGenerator, img_names
 
 #Dictionary key for text and variable translation for image_dict, used in SegmentPrediction, UpdateAccTable, SaveImage and SaveMatrix functions
@@ -821,7 +826,7 @@ class deeplearner:
             self.params = params
         elif isinstance(params, str):
             self.params = load_parameters(self.root + '/' + params, param_types)
-            
+
         # Training batch size must be correct multiple when using rotations/flips
         unique_in_batch = self.params['batch_size']/((1+3*self.params['rotations'])*(1+self.params['flips']))
         if not unique_in_batch == int(unique_in_batch):
@@ -830,22 +835,22 @@ class deeplearner:
         # input window size must be big enough for selected network
         if not self.params['s_half'] >= 9:
             raise Exception('Input window size must be at least 9 pixels in radius.')
-        
+
         self.train_img_count = train_img_count
         self.test_img_count = test_img_count
-        
+
         if not os.path.exists(self.model_dir):
             os.mkdir(self.model_dir)
-            
+
         self.output_dir = self.root + '/' + model_dir
         self.parameter_filename = self.output_dir+'/parameters'
         self.HP_weight_filename = self.output_dir+'/networkweights.weights.h5'
         self.normalization_filename = self.output_dir+'/normalization'
-        
+
         S = self.params['s_half']*2+1
         img_shapes = [S,S,self.params['scales']*self.params['dim3']]
         self.modelHP = generate_network(img_shapes)
-        
+
     def train(self, override_param=None):
         #Adjust loaded (old) parameters to match any input (new) parameters
         if override_param is not None:
@@ -864,19 +869,19 @@ class deeplearner:
                                         train_test_predict=1)
         else:
             test_genHP = None
-            
+
         print('[BB] Training Neural Network')
         if not include_test_in_training:
             print('[BB] -- Excluding test images from .fit function. Test set results available at end.')
-        
+
         # save parameters
         save_parameters(self.parameter_filename,list(self.params.keys()),list(self.params.values()))
         save_parameters(self.normalization_filename,['img_max', 'img_min'],[train_genHP.maxval, train_genHP.minval])
-        
+
         cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=self.HP_weight_filename, verbose=1, save_weights_only=True)
-    
+
         self.modelHP.fit(train_genHP, validation_data=test_genHP, epochs=self.params['train_epochs'],callbacks=[cp_callback])
-        
+
         # garbage collect
         del train_genHP
         del test_genHP
@@ -886,15 +891,15 @@ class deeplearner:
         if chkpt_filepath is None:
             chkpt_filepath = self.HP_weight_filename
         self.modelHP.load_weights(chkpt_filepath)
-        
 
-    def predict(self, network, predict_path=None):    
-        
+
+    def predict(self, network, predict_path=None):
+
         HP_output_folder = network.stack_dir
-            
+
         if predict_path is None:
             predict_path = network.dir
-        
+
         more_data = True
         index = 0
         while more_data:
@@ -903,17 +908,17 @@ class deeplearner:
 
                 #Predict(self.params, self.modelHP, all_genHP, HP_output_folder, img_names)
                 BBpredictions = all_genHP.get_prediction(self.modelHP)
-                    
+
                     #images_to_save = convert_param_to_outputs(param)
-                    
+
                     #image_dict = {}
                 for k, BBout in enumerate(BBpredictions):
                     self.BBout = BBout
                     _binarized = np.array(BBout>0.5)
                     cv2.imwrite(network.stack_dir+'/slice0000.tiff',np.array(BBout>0.5, dtype=np.uint8)*255)
                     #SaveImage(BB_output_folder,names[k],image_dict,images_to_save)
-                        
-                 
+
+
                 print('[BB] -- Generated Prediction Image Result '+str(index)+': '+img_names[0])
 
                 index+=1

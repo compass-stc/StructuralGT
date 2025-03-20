@@ -2,18 +2,6 @@
 # This file is from the StructuralGT project, released under the BSD 3-Clause
 # License.
 
-#
-# This file is from the StructuralGT project, released under the BSD 3-Clause
-# License.
-
-#
-# This file is from the StructuralGT project, released under the BSD 3-Clause
-# License.
-
-#
-# This file is from the StructuralGT project, released under the BSD 3-Clause
-# License.
-
 import os
 import time
 

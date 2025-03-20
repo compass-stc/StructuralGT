@@ -17,7 +17,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy
-from deeplearner import deeplearner
 from matplotlib.colorbar import Colorbar
 from skimage.morphology import skeletonize
 
@@ -129,16 +128,21 @@ class Network:
         if not os.path.isdir(self.dir + self.binarized_dir):
             os.mkdir(self.dir + self.binarized_dir)
 
-        if isinstance(options, deeplearner):
-            options.predict(self)
-            return
-        elif isinstance(options, str):
+        if isinstance(options, str):
             options = self.dir + "/" + options
             with open(options) as f:
                 options = json.load(f)
         elif not isinstance(options, dict):
-            raise TypeError("The options argument must be a str, dict, or \
-            deeplearner")
+            try:
+                from StructuralGT.deeplearner import deeplearner
+                options.predict(self)
+                return
+            except ImportError:
+                raise TypeError(
+                    "The options argument must be a str, dict, or "
+                    "deeplearner. If it is a deeplearner, you must have "
+                    "tensorflow installed."
+                    )
 
         for _, name in self.image_stack:
             fname = _fname(self.dir + "/" + name, _2d=self._2d)

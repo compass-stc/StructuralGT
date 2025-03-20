@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'StructuralGT'
-copyright = '2023, Reagents of the University of Michigan'
+copyright = '2023, Regents of the University of Michigan'
 author = 'Alain Kadar'
 release = '2.0'
 
