@@ -10,7 +10,7 @@ import warnings
 from collections.abc import Sequence
 
 import cv2 as cv
-#import freud
+import freud
 import gsd.hoomd
 import igraph as ig
 import matplotlib as mpl
@@ -125,16 +125,24 @@ class Network:
                 specified, the network's parent directory will be searched for
                 a file called img_options.json, containing the options.
         """
+        if not os.path.isdir(self.dir + self.binarized_dir):
+            os.mkdir(self.dir + self.binarized_dir)
 
         if isinstance(options, str):
             options = self.dir + "/" + options
             with open(options) as f:
                 options = json.load(f)
         elif not isinstance(options, dict):
-            raise TypeError("The options argument must be a str or dict")
-
-        if not os.path.isdir(self.dir + self.binarized_dir):
-            os.mkdir(self.dir + self.binarized_dir)
+            try:
+                from StructuralGT.deeplearner import deeplearner
+                options.predict(self)
+                return
+            except ImportError:
+                raise TypeError(
+                    "The options argument must be a str, dict, or "
+                    "deeplearner. If it is a deeplearner, you must have "
+                    "tensorflow installed."
+                    )
 
         for _, name in self.image_stack:
             fname = _fname(self.dir + "/" + name, _2d=self._2d)
@@ -147,8 +155,6 @@ class Network:
                 img_bin,
                 cmap=mpl.cm.gray,
             )
-
-        self.options = options
 
     def set_img_bin(self, crop):
         """Sets the :attr:`img_bin` and :attr:`img_bin_3d` attributes, which
@@ -214,7 +220,7 @@ class Network:
                 :code:`VariableWidthConductance`,
                 :code:`PerpBisector`.
         """
-        
+
         if not hasattr(self, '_skeleton'):
             raise AttributeError("Network has no skeleton. You should call \
                                  img_to_skel before calling set_graph.")

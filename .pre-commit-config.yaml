@@ -1,7 +1,11 @@
 ci:
   autoupdate_schedule: quarterly
 
-exclude: (?:^extern/)
+exclude: |
+  (?x)^(
+      extern/ |
+      StructuralGT/deeplearner.py
+  )$
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

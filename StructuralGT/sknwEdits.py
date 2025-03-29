@@ -2,10 +2,8 @@
 # This file is from the StructuralGT project, released under the BSD 3-Clause
 # License.
 
-#
-# This file is from the StructuralGT project, released under the BSD 3-Clause
-# License.
-
+# Much of this file is adapted from the sknw repository at
+# https://github.com/Image-Py/sknw
 import igraph as ig
 import numpy as np
 
