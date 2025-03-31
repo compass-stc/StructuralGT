@@ -7,7 +7,7 @@ Betweenness
 .. autosummary::
     :nosignatures:
 
-    StructuralGT.betweenness.Betweenness
+    StructuralGT.betweenness
 
 .. rubric:: Details
 

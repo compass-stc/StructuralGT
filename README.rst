@@ -46,5 +46,9 @@ For a tutorial on the software's use, consult our
 Documentation
 =============
 To extend the above examples to novel analysis in your own work, you should
-consult the documentation, which is avaiable at ... . You can also build the
-documentation from source.
+consult the documentation. You can also build the documentation from source:
+
+.. code:: bash
+
+   conda install sphinx furo nbsphinx jupyter_sphinx sphinxcontrib-bibtex sphinx-copybutton
+   sphinx-build -b html doc html

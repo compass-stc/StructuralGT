@@ -7,7 +7,7 @@ Structural
 .. autosummary::
     :nosignatures:
 
-    StructuralGT.structural.Structural
+    StructuralGT.structural
 
 .. rubric:: Details
 
