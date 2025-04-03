@@ -67,7 +67,7 @@ stick_options = {
 def fibrous(weight_type=None):
     ANF = Network("StructuralGT/pytest/data/ANF", prefix="slice", dim=3)
     ANF.binarize(options=anf_options)
-    ANF.img_to_skel(crop=[200, 300, 200, 300, 1, 3])
+    ANF.img_to_skel(crop=[200, 300, 200, 300, 281, 288])
     ANF.set_graph(weight_type=weight_type)
 
     return ANF

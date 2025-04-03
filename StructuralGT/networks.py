@@ -73,7 +73,7 @@ class Network:
         self.binarized_dir = "/" + binarized_dir
         self.stack_dir = os.path.normpath(self.dir + self.binarized_dir)
         self.depth = depth
-        self.dim = 2
+        self.dim = dim
         if self.dim == 2:
             self._2d = True
         else:
@@ -85,6 +85,7 @@ class Network:
 
         image_stack = _image_stack()
         for slice_name in sorted(os.listdir(self.dir)):
+            if not base.Q_img(slice_name): continue
             fname = _fname(
                 self.dir + "/" + slice_name,
                 domain=_domain(depth),
@@ -176,6 +177,7 @@ class Network:
 
         i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
+            if not base.Q_img(fname): continue
             fname = _fname(
                 self.stack_dir + "/" + fname,
                 domain=_domain(self.cropper._3d),
