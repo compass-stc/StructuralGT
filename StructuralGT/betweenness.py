@@ -5,11 +5,18 @@
 import copy
 
 import numpy as np
+from StructuralGT.util import _Compute
+import StructuralGT
+
+if StructuralGT.__C_FLAG__ is False:
+    raise RuntimeError("The betweenness module was never"
+                       " compiled. Try resinstalling StructuralGT, ensuring"
+                       " that the C_FLAG environment variable is not set to"
+                       " False.")
 
 from StructuralGT import (_boundary_betweenness_cast,
                           _random_boundary_betweenness_cast,
                           _vertex_boundary_betweenness_cast)
-from StructuralGT.util import _Compute
 
 class NodeBetwenness(_Compute):
     """Module for conventional vertex betweenness."""

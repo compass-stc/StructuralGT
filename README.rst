@@ -16,7 +16,7 @@ architectures. Install with
    conda install conda-forge::structuralgt
 
 **StructuralGT** can also be built from source, via the
-[public repository](https://github.com/compass-stc/StructuralGT).
+`public repository <https://github.com/compass-stc/StructuralGT>`__.
 Prior to install, you will need to install some dependencies into your conda
 environment. Note that installation will most likely be
 successful if carried out in a new conda environment. While it is posisble to
@@ -30,6 +30,20 @@ sucessful when all dependencies are obtained with conda.
    cd StructuralGT
    python3 -m pip install . --no-deps
 
+Alternatively, if building from source gives errors related to igraph, you can
+build a python-only version of StructuralGT that skips compiling some of the
+C modules used for fast calculations (AverageNodalConnectivity and
+Betweenness).
+
+.. code:: bash
+
+   git clone https://github.com/compass-stc/StructuralGT.git
+   conda install -c conda-forge numpy scipy scikit-image matplotlib networkx opencv pandas gsd python-igraph pytest ipywidgets freud
+   cd StructuralGT
+   export C_FLAG=FALSE
+   python3 -m pip install . --no-deps
+
+
 You can verify successful installation by installing pytest and running the
 included tests:
 
@@ -41,7 +55,7 @@ included tests:
 Examples
 ========
 For a tutorial on the software's use, consult our
-[examples repository](https://github.com/compass-stc/StructuralGT-Examples).
+`examples repository <https://github.com/compass-stc/StructuralGT-Examples>`__.
 
 Documentation
 =============

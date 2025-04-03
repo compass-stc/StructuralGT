@@ -4,8 +4,16 @@
 
 import copy
 
-from StructuralGT import _average_nodal_connectivity_cast
+import StructuralGT
 from StructuralGT.util import _Compute
+
+if StructuralGT.__C_FLAG__ is False:
+    raise RuntimeError("The average nodal connectivity module was never"
+                       " compiled. Try resinstalling StructuralGT, ensuring"
+                       " that the C_FLAG environment variable is not set to"
+                       " False.")
+
+from StructuralGT import _average_nodal_connectivity_cast
 
 
 class AverageNodalConnectivity(_Compute):

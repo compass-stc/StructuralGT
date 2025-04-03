@@ -2,3 +2,4 @@
 __pycache__
 build
 StructuralGT/pytest/data/
+StructuralGT/metadata.json

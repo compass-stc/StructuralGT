@@ -8,7 +8,7 @@ requires = ["setuptools",
 ]
 
 [project]
-name = "StructuralGT-API"
+name = "StructuralGT"
 version = "0.0.1"
 dependencies = [
         'numpy>=2.0',
@@ -18,7 +18,6 @@ dependencies = [
         'networkx',
         'opencv-python',
         'pandas',
-        'Cython>=3.0.11',
         'gsd>=3.0.0',
         'python-igraph',
         'eigen',
@@ -26,17 +25,7 @@ dependencies = [
         'cmake',
         'freud-analysis>=3.1.0',
         'ipywidgets',
-	'tbb',
-	'tbb-devel' 
 ]
-
-#[tool.setuptools]
-#ext-modules = [
-#  {name = "StructuralGT._boundary_betweenness_cast", sources = ["_boundary_betweenness_cast.cpp"]},
-#  {name = "StructuralGT._vertex_boundary_betweenness_cast", sources = ["_vertex_boundary_betweenness_cast.cpp"]},
-#  {name = "StructuralGT._random_boundary_betweenness_cast", sources = ["_random_boundary_betweenness_cast.cpp"]},
-#  {name = "StructuralGT._average_nodal_connectivity_cast", sources = ["_average_nodal_connectivity_cast.cpp"], language="c++"},
-#]
 
 [tool.ruff]
 include = ["*.py", "*.ipynb"]

@@ -42,7 +42,6 @@ void BoundaryBetweennessCast::boundary_betweenness_compute() {
   igraph_real_t *weights_arr = (double *)weights_ptr;
   igraph_vector_init_array(&weights_vec, weights_arr, num_edges);
 
-  // printf("Running\n");
   igraph_edge_betweenness_subset(
       g, &res,                             /*igraph_vector_t *res*/
       igraph_ess_all(IGRAPH_EDGEORDER_ID), /*igraph_es_t eids*/
