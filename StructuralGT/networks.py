@@ -633,7 +633,7 @@ class Network:
         )
 
         if _parameter:
-            cb = colorbar(sp)
+            cb = colorbar(sp, ax)
             cb.set_label("Value")
 
         return ax
