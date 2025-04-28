@@ -2,6 +2,8 @@
 # This file is from the StructuralGT project, released under the BSD 3-Clause
 # License.
 
+"""Mocked module for use in documentation builds."""
+
 import copy
 
 import numpy as np
