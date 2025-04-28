@@ -1,6 +1,9 @@
 version: 2
 build:
   os: ubuntu-24.04
+  apt_packages:
+    - libigraph-dev
+    - libeigen3-dev
   tools:
     python: "mambaforge-23.11"
   jobs:
