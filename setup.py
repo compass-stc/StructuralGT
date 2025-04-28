@@ -24,6 +24,8 @@ if metadata['C_FLAG']:
         PRE_PREFIX = os.getenv("MAMBA_ROOT_PREFIX")
     else:
         PRE_PREFIX = os.getenv("CONDA_PREFIX")
+    if os.getenv("CONDA_ENVS_PATH") is not None:
+        PRE_PREFIX = os.getenv("CONDA_ENVS_PATH")
 
     if platform.system() == "Windows":
         PREFIX = os.path.join(PRE_PREFIX, "Library")
