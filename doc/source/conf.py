@@ -3,6 +3,9 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import sys
+import os
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -18,6 +21,8 @@ extensions = [
  "sphinx.ext.autosummary",
  "sphinxcontrib.bibtex",
 ]
+
+sys.path.insert(0, os.path.abspath("../../"))
 
 # For sphinxcontrib.bibtex (as of v2.0).
 bibtex_bibfiles = ["reference/StructuralGT.bib"]
@@ -37,3 +42,8 @@ autodoc_default_options = {
  "inherited-members": True,
  "show-inheritance": True,
 }
+
+autodoc_mock_imports = [
+        "StructuralGT.average_nodal_connectivity",
+        "StructuralGT.betweenness",
+        ]

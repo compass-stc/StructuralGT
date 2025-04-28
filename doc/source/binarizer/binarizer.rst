@@ -7,10 +7,10 @@ Binarizer
 .. autosummary::
     :nosignatures:
 
-    StructuralGT.binarizer.Binarizer
+    StructuralGT.binarizer
 
 .. rubric:: Details
 
-.. automodule:: StructuralGT.binarizer.Binarizer
+.. automodule:: StructuralGT.binarizer
     :synopsis: Real time image processing
     :members:
