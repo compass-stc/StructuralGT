@@ -20,13 +20,17 @@ with open('StructuralGT/metadata.json', 'w') as json_file:
     json.dump(metadata, json_file)
 
 if metadata['C_FLAG']:
+    if os.getenv("CONDA_PREFIX") is None:
+        PRE_PREFIX = os.getenv("MAMBA_ROOT_PREFIX")
+    else:
+        PRE_PREFIX = os.getenv("CONDA_PREFIX")
+
     if platform.system() == "Windows":
-        PREFIX = os.path.join(os.getenv("CONDA_PREFIX"), "Library")
+        PREFIX = os.path.join(PRE_PREFIX, "Library")
         extra_obj = os.path.join(PREFIX, "lib", "igraph.lib")
         freud = "freud-analysis"
     else:
-        PREFIX = os.getenv("CONDA_PREFIX")
-        # PREFIX="/Users/alaink/miniconda3/envs/SGTE-dev/"
+        PREFIX = PRE_PREFIX
         extra_obj = "-ligraph"
         freud = "freud"
 
