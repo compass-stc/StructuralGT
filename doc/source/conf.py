@@ -41,8 +41,3 @@ autodoc_default_options = {
  "inherited-members": True,
  "show-inheritance": True,
 }
-
-autodoc_mock_imports = [
-        "StructuralGT.average_nodal_connectivity",
-        "StructuralGT.betweenness",
-        ]
