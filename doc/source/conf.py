@@ -30,6 +30,12 @@ bibtex_bibfiles = ["reference/StructuralGT.bib"]
 templates_path = ["_templates"]
 exclude_patterns = []
 
+autodoc_mock_imports = [
+        "StructuralGT._average_nodal_connectivity_cast",
+        "StructuralGT._boundary_betweenness_cast",
+        "StructuralGT._random_boundary_betweenness_cast",
+        "StructuralGT._vertex_boundary_betweenness_cast",
+        ]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

@@ -6,9 +6,8 @@ Table of Contents
 .. toctree::
    :maxdepth: 2
    :caption: Getting started
-   
+
    gettingstarted/introduction
-   gettingstarted/quickstart
 
 .. toctree::
    :maxdepth: 3
