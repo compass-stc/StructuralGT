@@ -9,7 +9,7 @@ A python package for the extraction and analysis of graphs from 2D and 3D experi
 Installation guide
 ==================
 **StructuralGT** is available on conda-forge for the *linux-64*, *osx-64*, and *win-64*
-architectures. Install with
+platforms. Install with
 
 .. code:: bash
 
@@ -52,16 +52,63 @@ included tests:
    conda install pytest
    pytest
 
-Examples
-========
-For a tutorial on the software's use, consult our
+Quickstart and examples repository
+==================================
+
+To showcase the API, here is a simple example script used to predict the sheet resistance of silver nanowires, used in our recent publication :cite:`WuKadar2025`
+To learn how to implement this yourself, consult our
 `examples repository <https://github.com/compass-stc/StructuralGT-Examples>`__.
+
+.. code:: python
+
+   from StructuralGT.electronic import Electronic
+   from StructuralGT.networks import Network
+
+   agnwn_options = {"Thresh_method": 0, "gamma": 1.001, "md_filter": 0,
+                    "g_blur":0, "autolvl": 0, "fg_color": 0, "laplacian": 0,
+                    "scharr": 0, "sobel": 0, "lowpass": 0, "asize": 3,
+                    "bsize": 1, "wsize": 1, "thresh": 128.0}
+
+   AgNWN = Network('AgNWN')
+   AgNWN.binarize(options_dict=agnwn_options)
+   AgNWN.img_to_skel()
+   AgNWN.set_graph(weight_type= ['FixedWidthConductance'])
+
+   width = AgNWN.image.shape[0]
+   elec_properties = Electronic()
+   elec_properties.compute(AgNWN, 0, 0, [[0,50],[width-50, width]])
 
 Documentation
 =============
 To extend the above examples to novel analysis in your own work, you should
-consult the documentation. You can also build the documentation from source:
+consult our `documentation <https://structuralgt.readthedocs.io/>`__.
+You can also build the documentation from source, which requires the following dependencies:
 
+- `Sphinx <http://www.sphinx-doc.org/>`_
+- `The furo Sphinx Theme <https://pradyunsg.me/furo/>`_
+- `nbsphinx <https://nbsphinx.readthedocs.io/>`_
+- `jupyter_sphinx <https://jupyter-sphinx.readthedocs.io/>`_
+- `sphinxcontrib-bibtex <https://sphinxcontrib-bibtex.readthedocs.io/>`_
+
+You can install these dependencies using conda:
+
+.. code-block:: bash
+
+    conda install -c conda-forge sphinx furo nbsphinx jupyter_sphinx sphinxcontrib-bibtex
+
+or pip:
+
+.. code-block:: bash
+
+    pip install sphinx sphinx-rtd-theme nbsphinx jupyter-sphinx sphinxcontrib-bibtex
+
+To build the documentation, run the following commands in the source directory:
+
+.. code-block:: bash
+
+    cd doc
+    make html
+    # Then open build/html/index.html
 .. code:: bash
 
    conda install sphinx furo nbsphinx jupyter_sphinx sphinxcontrib-bibtex sphinx-copybutton
