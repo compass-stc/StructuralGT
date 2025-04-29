@@ -8,12 +8,10 @@ Table of Contents
    :caption: Getting started
    
    gettingstarted/introduction
-   gettingstarted/installation
    gettingstarted/quickstart
-   gettingstarted/examples
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: API
 
    binarizer/binarizer
