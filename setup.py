@@ -20,10 +20,10 @@ with open('StructuralGT/metadata.json', 'w') as json_file:
     json.dump(metadata, json_file)
 
 if metadata['C_FLAG']:
-    if os.getenv("CONDA_PREFIX") is None:
-        PRE_PREFIX = os.path.join(os.getenv("CONDA_ENVS_PATH"), "latest")
-    else:
+    if os.getenv("CONDA_PREFIX") is not None:
         PRE_PREFIX = os.getenv("CONDA_PREFIX")
+    else:
+        PRE_PREFIX = os.path.join(os.getenv("CONDA_ENVS_PATH"), "latest")
 
     if platform.system() == "Windows":
         PREFIX = os.path.join(PRE_PREFIX, "Library")
