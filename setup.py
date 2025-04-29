@@ -20,7 +20,7 @@ with open('StructuralGT/metadata.json', 'w') as json_file:
     json.dump(metadata, json_file)
 
 if metadata['C_FLAG']:
-    if os.getenv("CONDA_ENVS_PATH") is not None:
+    if os.getenv("CONDA_PREFIX") is None:
         PRE_PREFIX = os.path.join(os.getenv("CONDA_ENVS_PATH"), "latest")
     else:
         PRE_PREFIX = os.getenv("CONDA_PREFIX")
