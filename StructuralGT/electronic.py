@@ -18,6 +18,15 @@ class Electronic(_Compute):
                 sink=-2):
         """
         Args:
+            network (:class:`Network`)
+                The network to compute properties of.
+            R_j (float):
+                Resistance associated with the nanowire junction.
+            axis (int):
+                The axis along which to calculate effective resistance.
+            boundary_conditions (list[int]):
+                The start/end dimensions of the nodes connected to charge
+                source/sink. E.g. :code:`[[0,50],[950,1000]]`. 
             source (int, optional):
                 Source node id.
             sink (int, optional):
