@@ -10,8 +10,6 @@ updates:
   pull-request-branch-name:
     separator: "-"
   open-pull-requests-limit: 2
-  reviewers:
-  - AlainKadar
   groups:
     actions-version:
       applies-to: version-updates
