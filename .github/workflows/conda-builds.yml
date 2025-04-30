@@ -13,10 +13,10 @@ jobs:
 
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v4.2.2
 
     - name: Create Testing Environment
-      uses: conda-incubator/setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v3
       with:
         python-version: ${{ matrix.python-version }}
         environment-file: .github/workflows/conda-envs/env.yml
