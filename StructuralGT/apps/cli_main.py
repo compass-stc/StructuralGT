@@ -8,10 +8,10 @@ import time
 import os
 import logging
 
-from StructuralGT import get_num_cores
-from StructuralGT import NetworkProcessor
-from StructuralGT import FiberNetworkBuilder
-from StructuralGT import GraphAnalyzer
+from StructuralGT.utils.sgt_utils import get_num_cores
+from StructuralGT.imaging.network_processor import NetworkProcessor
+from StructuralGT.networks.fiber_network import FiberNetworkBuilder
+from StructuralGT.metrics.graph_analyzer import GraphAnalyzer
 
 
 def terminal_app():

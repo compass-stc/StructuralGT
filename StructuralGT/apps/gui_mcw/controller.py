@@ -25,10 +25,10 @@ from .checkbox_model import CheckBoxModel
 from .qthread_worker import QThreadWorker, WorkerTask
 
 from StructuralGT import __version__
-from StructuralGT import NetworkProcessor, ALLOWED_IMG_EXTENSIONS
-from StructuralGT import FiberNetworkBuilder, COMPUTING_DEVICE
-from StructuralGT import GraphAnalyzer
-from StructuralGT import img_to_base64
+from StructuralGT.imaging.network_processor import NetworkProcessor, ALLOWED_IMG_EXTENSIONS
+from StructuralGT.networks.fiber_network import FiberNetworkBuilder, COMPUTING_DEVICE
+from StructuralGT.metrics.graph_analyzer import GraphAnalyzer
+from StructuralGT.utils.sgt_utils import img_to_base64
 
 
 class MainController(QObject):

@@ -16,7 +16,7 @@ if StructuralGT.__C_FLAG__ is False:
                        " that the C_FLAG environment variable is not set to"
                        " False.")
 
-from StructuralGT import (_boundary_betweenness_cast,
+from .cython import (_boundary_betweenness_cast,
                           _random_boundary_betweenness_cast,
                           _vertex_boundary_betweenness_cast)
 

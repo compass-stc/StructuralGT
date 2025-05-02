@@ -9,13 +9,10 @@ import time
 import igraph
 import warnings
 import cv2 as cv
-# import gsd.hoomd
-# import igraph as ig
 import networkx as nx
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-# import scipy
 from matplotlib.colorbar import Colorbar
 from skimage.morphology import skeletonize
 from mpl_toolkits.axes_grid1 import make_axes_locatable

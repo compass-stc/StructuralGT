@@ -13,7 +13,7 @@ if StructuralGT.__C_FLAG__ is False:
                        " that the C_FLAG environment variable is not set to"
                        " False.")
 
-from StructuralGT import _average_nodal_connectivity_cast
+from .cython import _average_nodal_connectivity_cast
 
 
 class AverageNodalConnectivity(_Compute):

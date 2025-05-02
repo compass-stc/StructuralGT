@@ -3,6 +3,7 @@
 # License.
 
 import numpy as np
+import gsd.hoomd
 
 
 # USED IN "ROTATE"?
@@ -117,3 +118,58 @@ def isinside(points, crop):
             ):
                 return False
             return True
+
+
+def connector(point1, point2):
+    """For 2 points on a lattice, this function returns the lattice points
+    which join them
+
+    Args:
+        point1 (list[int]):
+            Coordinates of the first point.
+        point2 (list[int]):
+            Coordinates of the second point.
+
+    Returns:
+        :class:`numpy.ndarray`: Array of lattice points connecting point1
+        and point2
+    """
+    vec = point2 - point1
+    edge = np.array([point1])
+    for i in np.linspace(0, 1):
+        edge = np.append(edge,
+                         np.array([point1 + np.multiply(i, vec)]), axis=0)
+    edge = edge.astype(int)
+    edge = np.unique(edge, axis=0)
+
+    return edge
+
+
+def G_to_gsd(G, gsd_name, box=False):
+    """Remove?"""
+    dim = len(G.vs[0]["o"])
+
+    positions = np.asarray(list(G.vs[i]["o"] for i in range(G.vcount())))
+    for i in range(G.ecount()):
+        positions = np.append(positions, G.es[i]["pts"], axis=0)
+
+    N = len(positions)
+    if dim == 2:
+        positions = np.append([np.zeros(N)], positions.T, axis=0).T
+
+    s = gsd.hoomd.Frame()
+    s.particles.N = N
+    s.particles.types = ["A"]
+    s.particles.typeid = ["0"] * N
+
+    if box:
+        L = list(max(positions.T[i]) for i in (0, 1, 2))
+        s.particles.position, _ = shift(
+            positions, _shift=(L[0] / 2, L[1] / 2, L[2] / 2)
+        )
+        s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
+    else:
+        s.particles.position, _ = shift(positions)
+
+    with gsd.hoomd.open(name=gsd_name, mode="w") as f:
+        f.append(s)

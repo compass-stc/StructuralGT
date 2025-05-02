@@ -28,9 +28,9 @@ from networkx.algorithms.wiener import wiener_index
 
 from StructuralGT.utils.progress_update import ProgressUpdate
 from StructuralGT.networks.fiber_network import FiberNetworkBuilder
-from StructuralGT.SGT.network_processor import NetworkProcessor
+from StructuralGT.imaging.network_processor import NetworkProcessor
 
-import sgt_c_module as sgt
+# import sgt_c_module as sgt
 from StructuralGT.utils.sgt_utils import get_num_cores
 from StructuralGT.utils.config_loader import load_gtc_configs
 
@@ -190,7 +190,7 @@ class GraphAnalyzer(ProgressUpdate):
             self.update_status([15, "Computing node connectivity..."])
             if connected_graph:
                 # use_igraph = opt_gtc["compute_lang == 'C'"]["value"]
-                use_igraph = True
+                use_igraph = False
                 if use_igraph:
                     # use iGraph Lib in C
                     self.update_status([15, "Using iGraph library..."])

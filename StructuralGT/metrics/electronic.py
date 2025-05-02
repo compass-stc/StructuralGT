@@ -7,6 +7,7 @@ import os
 import numpy as np
 
 from StructuralGT.metrics.structural import _Compute
+from StructuralGT.networks import base
 
 
 class Electronic(_Compute):

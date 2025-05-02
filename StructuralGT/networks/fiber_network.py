@@ -24,6 +24,9 @@ from StructuralGT.utils.sgt_utils import write_csv_file, write_gsd_file, plot_to
 from StructuralGT.utils.config_loader import load_gte_configs
 
 
+# WE ARE USING CPU BECAUSE CuPy generates some errors - yet to be resolved.
+COMPUTING_DEVICE = "CPU"
+
 
 class FiberNetworkBuilder(ProgressUpdate):
     """

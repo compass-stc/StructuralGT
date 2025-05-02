@@ -8,7 +8,6 @@
 
 import cv2
 import numpy as np
-# from __main__ import *
 from skimage.filters.rank import autolevel, median
 from skimage.morphology import disk
 

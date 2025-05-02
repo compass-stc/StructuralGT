@@ -22,7 +22,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.utils import to_categorical
 
-from StructuralGT.networks import basev1
+from StructuralGT.networks import base
 
 
 class BBinputGenerator(tf.keras.utils.Sequence):
