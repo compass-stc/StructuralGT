@@ -6,7 +6,7 @@ import os
 
 import numpy as np
 
-from StructuralGT import base
+from StructuralGT import basev1
 from StructuralGT.util import _Compute
 
 

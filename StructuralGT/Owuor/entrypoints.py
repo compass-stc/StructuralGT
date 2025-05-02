@@ -5,11 +5,9 @@ Entry points that allow users to execute GUI or Cli programs
 """
 
 import sys
-# import time
 import logging
 from .apps.gui_main import pyside_app
 from .apps.cli_main import terminal_app
-# from .configs.config_loader import detect_cuda_and_install_cupy
 
 
 logger = logging.getLogger("SGT App")
@@ -24,9 +22,6 @@ def main_gui():
     """
     # Initialize log collection
     initialize_logging()
-
-    # Install CuPy for GPU
-    # detect_cuda_and_install_cupy()
 
     # Start GUI app
     pyside_app()
@@ -50,3 +45,7 @@ def initialize_logging():
     # logging.basicConfig(filename=f_name, encoding='utf-8', level=logging.INFO, format=FORMAT, datefmt=DATE_FORMAT)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout)
     logging.info("SGT application started running...", extra={'user': 'SGT Logs'})
+
+
+if __name__ == "__main__":
+    main_gui()

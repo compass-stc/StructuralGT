@@ -6,8 +6,6 @@ Builds a graph network from nanoscale microscopy images.
 
 import os
 import igraph
-import sknw
-import logging
 import numpy as np
 import networkx as nx
 from PIL import Image, ImageQt
@@ -21,36 +19,6 @@ from .progress_update import ProgressUpdate
 from .graph_skeleton import GraphSkeleton
 from .sgt_utils import write_csv_file, write_gsd_file, plot_to_opencv
 from ..configs.config_loader import load_gte_configs
-
-# WE ARE USING CPU BECAUSE CuPy generates some errors - yet to be resolved.
-COMPUTING_DEVICE = "CPU"
-try:
-    import sys
-
-    logger = logging.getLogger("SGT App")
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout)
-    import cupy as cp
-
-    # Check for GPU
-    test = cp.cuda.Device(0).compute_capability
-    # Check for CUDA_PATH in environment variables
-    cuda_path = os.getenv("CUDA_PATH")
-    print(cuda_path)
-    if cuda_path:
-        xp = np  # Use CuPy for GPU
-        COMPUTING_DEVICE = "GPU"
-        logging.info("Using GPU with CuPy!", extra={'user': 'SGT Logs'})
-    else:
-        logging.info(
-            "Please add CUDA_PATH to System environment variables OR install 'NVIDIA GPU Computing Toolkit'\nvia: https://developer.nvidia.com/cuda-downloads",
-            extra={'user': 'SGT Logs'})
-        raise ImportError("Please add CUDA_PATH to System environment variables.")
-except (ImportError, NameError, AttributeError):
-    xp = np  # Fallback to NumPy for CPU
-    logging.info("Using CPU with NumPy!", extra={'user': 'SGT Logs'})
-except cp.cuda.runtime.CUDARuntimeError:
-    xp = np  # Fallback to NumPy for CPU
-    logging.info("Using CPU with NumPy!", extra={'user': 'SGT Logs'})
 
 
 class FiberNetworkBuilder(ProgressUpdate):
@@ -309,7 +277,7 @@ class FiberNetworkBuilder(ProgressUpdate):
 
         if opt_gte["export_adj_mat"]["value"] == 1:
             adj_mat = nx.adjacency_matrix(self.nx_3d_graph).todense()
-            xp.savetxt(str(adj_file), adj_mat, delimiter=",")
+            np.savetxt(str(adj_file), adj_mat, delimiter=",")
 
         if opt_gte["export_edge_list"]["value"] == 1:
             if opt_gte["has_weights"]["value"] == 1:
@@ -403,7 +371,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         """
 
         node_list = list(nx_graph.nodes())
-        gn = xp.array([nx_graph.nodes[i]['o'] for i in node_list])
+        gn = np.array([nx_graph.nodes[i]['o'] for i in node_list])
         # 3D Coordinates are (x, y, z) ... assume that y and z are the same for 2D graphs and x is depth.
 
         if is_graph_2d:

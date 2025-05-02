@@ -5,11 +5,6 @@ Loads default configurations from 'configs.ini' file
 """
 
 import os
-import sys
-import socket
-import platform
-import logging
-import subprocess
 import configparser
 
 
@@ -204,82 +199,3 @@ def load_gtc_configs():
         return options_gtc
     except configparser.NoSectionError:
         return options_gtc
-
-
-def install_package(package):
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-        logging.info(f"Successfully installed {package}", extra={'user': 'SGT Logs'})
-    except subprocess.CalledProcessError:
-        logging.info(f"Failed to install {package}: ", extra={'user': 'SGT Logs'})
-
-
-def detect_cuda_version():
-    """Check if CUDA is installed and return its version."""
-    try:
-        output = subprocess.check_output(['nvcc', '--version']).decode()
-        if 'release 12' in output:
-            return '12'
-        elif 'release 11' in output:
-            return '11'
-        else:
-            return None
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        logging.info(f"Please install 'NVIDIA GPU Computing Toolkit' via: https://developer.nvidia.com/cuda-downloads", extra={'user': 'SGT Logs'})
-        return None
-
-
-def is_connected(host="8.8.8.8", port=53, timeout=3):
-    """Check if the system has an active internet connection."""
-    try:
-        socket.setdefaulttimeout(timeout)
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
-        return True
-    except socket.error:
-        return False
-
-
-def detect_cuda_and_install_cupy():
-    try:
-        import cupy
-        logging.info(f"CuPy is already installed: {cupy.__version__}", extra={'user': 'SGT Logs'})
-        return
-    except ImportError:
-        logging.info("CuPy is not installed.", extra={'user': 'SGT Logs'})
-
-    if not is_connected():
-        logging.info("No internet connection. Cannot install CuPy.", extra={'user': 'SGT Logs'})
-        return
-
-    # Handle macOS (Apple Silicon) - CPU only
-    if platform.system() == "Darwin" and platform.processor().startswith("arm"):
-        logging.info("Detected MacOS with Apple Silicon (M1/M2/M3). Installing CPU-only version of CuPy.", extra={'user': 'SGT Logs'})
-        # install_package('cupy')  # CPU-only version
-        return
-
-    # Handle CUDA systems (Linux/Windows with GPU)
-    cuda_version = detect_cuda_version()
-
-    if cuda_version:
-        logging.info(f"CUDA detected: {cuda_version}", extra={'user': 'SGT Logs'})
-        if cuda_version == '12':
-            install_package('cupy-cuda12x')
-        elif cuda_version == '11':
-            install_package('cupy-cuda11x')
-        else:
-            logging.info("CUDA version not supported. Installing CPU-only CuPy.", extra={'user': 'SGT Logs'})
-            install_package('cupy')
-    else:
-        # No CUDA found, fall back to the CPU-only version
-        logging.info("CUDA not found. Installing CPU-only CuPy.", extra={'user': 'SGT Logs'})
-        install_package('cupy')
-
-    # Proceed with installation if connected
-    cuda_version = detect_cuda_version()
-    if cuda_version == '12':
-        install_package('cupy-cuda12x')
-    elif cuda_version == '11':
-        install_package('cupy-cuda11x')
-    else:
-        logging.info("No CUDA detected or NVIDIA GPU Toolkit not installed. Installing CPU-only CuPy.", extra={'user': 'SGT Logs'})
-        install_package('cupy')
