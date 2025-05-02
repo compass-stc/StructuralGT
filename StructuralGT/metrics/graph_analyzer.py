@@ -27,8 +27,8 @@ from networkx.algorithms.distance_measures import diameter, periphery
 from networkx.algorithms.wiener import wiener_index
 
 from StructuralGT.utils.progress_update import ProgressUpdate
-from .fiber_network import FiberNetworkBuilder
-from .network_processor import NetworkProcessor
+from StructuralGT.networks.fiber_network import FiberNetworkBuilder
+from StructuralGT.SGT.network_processor import NetworkProcessor
 
 import sgt_c_module as sgt
 from StructuralGT.utils.sgt_utils import get_num_cores

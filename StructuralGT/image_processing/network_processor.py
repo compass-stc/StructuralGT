@@ -17,7 +17,7 @@ from PIL import Image
 from dataclasses import dataclass
 from collections import defaultdict
 
-from .fiber_network import FiberNetworkBuilder
+from StructuralGT.networks.fiber_network import FiberNetworkBuilder
 from StructuralGT.utils.progress_update import ProgressUpdate
 from .base_image import BaseImage
 

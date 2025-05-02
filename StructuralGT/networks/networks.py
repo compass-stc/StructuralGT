@@ -20,7 +20,7 @@ import scipy
 from matplotlib.colorbar import Colorbar
 from skimage.morphology import skeletonize
 
-from StructuralGT import process_image
+from StructuralGT.image_processing import process_image
 from StructuralGT.utils import error
 from StructuralGT.utils.util import (_abs_path, _cropper, _domain, _fname,
                                      _image_stack)

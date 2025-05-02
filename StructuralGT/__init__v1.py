@@ -7,7 +7,6 @@ of digital structural network images.
 
 import json
 import os
-from .binarizer import Binarizer
 
 current_dir = os.path.dirname(__file__)
 file_path = os.path.join(current_dir, 'metadata.json')
