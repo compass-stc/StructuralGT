@@ -7,7 +7,7 @@ Entry points that allow users to execute GUI or Cli programs
 import sys
 import logging
 from StructuralGT.apps.gui_main import pyside_app
-from StructuralGT.apps import terminal_app
+from StructuralGT.apps.cli_main import terminal_app
 
 
 logger = logging.getLogger("SGT App")

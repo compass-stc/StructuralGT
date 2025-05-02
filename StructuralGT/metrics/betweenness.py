@@ -7,7 +7,7 @@
 import copy
 
 import numpy as np
-from StructuralGT.util import _Compute
+from StructuralGT.utils.util import _Compute
 import StructuralGT
 
 if StructuralGT.__C_FLAG__ is False:

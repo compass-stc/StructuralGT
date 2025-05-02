@@ -6,7 +6,7 @@ import timeit
 
 import numpy as np
 
-"""Benchmarks for vaious SGT algorithms and functions"""
+"""Benchmarks for various SGT algorithms and functions"""
 
 
 def effective_resistance():

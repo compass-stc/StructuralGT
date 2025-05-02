@@ -5,7 +5,7 @@
 import copy
 
 import StructuralGT
-from StructuralGT.util import _Compute
+from StructuralGT.utils.util import _Compute
 
 if StructuralGT.__C_FLAG__ is False:
     raise RuntimeError("The average nodal connectivity module was never"

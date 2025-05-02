@@ -26,13 +26,13 @@ from networkx.algorithms.flow import maximum_flow
 from networkx.algorithms.distance_measures import diameter, periphery
 from networkx.algorithms.wiener import wiener_index
 
-from .progress_update import ProgressUpdate
+from StructuralGT.utils.progress_update import ProgressUpdate
 from .fiber_network import FiberNetworkBuilder
 from .network_processor import NetworkProcessor
 
 import sgt_c_module as sgt
-from .sgt_utils import get_num_cores
-from StructuralGT.configs.config_loader import load_gtc_configs
+from StructuralGT.utils.sgt_utils import get_num_cores
+from StructuralGT.utils.config_loader import load_gtc_configs
 
 
 class GraphAnalyzer(ProgressUpdate):

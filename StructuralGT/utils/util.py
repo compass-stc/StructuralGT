@@ -7,7 +7,7 @@ from functools import wraps
 
 import numpy as np
 
-from StructuralGT import basev1, error
+from StructuralGT.utils import error
 
 
 class _Compute:

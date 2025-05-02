@@ -11,7 +11,8 @@ import numpy as np
 from skimage.morphology import (binary_closing, remove_small_objects,
                                 skeletonize)
 
-from StructuralGT import GetWeights_3d, error, skel_ID, sknwEdits
+from StructuralGT import GetWeights_3d, skel_ID, sknwEdits
+from StructuralGT.utils import error
 
 
 def read(name, read_type):

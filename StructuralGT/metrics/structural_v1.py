@@ -4,7 +4,7 @@
 
 import numpy as np
 
-from StructuralGT.util import _Compute
+from StructuralGT.utils.util import _Compute
 
 
 class Size(_Compute):

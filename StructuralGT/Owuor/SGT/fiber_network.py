@@ -15,10 +15,10 @@ from ovito.pipeline import StaticSource, Pipeline
 from ovito.vis import Viewport
 import matplotlib.pyplot as plt
 
-from .progress_update import ProgressUpdate
+from StructuralGT.utils.progress_update import ProgressUpdate
 from .graph_skeleton import GraphSkeleton
-from .sgt_utils import write_csv_file, write_gsd_file, plot_to_opencv
-from StructuralGT.configs.config_loader import load_gte_configs
+from StructuralGT.utils.sgt_utils import write_csv_file, write_gsd_file, plot_to_opencv
+from StructuralGT.utils.config_loader import load_gte_configs
 
 
 class FiberNetworkBuilder(ProgressUpdate):
