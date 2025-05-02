@@ -10,7 +10,7 @@ from cv2.typing import MatLike
 from skimage.morphology import disk
 from skimage.filters.rank import autolevel, median
 
-from ..configs.config_loader import load_img_configs
+from StructuralGT.configs.config_loader import load_img_configs
 from .sgt_utils import safe_uint8_image
 
 

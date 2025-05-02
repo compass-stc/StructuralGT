@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from .progress_update import ProgressUpdate
 from .graph_skeleton import GraphSkeleton
 from .sgt_utils import write_csv_file, write_gsd_file, plot_to_opencv
-from ..configs.config_loader import load_gte_configs
+from StructuralGT.configs.config_loader import load_gte_configs
 
 
 class FiberNetworkBuilder(ProgressUpdate):

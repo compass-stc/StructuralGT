@@ -24,10 +24,10 @@ from skimage.morphology import remove_small_objects
 
 # from . import base
 
-from ..SGT.base_image import BaseImage
-from ..SGT.graph_skeleton import GraphSkeleton
-from ..SGT.network_processor import ALLOWED_IMG_EXTENSIONS
-from ..SGT.sgt_utils import write_gsd_file
+from StructuralGT import BaseImage
+from StructuralGT import GraphSkeleton
+from StructuralGT import ALLOWED_IMG_EXTENSIONS
+from StructuralGT import write_gsd_file
 
 """
 Questions for Alain:

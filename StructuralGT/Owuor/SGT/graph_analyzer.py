@@ -32,7 +32,7 @@ from .network_processor import NetworkProcessor
 
 import sgt_c_module as sgt
 from .sgt_utils import get_num_cores
-from ..configs.config_loader import load_gtc_configs
+from StructuralGT.configs.config_loader import load_gtc_configs
 
 
 class GraphAnalyzer(ProgressUpdate):

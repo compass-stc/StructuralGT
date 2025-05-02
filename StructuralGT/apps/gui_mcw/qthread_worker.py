@@ -4,7 +4,7 @@ import logging
 from PySide6.QtCore import QObject,QThread,Signal
 
 
-from ...SGT.sgt_utils import get_num_cores, write_txt_file
+from StructuralGT import get_num_cores, write_txt_file
 
 
 class AbortException(Exception):

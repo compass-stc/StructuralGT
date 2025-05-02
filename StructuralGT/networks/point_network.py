@@ -8,8 +8,7 @@ import gsd.hoomd
 import igraph as ig
 import numpy as np
 
-from . import base
-
+from StructuralGT import base
 
 
 class PointNetwork:

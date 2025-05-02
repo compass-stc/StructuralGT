@@ -3,8 +3,86 @@
 # License.
 
 import numpy as np
+from functools import wraps
 
-from StructuralGT.util import _Compute
+
+class _Compute:
+    r"""Parent class for all compute classes in StructuralGT. Modelled after
+    the :class:`_Compute` class used in **freud** :cite:`Ramasubramani2020`.
+
+    The primary purpose of this class is to prevent access of uncomputed
+    values. This is accomplished by maintaining a boolean flag to track whether
+    the compute method in a class has been called and decorating class
+    properties that rely on compute having been called.
+
+    To use this class, one would write, for example,
+
+    .. code-block:: python
+        class Electronic(_Compute):
+
+            def compute(...)
+                ...
+
+            @_Compute._computed_property
+            def effectice_resistance(self):
+                return ...
+
+    Attributes:
+        _called_compute (bool):
+            Flag representing whether the compute method has been called.
+    """
+
+    def __init__(self, node_weight=None, edge_weight=None):
+        self._called_compute = False
+        self.node_weight = node_weight
+        self.edge_weight = edge_weight
+
+    def __getattribute__(self, attr):
+        """Compute methods set a flag to indicate that quantities have been
+        computed. Compute must be called before plotting."""
+        attribute = object.__getattribute__(self, attr)
+        if attr == "compute":
+            # Set the attribute *after* computing. This enables
+            # self._called_compute to be used in the compute method itself.
+            compute = attribute
+
+            @wraps(compute)
+            def compute_wrapper(*args, **kwargs):
+                return_value = compute(*args, **kwargs)
+                self._called_compute = True
+                return return_value
+
+            return compute_wrapper
+        elif attr == "plot":
+            if not self._called_compute:
+                raise AttributeError(
+                    "The compute method must be called before calling plot."
+                )
+        return attribute
+
+    @staticmethod
+    def _computed_property(prop):
+        r"""Decorator that makes a class method to be a property with limited
+        access.
+
+        Args:
+            prop (callable): The property function.
+
+        Returns:
+            Decorator decorating appropriate property method.
+        """
+
+        @property
+        @wraps(prop)
+        def wrapper(self, *args, **kwargs):
+            if not self._called_compute:
+                raise AttributeError(
+                    "Property not computed. Call compute \
+                                     first."
+                )
+            return prop(self, *args, **kwargs)
+
+        return wrapper
 
 
 class Size(_Compute):
@@ -23,10 +101,10 @@ class Size(_Compute):
                 The :class:`Network` object.
         """
 
-        self._number_of_nodes = network.graph.vcount()
-        self._number_of_edges = network.graph.ecount()
-        self._diameter = network.graph.diameter(weights=self.edge_weight)
-        self._density = network.graph.density()
+        self._number_of_nodes = network.Gr.vcount()
+        self._number_of_edges = network.Gr.ecount()
+        self._diameter = network.Gr.diameter(weights=self.edge_weight)
+        self._density = network.Gr.density()
 
     @_Compute._computed_property
     def number_of_nodes(self):
@@ -73,7 +151,7 @@ class Clustering(_Compute):
                 The :class:`Network` object.
         """
 
-        self._cc = network.graph.transitivity_local_undirected(mode="zero")
+        self._cc = network.Gr.transitivity_local_undirected(mode="zero")
         self._acc = np.mean(self._cc)
 
     @_Compute._computed_property
@@ -121,7 +199,7 @@ class Assortativity(_Compute):
                 The :class:`Network` object.
         """
 
-        self._assortativity = network.graph.assortativity_degree()
+        self._assortativity = network.Gr.assortativity_degree()
 
     @_Compute._computed_property
     def assortativity(self):
@@ -158,7 +236,7 @@ class Closeness(_Compute):
                 The :class:`Network` object.
         """
 
-        self._closeness = network.graph.closeness(weights=self.edge_weight)
+        self._closeness = network.Gr.closeness(weights=self.edge_weight)
         self._ac = np.mean(self._closeness)
 
     @_Compute._computed_property
@@ -204,7 +282,7 @@ class Degree(_Compute):
                 The :class:`Network` object.
         """
 
-        self._degree = network.graph.strength(weights=self.node_weight)
+        self._degree = network.Gr.strength(weights=self.node_weight)
         self._ad = np.mean(self._degree)
 
     @_Compute._computed_property

@@ -24,11 +24,11 @@ from .table_model import TableModel
 from .checkbox_model import CheckBoxModel
 from .qthread_worker import QThreadWorker, WorkerTask
 
-from ... import __version__
-from ...SGT.network_processor import NetworkProcessor, ALLOWED_IMG_EXTENSIONS
-from ...SGT.fiber_network import FiberNetworkBuilder, COMPUTING_DEVICE
-from ...SGT.graph_analyzer import GraphAnalyzer
-from ...SGT.sgt_utils import img_to_base64
+from StructuralGT import __version__
+from StructuralGT import NetworkProcessor, ALLOWED_IMG_EXTENSIONS
+from StructuralGT import FiberNetworkBuilder, COMPUTING_DEVICE
+from StructuralGT import GraphAnalyzer
+from StructuralGT import img_to_base64
 
 
 class MainController(QObject):
