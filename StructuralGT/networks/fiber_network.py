@@ -6,6 +6,8 @@ Builds a graph network from nanoscale microscopy images.
 
 import os
 import igraph
+# import sknw
+import logging
 import numpy as np
 import networkx as nx
 from PIL import Image, ImageQt
@@ -15,10 +17,12 @@ from ovito.pipeline import StaticSource, Pipeline
 from ovito.vis import Viewport
 import matplotlib.pyplot as plt
 
-from StructuralGT.utils.progress_update import ProgressUpdate
 from .graph_skeleton import GraphSkeleton
+from .sknw_mod import build_sknw
+from StructuralGT.utils.progress_update import ProgressUpdate
 from StructuralGT.utils.sgt_utils import write_csv_file, write_gsd_file, plot_to_opencv
 from StructuralGT.utils.config_loader import load_gte_configs
+
 
 
 class FiberNetworkBuilder(ProgressUpdate):
@@ -113,10 +117,11 @@ class FiberNetworkBuilder(ProgressUpdate):
         self.update_status([58, "Build graph skeleton from binary image..."])
         graph_skel = GraphSkeleton(image_bin, opt_gte, is_2d=is_img_2d, progress_func=self.update_status)
         self.skel_obj = graph_skel
-        img_skel = graph_skel.skeleton  # .astype(int)
+        img_skel = graph_skel.skeleton
 
         self.update_status([60, "Creating graph network..."])
-        nx_graph = sknw.build_sknw(img_skel)
+        # nx_graph = sknw.build_sknw(img_skel)
+        nx_graph = build_sknw(img_skel)
 
         if opt_gte["remove_self_loops"]["value"]:
             self.update_status([64, "Removing self loops from graph network..."])
@@ -151,12 +156,11 @@ class FiberNetworkBuilder(ProgressUpdate):
         self.ig_graph = igraph.Graph.from_networkx(nx_graph)
         return True
 
-    def plot_2d_graph_network(self, image_2d_arr: MatLike, is_img_2d: bool, plot_nodes: bool = False, a4_size: bool = False):
+    def plot_2d_graph_network(self, image_2d_arr: MatLike, plot_nodes: bool = False, a4_size: bool = False):
         """
         Creates a plot figure of the graph network. It draws all the edges and nodes of the graph.
 
         :param image_2d_arr: Slides of 2D images to be used to draw the network.
-        :param is_img_2d: Whether the image is 2D or 3D otherwise.
         :param plot_nodes: Make the graph's node plot figure.
         :param a4_size: Decision if to create an A4 size plot figure.
 
@@ -165,6 +169,7 @@ class FiberNetworkBuilder(ProgressUpdate):
 
         # Fetch the graph and config options
         nx_graph = self.nx_3d_graph
+        is_img_2d = self.skel_obj.is_2d
         show_node_id = (self.configs["display_node_id"]["value"] == 1)
 
         # Fetch a single 2D image
@@ -392,66 +397,3 @@ class FiberNetworkBuilder(ProgressUpdate):
             # c_set = axis.scatter(gn[:, coord_1], gn[:, coord_2], s=marker_size)
             axis.plot(gn[:, coord_1], gn[:, coord_2], 'b.', markersize=marker_size)
             return axis
-
-    # TO DELETE IT LATER
-    def data_gen_function(self):
-        """Populates OVITO's data with particles."""
-        data = DataCollection()
-        positions = np.asarray(np.where(np.asarray(self.skel_obj.skeleton_3d) != 0)).T
-        particles = Particles()
-        particles.create_property("Position", data=positions)
-        data.objects.append(particles)
-        return data
-
-    # ONLY RUNS ON MAIN THREAD - TO BE DELETED
-    def render_graph_to_image(self, bg_image=None, is_img_2d: bool = True):
-        """
-        Renders the graph network into an image; it can optionally superimpose the graph on the image.
-
-        :param bg_image: Optional background image.
-        :param is_img_2d: Whether the image is 2D or 3D otherwise.
-        """
-        if self.gsd_file is None:
-            return None
-
-        if bg_image is not None:
-            # OVITO doesn’t directly support 3D numpy volumes as backgrounds
-            bg_image = bg_image.squeeze()
-            if not is_img_2d:
-                # (visualize only one slice) Extract a middle slice from 3D grayscale volume
-                mid_slice = bg_image[bg_image.shape[0] // 2]  # shape: (H, W)
-            else:
-                mid_slice = bg_image
-
-            # Convert to RGB for PIL
-            # bg_rgb = cv2.cvtColor(mid_slice, cv2.COLOR_GRAY2RGB)
-            bg_pil = Image.fromarray(mid_slice).convert("RGB")
-
-            # Set OVITO render size
-            size = (bg_pil.width, bg_pil.height)
-        else:
-            size = (800, 600)
-            bg_pil = None
-
-        # Load OVITO pipeline and scene
-        # pipeline = import_file(self.gsd_file)
-        data = self.data_gen_function()
-        # print(type(data))
-        pipeline = Pipeline(source = StaticSource(data = data))
-        pipeline.add_to_scene()
-
-        vp = Viewport(type=Viewport.Type.Front, camera_dir=(2, 1, -1))
-        vp.zoom_all(size)
-
-        # Render to QImage without the alpha channel
-        q_img = vp.render_image(size=size, alpha=True, background=(1, 1, 1))
-
-        # Convert QImage to PIL Image
-        pil_img = ImageQt.fromqimage(q_img).convert("RGB")
-
-        if bg_pil is not None:
-            # Overlay using simple blending (optional: adjust transparency)
-            final_img = Image.blend(bg_pil, pil_img, alpha=0.5)
-        else:
-            final_img = pil_img
-        return final_img

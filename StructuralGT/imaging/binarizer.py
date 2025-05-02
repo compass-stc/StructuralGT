@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from IPython.display import display
 from ipywidgets import Layout, interactive, widgets
 
-from StructuralGT.image_processing import process_image
+from StructuralGT.imaging import process_image
 
 
 class Binarizer:

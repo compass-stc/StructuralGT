@@ -7,7 +7,6 @@ import json
 import os
 import time
 import igraph
-import sknw
 import warnings
 import cv2 as cv
 # import gsd.hoomd
@@ -22,18 +21,12 @@ from skimage.morphology import skeletonize
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from skimage.morphology import remove_small_objects
 
-# from . import base
+from .graph_skeleton import GraphSkeleton
+from .sknw_mod import build_sknw
+from StructuralGT.imaging.base_image import BaseImage
+from StructuralGT.imaging.network_processor import ALLOWED_IMG_EXTENSIONS
+from StructuralGT.utils.sgt_utils import write_gsd_file
 
-from StructuralGT import BaseImage
-from StructuralGT import GraphSkeleton
-from StructuralGT import ALLOWED_IMG_EXTENSIONS
-from StructuralGT import write_gsd_file
-
-"""
-Questions for Alain:
-    1. How do you make node_plots of 3D (your code crashes)?
-    2. What is rotate (in set_graph)? It is created in img_to_skel.
-"""
 
 class FiberNetwork:
     """Generic class to represent networked image data.
@@ -304,15 +297,11 @@ class FiberNetwork:
 
         if not hasattr(self, '_skeleton'):
             raise AttributeError("Network has no skeleton. You should call img_to_skel before calling set_graph.")
-        # self.Gr = base.gsd_to_G(self.gsd_name)
 
         print("Running build_sknw ...")
-        img_skel = self.skeleton_3d.astype(int)  # DOES NOT PLOT - node_plot (BUG IN CODE), so we pick first image in stack
-        selected_slice = 0  # Select first slice in 3D skeleton of shape (depth, w, h)
+        img_skel = self._skeleton.astype(int)
 
-        # G = sknwEdits.build_sknw(img_skel[selected_slice])
-        # nx_3d_graph = G.to_networkx()
-        nx_graph = sknw.build_sknw(img_skel[selected_slice])
+        nx_graph = build_sknw(img_skel)
         G = igraph.Graph.from_networkx(nx_graph)
 
         # Compute avg. degree from nx
@@ -325,7 +314,6 @@ class FiberNetwork:
             components = G.connected_components()
             G = components.giant()
             print(f"After removing smaller components, graph has {G.vcount()}  nodes")
-        # self.Gr = G
 
         if weight_type is not None:
             # self.Gr = base.add_weights(self, weight_type=weight_type, **kwargs)

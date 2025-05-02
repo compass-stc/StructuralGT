@@ -7,7 +7,7 @@ import warnings
 import freud
 import numpy as np
 
-from StructuralGT.utils.util import _Compute
+from StructuralGT.metrics.structural import _Compute
 
 
 def largest_rotating_crop(image_shape):
