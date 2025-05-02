@@ -4,7 +4,7 @@ ci:
 exclude: |
   (?x)^(
       extern/ |
-      StructuralGT/deeplearner.py
+      StructuralGT/sgt_ml/deeplearner.py
   )$
 
 repos:
