@@ -555,7 +555,7 @@ class Network:
         )
         s.configuration.box = [L[0] / 2, L[1] / 2, L[2] / 2, 0, 0, 0]
         for label in labels:
-            s.log["particles/" + label] = [np.NaN] * N
+            s.log["particles/" + label] = [np.nan] * N
 
         # Store adjacency matrix in CSR format
         matrix = self.Gr.get_adjacency_sparse(attribute=edge_weight)
