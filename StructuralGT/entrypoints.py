@@ -45,7 +45,3 @@ def initialize_logging():
     # logging.basicConfig(filename=f_name, encoding='utf-8', level=logging.INFO, format=FORMAT, datefmt=DATE_FORMAT)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout)
     logging.info("SGT application started running...", extra={'user': 'SGT Logs'})
-
-
-if __name__ == "__main__":
-    main_gui()

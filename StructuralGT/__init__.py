@@ -18,49 +18,17 @@ If not, see <https://www.gnu.org/licenses/>.
     Contact email: owuordickson@gmail.com
 """
 
-import json
-import os
-
-# MODULES
-from .metrics.graph_analyzer import GraphAnalyzer
-from .networks.graph_skeleton import GraphSkeleton
-from .networks.fiber_network import FiberNetworkBuilder
-from .imaging.network_processor import NetworkProcessor
-from .networks.fiber_network_Alain import FiberNetwork
-from .networks.particle_network import ParticleNetwork
-from .networks.point_network import PointNetwork
-from .imaging.binarizer import Binarizer
-from .metrics.structural import Assortativity, Closeness, Clustering, Degree, Size
-
-current_dir = os.path.dirname(__file__)
-file_path = os.path.join(current_dir, 'metadata.json')
-with open(file_path, 'r') as json_file:
-    metadata = json.load(json_file)
-
 
 # Project Details
-__version__ = "3.5.1"
+__version__ = "3.3.1"
 __title__ = f"StructuralGT (v{__version__})"
 __author__ = "Dickson Owuor, Alain Kadar, Drew Vecchio, Nicholas A. Kotov"
 __credits__ = "The Regents of the University of Michigan"
-__C_FLAG__ = metadata["C_FLAG"]
 
 
 
-# Packages available in 'from StructuralGT import *'
-__all__ = [
-    '__version__',
-    'GraphAnalyzer',
-    'GraphSkeleton',
-    'FiberNetworkBuilder',
-    'NetworkProcessor',
-    'FiberNetwork',
-    'ParticleNetwork',
-    'PointNetwork',
-    'Binarizer',
-    'Assortativity',
-    'Closeness',
-    'Clustering',
-    'Degree',
-    'Size',
-]
+from .entrypoints import main_gui
+
+if __name__ == "__main__":
+    main_gui()
+
