@@ -11,7 +11,7 @@ import logging
 from StructuralGT.utils.sgt_utils import get_num_cores
 from StructuralGT.imaging.network_processor import NetworkProcessor
 from StructuralGT.networks.fiber_network import FiberNetworkBuilder
-from StructuralGT.metrics.graph_analyzer import GraphAnalyzer
+from StructuralGT.compute.graph_analyzer import GraphAnalyzer
 
 
 def terminal_app():
@@ -93,7 +93,7 @@ def terminal_app():
 
 def produce_metrics(img_path, out_dir):
     """
-    Executes StructuralGT functions that compute all the user selected metrics.
+    Executes StructuralGT functions that compute all the user selected compute.
 
     Args:
         img_path (str): input image path.

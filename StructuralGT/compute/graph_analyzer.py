@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GNU GPL v3
 
 """
-Compute graph theory metrics
+Compute graph theory compute
 """
 
 import sys
@@ -42,7 +42,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", str
 
 class GraphAnalyzer(ProgressUpdate):
     """
-    A class that computes all the user-selected graph theory metrics and writes the results in a PDF file.
+    A class that computes all the user-selected graph theory compute and writes the results in a PDF file.
 
     Args:
         ntwk_p: Network Processor object.
@@ -51,7 +51,7 @@ class GraphAnalyzer(ProgressUpdate):
 
     def __init__(self, ntwk_p: NetworkProcessor, allow_multiprocessing: bool = True):
         """
-        A class that computes all the user-selected graph theory metrics and writes the results in a PDF file.
+        A class that computes all the user-selected graph theory compute and writes the results in a PDF file.
 
         :param ntwk_p: Network Processor object.
         :param allow_multiprocessing: Allows multiprocessing computing.
@@ -123,11 +123,11 @@ class GraphAnalyzer(ProgressUpdate):
 
     def compute_gt_metrics(self, graph_obj: FiberNetworkBuilder = None):
         """
-        Compute unweighted graph theory metrics.
+        Compute unweighted graph theory compute.
 
         :param graph_obj: GraphExtractor object.
 
-        :return: A Pandas DataFrame containing the unweighted graph theory metrics.
+        :return: A Pandas DataFrame containing the unweighted graph theory compute.
         """
 
         if graph_obj is None:
@@ -342,11 +342,11 @@ class GraphAnalyzer(ProgressUpdate):
 
     def compute_weighted_gt_metrics(self, graph_obj: FiberNetworkBuilder = None):
         """
-        Compute weighted graph theory metrics.
+        Compute weighted graph theory compute.
 
         :param graph_obj: GraphExtractor object.
 
-        :return: A Pandas DataFrame containing the weighted graph theory metrics.
+        :return: A Pandas DataFrame containing the weighted graph theory compute.
         """
         if graph_obj is None:
             return None
