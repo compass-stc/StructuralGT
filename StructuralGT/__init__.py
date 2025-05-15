@@ -27,7 +27,7 @@ __credits__ = "The Regents of the University of Michigan"
 
 
 
-from .entrypoints import main_gui
+from StructuralGT.entrypoints import main_gui
 
 if __name__ == "__main__":
     main_gui()
