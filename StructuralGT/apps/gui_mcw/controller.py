@@ -293,7 +293,6 @@ class MainController(QObject):
             self.showAlertSignal.emit("File/Directory Error", "No folder/file selected.")
             return False
 
-        # print(a_path)
         # Convert QML "file:///" path format to a proper OS path
         if a_path.startswith("file:///"):
             if sys.platform.startswith("win"):
@@ -305,7 +304,6 @@ class MainController(QObject):
 
         # Normalize the path
         a_path = os.path.normpath(a_path)
-        # print(a_path)
 
         if not os.path.exists(a_path):
             logging.exception("Path Error: %s", IOError, extra={'user': 'SGT Logs'})
@@ -648,7 +646,7 @@ class MainController(QObject):
             self.changeImageSignal.emit()
         except Exception as err:
             logging.exception("Unable to Adjust Brightness/Contrast: " + str(err), extra={'user': 'SGT Logs'})
-            self.taskTerminatedSignal.emit(False, ["Unable to Adjust Brightness/Contrast", 
+            self.taskTerminatedSignal.emit(False, ["Unable to Adjust Brightness/Contrast",
                                                    "Error trying to adjust image brightness/contrast.Try again."])
 
     @Slot()
@@ -826,6 +824,16 @@ class MainController(QObject):
         self.worker_task = WorkerTask()
         try:
             self.wait_flag = True
+
+            # Update Configs
+            current_sgt_obj = self.get_selected_sgt_obj()
+            keys_list = list(self.sgt_objs.keys())
+            key_at_current = keys_list[self.selected_sgt_obj_index]
+            shared_configs = current_sgt_obj.configs
+            for key in keys_list:
+                if key != key_at_current:
+                    s_obj = self.sgt_objs[key]
+                    s_obj.configs = shared_configs
 
             self.worker = QThreadWorker(func=self.worker_task.task_compute_multi_gt, args=(self.sgt_objs,))
             self.worker_task.inProgressSignal.connect(self._handle_progress_update)

@@ -167,7 +167,7 @@ class NetworkProcessor(ProgressUpdate):
         # Check if image batches exist
         if len(img_batches) == 0:
             raise ValueError("No images available! Please add at least one image.")
-        
+
         for i, img_batch in enumerate(img_batches):
             img_data = img_batch.numpy_image
             scale_factor = img_batch.scale_factor
@@ -195,7 +195,6 @@ class NetworkProcessor(ProgressUpdate):
                 is_2d = False
                 logging.info("Image is 3D.", extra={'user': 'SGT Logs'})
 
-
             img_batch.images = image_list
             img_batch.is_2d = is_2d
             self.update_image_props(img_batch)
@@ -214,7 +213,8 @@ class NetworkProcessor(ProgressUpdate):
         """
 
         if sel_batch_idx >= len(self.image_batches):
-            raise ValueError(f"Selected image batch {sel_batch_idx} out of range! Select in range 0-{len(self.image_batches)}")
+            raise ValueError(
+                f"Selected image batch {sel_batch_idx} out of range! Select in range 0-{len(self.image_batches)}")
 
         self.selected_batch = sel_batch_idx
         self.update_image_props(self.image_batches[sel_batch_idx])
@@ -243,7 +243,7 @@ class NetworkProcessor(ProgressUpdate):
         self.update_status([10, "Processing image..."])
         if filter_type == 2:
             self.reset_img_filters()
-        
+
         sel_batch = self.get_selected_batch()
         progress = 10
         incr = 90 / len(sel_batch.images) - 1
@@ -324,7 +324,8 @@ class NetworkProcessor(ProgressUpdate):
         """
         sel_batch = self.get_selected_batch()
         if len(sel_batch.selected_images) > 0:
-            [sel_batch.images[i].apply_img_crop(x, y, crop_w, crop_h, actual_w, actual_h) for i in sel_batch.selected_images]
+            [sel_batch.images[i].apply_img_crop(x, y, crop_w, crop_h, actual_w, actual_h) for i in
+             sel_batch.selected_images]
         self.update_image_props(sel_batch)
         sel_batch.current_view = 'processed'
 
@@ -360,7 +361,8 @@ class NetworkProcessor(ProgressUpdate):
 
             sel_batch.graph_obj.abort = False
             sel_batch.graph_obj.add_listener(self.track_progress)
-            sel_batch.graph_obj.fit_graph(out_dir, img_bin, img_3d, sel_batch.is_2d, px_size, rho_val, image_file=f_name)
+            sel_batch.graph_obj.fit_graph(out_dir, img_bin, img_3d, sel_batch.is_2d, px_size, rho_val,
+                                          image_file=f_name)
             sel_batch.graph_obj.remove_listener(self.track_progress)
             self.abort = sel_batch.graph_obj.abort
             if self.abort:
@@ -403,7 +405,7 @@ class NetworkProcessor(ProgressUpdate):
         :param selected_batch: The selected batch ImageBatch object.
         """
         if selected_batch is None:
-           selected_batch = self.get_selected_batch()
+            selected_batch = self.get_selected_batch()
 
         sel_images = [selected_batch.images[i] for i in selected_batch.selected_images]
         return sel_images
@@ -484,7 +486,8 @@ class NetworkProcessor(ProgressUpdate):
             ax_3.set_axis_off()
             ax_3.imshow(img_bin, cmap='gray')
 
-            ax_4.set_title(f"Frame {i}: Histogram of Processed Image") if is_3d else ax_4.set_title(f"Histogram of Processed Image")
+            ax_4.set_title(f"Frame {i}: Histogram of Processed Image") if is_3d else ax_4.set_title(
+                f"Histogram of Processed Image")
             ax_4.set(yticks=[], xlabel='Pixel values', ylabel='Counts')
             ax_4.plot(img_histogram)
             if opt_img["threshold_type"]["value"] == 0:
@@ -623,7 +626,7 @@ class NetworkProcessor(ProgressUpdate):
                 scale_factor=scale_factor,
                 scaling_options=scaling_opts,
                 selected_images=set(range(len(images))),
-                current_view = 'original',              # 'original', 'binary', 'processed', 'graph'
+                current_view='original',  # 'original', 'binary', 'processed', 'graph'
                 graph_obj=FiberNetworkBuilder()
             )
             img_info_list.append(img_batch)

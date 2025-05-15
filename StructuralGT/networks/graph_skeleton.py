@@ -51,14 +51,19 @@ class GraphSkeleton:
         """
 
         # rebuilding the binary image as a boolean for skeletonizing
-        img_bin = self.img_bin
-        self.img_bin = np.squeeze(img_bin)
+        self.img_bin = np.squeeze(self.img_bin)
+        img_bin_int = np.asarray(self.img_bin, dtype=np.uint16)
 
-        # making the initial skeleton image, then getting x and y co-ords of all branch points and endpoints
-        temp_skeleton = skeletonize(np.asarray(self.img_bin, dtype=np.dtype("uint8")))
+        # making the initial skeleton image
+        temp_skeleton = skeletonize(img_bin_int)
+
+        # Use medial axis with distance transform
+        # skeleton, distance = medial_axis(img_bin_int, return_distance=True)
+        # Scale thickness by distance (optional)
+        # temp_skeleton = skeleton * distance
 
         # if self.configs["remove_bubbles"]["value"] == 1:
-        #    temp_skeleton = GraphSkeleton.remove_bubbles(temp_skeleton, self.img_bin, mask_elements)
+        #    temp_skeleton = GraphSkeleton.remove_bubbles(temp_skeleton, img_bin_int, mask_elements)
             # if self.update_progress is not None:
             # self.update_progress([56, f"Ran remove_bubbles for image skeleton..."])
 
@@ -79,8 +84,9 @@ class GraphSkeleton:
             if self.update_progress is not None:
                 self.update_progress([56, f"Ran prune_dangling_edges for image skeleton..."])
 
-        self.skeleton = np.asarray(temp_skeleton, dtype = np.uint8)
-        self.skeleton_3d = np.asarray([temp_skeleton]) if self.is_2d else np.asarray(temp_skeleton)
+        self.skeleton = np.asarray(temp_skeleton, dtype=np.uint16)
+        # self.skeleton = self.skeleton.astype(int)
+        self.skeleton_3d = np.asarray([self.skeleton]) if self.is_2d else self.skeleton
 
     def assign_weights(self, edge_pts: MatLike, weight_type: str = None, weight_options: dict = None,
                        pixel_dim: float = 1, rho_dim: float = 1):
@@ -383,7 +389,7 @@ class GraphSkeleton:
         oob = 0  # Generate a boolean check for out-of-boundary
         # Check if coordinate is within the boundary
         if d is None:
-            if coord[0] < 0 or coord[1] < 0 or coord[:-2] > (w - 1) or coord[-1] > (h - 1):
+            if coord[0] < 0 or coord[1] < 0 or coord[-2] > (w - 1) or coord[-1] > (h - 1):
                 oob = 1
         else:
             # if sum(coord < 0) > 0 or sum(coord > [w - 1, h - 1, d - 1]) > 0:

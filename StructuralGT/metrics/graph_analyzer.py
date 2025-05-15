@@ -4,10 +4,12 @@
 Compute graph theory metrics
 """
 
+import sys
 import os
 import math
 import datetime
 import itertools
+import logging
 import multiprocessing
 import numpy as np
 import scipy as sp
@@ -34,6 +36,9 @@ from StructuralGT.imaging.network_processor import NetworkProcessor
 from StructuralGT.utils.sgt_utils import get_num_cores
 from StructuralGT.utils.config_loader import load_gtc_configs
 
+
+logger = logging.getLogger("SGT App")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout)
 
 class GraphAnalyzer(ProgressUpdate):
     """
@@ -86,7 +91,7 @@ class GraphAnalyzer(ProgressUpdate):
         graph_obj = sel_batch.graph_obj
 
         # 2. Apply image filters and extract the graph (only if it has not been executed)
-        if graph_obj is None:
+        if graph_obj.nx_3d_graph is None:
             self.ntwk_p.add_listener(self.track_img_progress)
             self.ntwk_p.apply_img_filters()                     # Apply image filters
             self.ntwk_p.build_graph_network()                   # Extract graph from binary image
@@ -587,6 +592,7 @@ class GraphAnalyzer(ProgressUpdate):
 
         nx_graph = graph_obj.nx_3d_graph
         cpu_count = get_num_cores()
+        num_threads = cpu_count * 10 if nx.number_of_nodes(nx_graph) < 2000 else cpu_count * 20
         anc = 0
 
         try:
@@ -594,9 +600,9 @@ class GraphAnalyzer(ProgressUpdate):
             g_filename = filename + "_graph.txt"
             graph_file = os.path.join(output_location, g_filename)
             nx.write_edgelist(nx_graph, graph_file, data=False)
-            anc = sgt.compute_anc(graph_file, cpu_count, self.allow_mp)
+            anc = sgt.compute_anc(graph_file, num_threads, self.allow_mp)
         except Exception as err:
-            print(err)
+            logging.exception("Computing ANC Error: %s", err, extra={'user': 'SGT Logs'})
         return anc
 
     def generate_pdf_output(self, graph_obj: FiberNetworkBuilder):
@@ -613,7 +619,6 @@ class GraphAnalyzer(ProgressUpdate):
 
         sel_batch = self.ntwk_p.get_selected_batch()
         sel_images = self.ntwk_p.get_selected_images(sel_batch)
-        is_2d = sel_batch.is_2d
         img_3d = [img.img_2d for img in sel_images]
         img_3d = np.asarray(img_3d)
 
@@ -1012,14 +1017,15 @@ class GraphAnalyzer(ProgressUpdate):
         :return: Histogram plot figure.
         """
         nx_graph = graph_obj.nx_3d_graph
+        is_2d = graph_obj.skel_obj.is_2d
         font_1 = {'fontsize': 9}
 
         fig = plt.Figure(figsize=(8.5, 8.5), dpi=400)
         ax = fig.add_subplot(1, 1, 1)
         ax.set_title(title, fontdict=font_1)
 
-        FiberNetworkBuilder.plot_graph_edges(ax, image, nx_graph, line_width=line_width)
-        c_set = FiberNetworkBuilder.plot_graph_nodes(ax, nx_graph, marker_size=size, distribution_data=distribution)
+        FiberNetworkBuilder.plot_graph_edges(ax, image, nx_graph, is_graph_2d=is_2d, line_width=line_width)
+        c_set = FiberNetworkBuilder.plot_graph_nodes(ax, nx_graph, is_graph_2d=is_2d, marker_size=size, distribution_data=distribution)
 
         fig.colorbar(c_set, ax=ax, orientation='vertical', label='Value')
         return fig

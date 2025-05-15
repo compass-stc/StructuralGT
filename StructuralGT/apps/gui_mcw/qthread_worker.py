@@ -79,7 +79,6 @@ class WorkerTask (QObject):
             ntwk_p.remove_listener(self.update_progress)
             self.taskFinishedSignal.emit(True, ntwk_p)
         except Exception as err:
-            print(err)
             logging.exception("Error: %s", err, extra={'user': 'SGT Logs'})
             # self.abort = True
             self.update_progress(-1, "Error encountered! Try again")
@@ -99,7 +98,7 @@ class WorkerTask (QObject):
             ntwk_p.remove_listener(self.update_progress)
             self.taskFinishedSignal.emit(True, ntwk_p)
         except AbortException as err:
-            print(f"Task aborted error: {err}")
+            logging.exception("Task Aborted: %s", err, extra={'user': 'SGT Logs'})
             # Clean up listeners before exiting
             ntwk_p.remove_listener(self.update_progress)
             # Emit failure signal (aborted)
@@ -108,7 +107,6 @@ class WorkerTask (QObject):
                                                                           "and try again. If error persists then close "
                                                                           "the app and try again."])
         except Exception as err:
-            print(err)
             logging.exception("Error: %s", err, extra={'user': 'SGT Logs'})
             self.update_progress(-1, "Error encountered! Try again")
             # Clean up listeners before exiting
@@ -150,25 +148,25 @@ class WorkerTask (QObject):
 
                 i += 1
                 num_cores = get_num_cores()
+                sel_batch = sgt_obj.ntwk_p.get_selected_batch()
+                graph_obj = sel_batch.graph_obj
                 output = status_msg + "\n" + f"Run-time: {str(end - start)}  seconds\n"
                 output += "Number of cores: " + str(num_cores) + "\n"
                 output += "Results generated for: " + sgt_obj.ntwk_p.img_path + "\n"
-                output += "Node Count: " + str(sgt_obj.g_obj.nx_3d_graph.number_of_nodes()) + "\n"
-                output += "Edge Count: " + str(sgt_obj.g_obj.nx_3d_graph.number_of_edges()) + "\n"
+                output += "Node Count: " + str(graph_obj.nx_3d_graph.number_of_nodes()) + "\n"
+                output += "Edge Count: " + str(graph_obj.nx_3d_graph.number_of_edges()) + "\n"
                 filename, out_dir = sgt_obj.ntwk_p.get_filenames()
                 out_file = os.path.join(out_dir, filename + '-v2_results.txt')
                 write_txt_file(output, out_file)
-                print(output)
                 logging.info(output, extra={'user': 'SGT Logs'})
             self.taskFinishedSignal.emit(True, sgt_objs)
         except AbortException as err:
-            print(f"All tasks aborted: {err}")
+            logging.exception("Task Aborted: %s", err, extra={'user': 'SGT Logs'})
             self.update_progress(-1, "All tasks aborted!")
             # Emit failure signal (aborted)
             self.taskFinishedSignal.emit(False, ["SGT Computations Aborted", "Graph theory parameter computations "
                                                                              "aborted by user."])
         except Exception as err:
-            print(f"Error:  {err}")
             logging.exception("Error: %s", err, extra={'user': 'SGT Logs'})
             self.update_progress(-1, "Error encountered! Try again")
             # Emit failure signal (aborted)
@@ -192,14 +190,13 @@ class WorkerTask (QObject):
             self.remove_thread_listener(sgt_obj.abort_tasks)
             return True, sgt_obj
         except AbortException as err:
-            print(f"Task aborted: {err}")
+            logging.exception("Task Aborted: %s", err, extra={'user': 'SGT Logs'})
             self.update_progress(-1, "Task aborted!")
             # Clean up listeners before exiting
             sgt_obj.remove_listener(self.update_progress)
             self.remove_thread_listener(sgt_obj.abort_tasks)
             return False, None
         except Exception as err:
-            print(f"Error:  {err}")
             logging.exception("Error: %s", err, extra={'user': 'SGT Logs'})
             self.update_progress(-1, "Error encountered! Try again")
             # Clean up listeners before exiting

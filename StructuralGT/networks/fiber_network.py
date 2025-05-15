@@ -89,7 +89,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         self.save_graph_to_file(image_file, save_dir)
 
         self.update_status([95, "Plotting graph network..."])
-        plt_fig = self.plot_2d_graph_network(img_2d, is_img_2d)
+        plt_fig = self.plot_2d_graph_network(img_2d)
         self.img_ntwk = plot_to_opencv(plt_fig)
 
     def reset_graph(self):
