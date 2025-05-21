@@ -28,7 +28,6 @@ from StructuralGT.util import (_abs_path, _cropper, _domain, _fname,
 def colorbar(mappable, ax, *args, **kwargs):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    # ax = mappable.axes
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = Colorbar(cax, mappable)
@@ -196,13 +195,10 @@ class Network:
             else:
                 continue
 
-        # For 2D images, img_bin_3d.shape[0] == 1
         self._img_bin_3d = img_bin
         self._img_bin = img_bin
 
-        # Always 3d, even for 2d images
         self._img_bin_3d = self._img_bin
-        # 3d for 3d images, 2d otherwise
         self._img_bin = np.squeeze(self._img_bin)
 
     def set_graph(self, sub=True, weight_type=None, write="network.gsd",
@@ -430,17 +426,7 @@ class Network:
         if remove_objects is not None:
             self = base.remove_objects(self, remove_objects)
 
-        # Until now, the rotation arguement has not been used; the image and
-        # writted .gsds are all unrotated. The final block of this method is
-        # for reassigning the image attribute, as well as setting the rotate
-        # attribute for later. Only the img_bin attribute is altered because
-        # the image_stack attribute exists to expose the unprocessed image to
-        # the user.
-        #
-        # Also note that this only applies to 2D graphs, because 3D graphs
-        # cannot be rotated.
         if rotate is not None:
-            # Set the rotate attribute
             from scipy.spatial.transform import Rotation as R
 
             r = R.from_rotvec(rotate / 180 * np.pi * np.array([0, 0, 1]))
@@ -538,7 +524,6 @@ class Network:
         s.particles.N = N
         s.particles.position = positions
         s.particles.types = ["Edge", "Node", "Centroid"]
-        # s.particles.typeid = [0] * N
         s.particles.typeid = np.array(
             [
                 0,
@@ -557,7 +542,6 @@ class Network:
         for label in labels:
             s.log["particles/" + label] = [np.nan] * N
 
-        # Store adjacency matrix in CSR format
         matrix = self.Gr.get_adjacency_sparse(attribute=edge_weight)
         rows, columns = matrix.nonzero()
         values = matrix.data
@@ -586,7 +570,7 @@ class Network:
         with open(self.stack_dir + "/" + name + ".json", "w") as json_file:
             json.dump(_dict, json_file)
 
-    def node_plot(self, parameter=None, ax=None, depth=0):
+    def node_plot(self, parameter=None, ax=None, depth=0, plot_img=True):
         """Superimpose the skeleton, image, and nodal graph theory parameters.
         If no parameter provided, simply imposes skeleton and image.
 
@@ -614,7 +598,9 @@ class Network:
 
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.imshow(self.image_stack[depth][0][self.cropper._2d], cmap="gray")
+        if plot_img:
+            ax.imshow(self.image_stack[depth][0][self.cropper._2d],
+                      cmap="gray")
 
         e = np.empty((0, 2))
         for edge in self.graph.es:
@@ -731,8 +717,6 @@ class Network:
         """
 
         Gr_copy = copy.deepcopy(self.Gr)
-
-        # self.Gr = base.sub_G(self.Gr)
 
         axis_0 = abs(axis - 2)
 
@@ -976,31 +960,7 @@ class PointNetwork:
         self.cutoff = cutoff
         self.periodic = periodic
         self.dim = positions.shape[1]
-
-        for dim in range(self.dim):
-            positions[:, dim] = (positions[:, dim] - positions[:, dim].min())
-        L = list(max(positions.T[i]) for i in range(self.dim))
-        positions, _ = base.shift(positions,
-                                  _shift=(L[0] / 2, L[1] / 2, L[2] / 2))
-        box = [L[0], L[1], L[2], 0, 0, 0]
-
         self.positions = positions
-        self.box = box
-
-        aq = freud.locality.AABBQuery(self.box, positions)
-        nlist = aq.query(
-            positions,
-            {"r_max": self.cutoff, "exclude_ii": True},
-        ).toNeighborList()
-        nlist.filter(nlist.query_point_indices < nlist.point_indices)
-        self.graph = ig.Graph()
-        self.graph.add_vertices(len(positions))
-        # Create edges based on the neighbor list
-        for i in range(len(nlist.point_indices)):
-            self.graph.add_edge(
-                nlist.point_indices[i],
-                nlist.query_point_indices[i],
-            )
 
     def point_to_skel(self, filename='skel.gsd'):
         """Method saves a new :code:`.gsd` with the graph
@@ -1010,6 +970,30 @@ class PointNetwork:
             filename (str):
                The filename to save the :code:`.gsd` file to.
         """
+
+        for dim in range(self.dim):
+            self.positions[:, dim] = (self.positions[:, dim] - self.positions[:, dim].min())
+        L = list(max(self.positions.T[i]) for i in range(self.dim))
+        self.positions, _ = base.shift(self.positions,
+                                  _shift=(L[0] / 2, L[1] / 2, L[2] / 2))
+        box = np.array([L[0], L[1], L[2], 0, 0, 0])*{False: 2, True: 1}[self.periodic]
+
+
+        self.box = box
+
+        aq = freud.locality.AABBQuery(self.box, self.positions)
+        nlist = aq.query(
+            self.positions,
+            {"r_max": self.cutoff, "exclude_ii": True},
+        ).toNeighborList()
+        nlist.filter(nlist.query_point_indices < nlist.point_indices)
+        self.graph = ig.Graph()
+        self.graph.add_vertices(len(self.positions))
+        for i in range(len(nlist.point_indices)):
+            self.graph.add_edge(
+                nlist.point_indices[i],
+                nlist.query_point_indices[i],
+            )
 
         N = self.graph.vcount()
         bonds = np.array(self.graph.get_edgelist())
@@ -1059,5 +1043,29 @@ class PointNetwork:
                             )
                 s.log["particles/" + label] = attribute
 
+        s.log['periodic'] = int(self.periodic)
+        s.log['cutoff'] = self.cutoff
+        s.log['dim'] = self.dim
+        s.log['box'] = self.box
+
         with gsd.hoomd.open(name=filename, mode='w') as f_mod:
             f_mod.append(s)
+
+    @classmethod
+    def from_gsd(cls, filename, frame=0):
+        """Alternative constructor for returning a PointNetwork object that is
+        stored in a `.gsd` file."""
+
+        f = gsd.hoomd.open(name=filename, mode="r")[frame]
+        cutoff = f.log['cutoff']
+        G = ig.Graph(edges=f.bonds.group.tolist(),
+                     n=f.particles.N)
+        positions = np.array(f.particles.position)
+        positions = base.shift(positions, _2d=False)[0]
+        N = cls(positions, cutoff, periodic=False)
+        N.graph= G
+        N.periodic = bool(f.log['periodic'][0])
+        N.dim = f.log['dim']
+        N.box = f.log['box']
+
+        return N
