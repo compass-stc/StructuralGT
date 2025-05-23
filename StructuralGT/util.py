@@ -143,7 +143,22 @@ class _cropper:
             region of interest
     """
 
+    def pad_args(self, dims):
+        crop = []
+        for dim in dims:
+            crop.append(0)
+            crop.append(dim)
+        return crop
+
     def __init__(self, Network, domain=None):
+        if domain is not None:
+            if len(domain) == 2 or len(domain) == 3:
+                domain = self.pad_args(domain)
+            if len(domain) != 4 and len(domain) != 6:
+                raise ValueError(
+                    f"Crop, {domain}, is not in a recognized format"
+                )
+
         self.dim = Network.dim
         if Network._2d:
             self.surface = 0
@@ -175,8 +190,10 @@ class _cropper:
 
         else:
             if self.dim == 2:
-                self.crop = (slice(domain[2], domain[3]),
-                             slice(domain[0], domain[1]))
+                self.crop = (
+                    slice(domain[2], domain[3]),
+                    slice(domain[0], domain[1]),
+                )
                 self.dims = (1, domain[3] - domain[2], domain[1] - domain[0])
                 self.domain = (domain[2], domain[3], domain[0], domain[1])
 
@@ -204,14 +221,21 @@ class _cropper:
     def from_string(cls, Network, domain):
         if domain == "None":
             return cls(Network, domain=None)
-        else:
-            domain = domain.split(",")
+        domain = domain.split(",")
+
+        _0 = int(domain[0][1:])
+        _1 = int(domain[1])
+        _2 = int(domain[2])
         if len(domain) == 4:
-            _0 = int(domain[0][1:])
-            _1 = int(domain[1])
-            _2 = int(domain[2])
             _3 = int(domain[3][:-1])
             return cls(Network, domain=[_0, _1, _2, _3])
+        elif len(domain) == 6:
+            _3 = int(domain[3])
+            _4 = int(domain[4])
+            _5 = int(domain[5][:-1])
+            return cls(Network, domain=[_0, _1, _2, _3, _4, _5])
+        else:
+            raise ValueError(f"Could not parse crop string, {domain}.")
 
     def intergerise(self):
         """Method casts decimal values in the _croppers crop attribute to
@@ -274,10 +298,10 @@ class _cropper:
             raise ValueError("No crop associated with this _cropper")
 
         centre = (
-            self.crop[0].start + 0.5 *
-            (self.crop[0].stop - self.crop[0].start),
-            self.crop[1].start + 0.5 *
-            (self.crop[1].stop - self.crop[1].start),
+            self.crop[0].start
+            + 0.5 * (self.crop[0].stop - self.crop[0].start),
+            self.crop[1].start
+            + 0.5 * (self.crop[1].stop - self.crop[1].start),
         )
 
         diagonal = (

@@ -21,8 +21,13 @@ from matplotlib.colorbar import Colorbar
 from skimage.morphology import skeletonize
 
 from StructuralGT import base, error, process_image
-from StructuralGT.util import (_abs_path, _cropper, _domain, _fname,
-                               _image_stack)
+from StructuralGT.util import (
+    _abs_path,
+    _cropper,
+    _domain,
+    _fname,
+    _image_stack,
+)
 
 
 def colorbar(mappable, ax, *args, **kwargs):
@@ -84,7 +89,8 @@ class Network:
 
         image_stack = _image_stack()
         for slice_name in sorted(os.listdir(self.dir)):
-            if not base.Q_img(slice_name): continue
+            if not base.Q_img(slice_name):
+                continue
             fname = _fname(
                 self.dir + "/" + slice_name,
                 domain=_domain(depth),
@@ -141,7 +147,7 @@ class Network:
                     "The options argument must be a str, dict, or "
                     "deeplearner. If it is a deeplearner, you must have "
                     "tensorflow installed."
-                    )
+                )
 
         for _, name in self.image_stack:
             fname = _fname(self.dir + "/" + name, _2d=self._2d)
@@ -156,9 +162,9 @@ class Network:
             )
 
     def set_img_bin(self, crop):
-        """Sets the :attr:`img_bin` and :attr:`img_bin_3d` attributes, which
-        are numpy arrays of pixels and voxels which represent the binarized
-        image. Called internally by subclasses of :class:`Network`.
+        """Set the :attr:`img_bin` and :attr:`img_bin_3d` attributes.
+
+        This is called internally by subclasses of :class:`Network`.
 
         Args:
             crop (list):
@@ -176,7 +182,8 @@ class Network:
 
         i = self.cropper.surface
         for fname in sorted(os.listdir(self.stack_dir)):
-            if not base.Q_img(fname): continue
+            if not base.Q_img(fname):
+                continue
             fname = _fname(
                 self.stack_dir + "/" + fname,
                 domain=_domain(self.cropper._3d),
@@ -185,8 +192,11 @@ class Network:
             if fname.isimg and fname.isinrange:
                 img_bin[i - self.cropper.surface] = (
                     base.read(
-                        self.stack_dir + "/" + self.prefix + fname.num +
-                        ".tiff",
+                        self.stack_dir
+                        + "/"
+                        + self.prefix
+                        + fname.num
+                        + ".tiff",
                         cv.IMREAD_GRAYSCALE,
                     )[self.cropper._2d]
                     / 255
@@ -201,8 +211,9 @@ class Network:
         self._img_bin_3d = self._img_bin
         self._img_bin = np.squeeze(self._img_bin)
 
-    def set_graph(self, sub=True, weight_type=None, write="network.gsd",
-                  **kwargs):
+    def set_graph(
+        self, sub=True, weight_type=None, write="network.gsd", **kwargs
+    ):
         """Sets :class:`Graph` object as an attribute by reading the
         skeleton file written by :meth:`img_to_skel`.
 
@@ -218,9 +229,11 @@ class Network:
                 :code:`PerpBisector`.
         """
 
-        if not hasattr(self, '_skeleton'):
-            raise AttributeError("Network has no skeleton. You should call \
-                                 img_to_skel before calling set_graph.")
+        if not hasattr(self, "_skeleton"):
+            raise AttributeError(
+                "Network has no skeleton. You should call \
+                                 img_to_skel before calling set_graph."
+            )
 
         G = base.gsd_to_G(self.gsd_name, _2d=self._2d, sub=sub)
 
@@ -253,8 +266,9 @@ class Network:
 
             drop_list = []
             for i in range(self.Gr.vcount()):
-                if not base.isinside(np.asarray([node_positions[i]]),
-                                     inner_crop):
+                if not base.isinside(
+                    np.asarray([node_positions[i]]), inner_crop
+                ):
                     drop_list.append(i)
                     continue
 
@@ -266,7 +280,7 @@ class Network:
                 list(self.Gr.vs[i]["o"] for i in range(self.Gr.vcount()))
             )
             final_shift = np.asarray(
-                list(min(node_positions.T[i]) for i in (0, 1, 2)[0: self.dim])
+                list(min(node_positions.T[i]) for i in (0, 1, 2)[0 : self.dim])
             )
             edge_positions_list = np.asarray(
                 list(
@@ -278,8 +292,9 @@ class Network:
             for i, edge in enumerate(edge_positions_list):
                 edge_position = np.vstack((edge.T, np.zeros(len(edge)))).T
                 edge_position = np.matmul(edge_position, self.rotate).T[0:2].T
-                edge_position = base.shift(edge_position,
-                                           _shift=-centre + final_shift)[0]
+                edge_position = base.shift(
+                    edge_position, _shift=-centre + final_shift
+                )[0]
                 self.Gr.es[i]["pts"] = edge_position
 
             node_positions = base.shift(node_positions, _shift=final_shift)[0]
@@ -292,7 +307,7 @@ class Network:
 
         self.shape = list(
             max(list(self.Gr.vs[i]["o"][j] for i in range(self.Gr.vcount())))
-            for j in (0, 1, 2)[0: self.dim]
+            for j in (0, 1, 2)[0 : self.dim]
         )
 
         if write:
@@ -386,7 +401,7 @@ class Network:
 
         positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
         self.shape = np.asarray(
-            list(max(positions.T[i]) + 1 for i in (2, 1, 0)[0: self.dim])
+            list(max(positions.T[i]) + 1 for i in (2, 1, 0)[0 : self.dim])
         )
         self.positions = positions
 
@@ -435,8 +450,9 @@ class Network:
         else:
             self.rotate = None
 
-    def node_labelling(self, attributes, labels, filename, edge_weight=None,
-                       mode="w"):
+    def node_labelling(
+        self, attributes, labels, filename, edge_weight=None, mode="w"
+    ):
         """Method saves a new :code:`.gsd` which labels the :attr:`graph`
         attribute with the given node attribute values. Method saves the
         :attr:`graph`  attribute in the :code:`.gsd` file in the form of a
@@ -481,13 +497,16 @@ class Network:
         node_positions = np.empty((0, self.dim))
         edge_positions = np.empty((0, self.dim))
         for i in range(len(self.Gr.vs())):
-            node_positions = np.vstack((node_positions,
-                                        self.Gr.vs()[i]["pts"]))
-            centroid_positions = np.vstack((centroid_positions,
-                                            self.Gr.vs()[i]["o"]))
+            node_positions = np.vstack(
+                (node_positions, self.Gr.vs()[i]["pts"])
+            )
+            centroid_positions = np.vstack(
+                (centroid_positions, self.Gr.vs()[i]["o"])
+            )
         for i in range(len(self.Gr.es())):
-            edge_positions = np.vstack((edge_positions,
-                                        self.Gr.es()[i]["pts"]))
+            edge_positions = np.vstack(
+                (edge_positions, self.Gr.es()[i]["pts"])
+            )
 
         if self._2d:
             node_positions = np.hstack(
@@ -500,9 +519,9 @@ class Network:
                 (np.zeros((len(centroid_positions), 1)), centroid_positions)
             )
 
-        positions = np.vstack((edge_positions,
-                               node_positions,
-                               centroid_positions))
+        positions = np.vstack(
+            (edge_positions, node_positions, centroid_positions)
+        )
 
         self.positions = positions
 
@@ -516,8 +535,9 @@ class Network:
         centroid_positions = base.shift(
             centroid_positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4)
         )[0]
-        positions = base.shift(positions,
-                               _shift=(L[0] / 4, L[1] / 4, L[2] / 4))[0]
+        positions = base.shift(
+            positions, _shift=(L[0] / 4, L[1] / 4, L[2] / 4)
+        )[0]
 
         s = gsd.hoomd.Frame()
         N = len(positions)
@@ -549,10 +569,12 @@ class Network:
         s.log["Adj_rows"] = rows
         s.log["Adj_cols"] = columns
         s.log["Adj_values"] = values
-        s.log["Edge_lens"] = list(map(lambda edge: len(edge),
-                                      self.Gr.es["pts"]))
-        s.log["Node_lens"] = list(map(lambda node: len(node),
-                                      self.Gr.vs["pts"]))
+        s.log["Edge_lens"] = list(
+            map(lambda edge: len(edge), self.Gr.es["pts"])
+        )
+        s.log["Node_lens"] = list(
+            map(lambda node: len(node), self.Gr.vs["pts"])
+        )
 
         for i in range(len(centroid_positions)):
             for attribute, label in zip(attributes, labels):
@@ -599,8 +621,9 @@ class Network:
         ax.set_xticks([])
         ax.set_yticks([])
         if plot_img:
-            ax.imshow(self.image_stack[depth][0][self.cropper._2d],
-                      cmap="gray")
+            ax.imshow(
+                self.image_stack[depth][0][self.cropper._2d], cmap="gray"
+            )
 
         e = np.empty((0, 2))
         for edge in self.graph.es:
@@ -661,8 +684,9 @@ class Network:
         ax.set_xticks([])
         ax.set_yticks([])
         if plot_img:
-            ax.imshow(self.image_stack[depth][0][self.cropper._2d],
-                      cmap="gray")
+            ax.imshow(
+                self.image_stack[depth][0][self.cropper._2d], cmap="gray"
+            )
         _max = np.max(parameter)
         _min = np.min(parameter)
 
@@ -740,8 +764,9 @@ class Network:
             positions = np.vstack((positions, edge["pts"]))
 
         plt.figure(figsize=(10, 25))
-        plt.scatter(node_positions.T[2], node_positions.T[1], s=10,
-                    color="red")
+        plt.scatter(
+            node_positions.T[2], node_positions.T[1], s=10, color="red"
+        )
         plt.scatter(positions.T[2], positions.T[1], s=2)
         plt.imshow(self._img_bin[axis], cmap=mpl.cm.gray)
         plt.show()
@@ -815,12 +840,15 @@ class Network:
         N.Gr = G.Weighted_Adjacency(S, mode="upper")
 
         first_axis = {2: 1, 3: 0}[N.dim]
-        edge_pos = f.particles.position[f.particles.typeid == 0].T[
-                first_axis:3].T
-        node_pos = f.particles.position[f.particles.typeid == 1].T[
-                first_axis:3].T
-        centroid_pos = f.particles.position[f.particles.typeid == 2].T[
-                first_axis:3].T
+        edge_pos = (
+            f.particles.position[f.particles.typeid == 0].T[first_axis:3].T
+        )
+        node_pos = (
+            f.particles.position[f.particles.typeid == 1].T[first_axis:3].T
+        )
+        centroid_pos = (
+            f.particles.position[f.particles.typeid == 2].T[first_axis:3].T
+        )
 
         N.Gr.es["pts"] = base.split(
             base.shift(edge_pos, _2d=N._2d)[0].astype(int), f.log["Edge_lens"]
@@ -918,10 +946,13 @@ class ParticleNetwork(Sequence):
         for frame in _iter:
             _first = True
             for region in self.regions.regions:
-                positions = self.regions.inregion(region,
-                                                  frame.particles.position)
-                box = frame.configuration.box * {False: 2, True: 1}[
-                        self.periodic]
+                positions = self.regions.inregion(
+                    region, frame.particles.position
+                )
+                box = (
+                    frame.configuration.box
+                    * {False: 2, True: 1}[self.periodic]
+                )
                 aq = freud.locality.AABBQuery(box, positions)
                 nlist = aq.query(
                     positions,
@@ -962,7 +993,7 @@ class PointNetwork:
         self.dim = positions.shape[1]
         self.positions = positions
 
-    def point_to_skel(self, filename='skel.gsd'):
+    def point_to_skel(self, filename="skel.gsd"):
         """Method saves a new :code:`.gsd` with the graph
         structure.
 
@@ -972,12 +1003,17 @@ class PointNetwork:
         """
 
         for dim in range(self.dim):
-            self.positions[:, dim] = (self.positions[:, dim] - self.positions[:, dim].min())
+            self.positions[:, dim] = (
+                self.positions[:, dim] - self.positions[:, dim].min()
+            )
         L = list(max(self.positions.T[i]) for i in range(self.dim))
-        self.positions, _ = base.shift(self.positions,
-                                  _shift=(L[0] / 2, L[1] / 2, L[2] / 2))
-        box = np.array([L[0], L[1], L[2], 0, 0, 0])*{False: 2, True: 1}[self.periodic]
-
+        self.positions, _ = base.shift(
+            self.positions, _shift=(L[0] / 2, L[1] / 2, L[2] / 2)
+        )
+        box = (
+            np.array([L[0], L[1], L[2], 0, 0, 0])
+            * {False: 2, True: 1}[self.periodic]
+        )
 
         self.box = box
 
@@ -997,11 +1033,11 @@ class PointNetwork:
 
         N = self.graph.vcount()
         bonds = np.array(self.graph.get_edgelist())
-        bond_types = ['0']
+        bond_types = ["0"]
 
         snapshot = gsd.hoomd.Frame()
         snapshot.particles.N = N
-        snapshot.particles.types = ['A']
+        snapshot.particles.types = ["A"]
         snapshot.particles.position = self.positions
         snapshot.particles.typeid = [0] * N
         snapshot.particles.bond_types = bond_types
@@ -1012,12 +1048,12 @@ class PointNetwork:
         snapshot.bonds.types = bond_types
         snapshot.bonds.typeid = np.zeros(len(bonds), dtype=np.uint32)
 
-        with gsd.hoomd.open(name=filename, mode='w') as f:
+        with gsd.hoomd.open(name=filename, mode="w") as f:
             f.append(snapshot)
 
         self.filename = filename
 
-    def node_labelling(self, attributes, labels, filename='labelled.gsd'):
+    def node_labelling(self, attributes, labels, filename="labelled.gsd"):
         """Method saves a new :code:`.gsd` which labels the :attr:`graph`
         attribute with the given node attribute values.
 
@@ -1029,26 +1065,30 @@ class PointNetwork:
         """
 
         if not isinstance(labels, list):
-            labels = [labels,]
-            attributes = [attributes,]
+            labels = [
+                labels,
+            ]
+            attributes = [
+                attributes,
+            ]
 
-        with gsd.hoomd.open(name=self.filename, mode='r') as f:
+        with gsd.hoomd.open(name=self.filename, mode="r") as f:
             s = f[0]
             for attribute, label in zip(attributes, labels):
                 if len(attribute) != s.particles.N:
                     raise ValueError(
-                            f"Attribute length {len(attribute)} "
-                            "does not match number of particles "
-                            "{s.particles.N}."
-                            )
+                        f"Attribute length {len(attribute)} "
+                        "does not match number of particles "
+                        "{s.particles.N}."
+                    )
                 s.log["particles/" + label] = attribute
 
-        s.log['periodic'] = int(self.periodic)
-        s.log['cutoff'] = self.cutoff
-        s.log['dim'] = self.dim
-        s.log['box'] = self.box
+        s.log["periodic"] = int(self.periodic)
+        s.log["cutoff"] = self.cutoff
+        s.log["dim"] = self.dim
+        s.log["box"] = self.box
 
-        with gsd.hoomd.open(name=filename, mode='w') as f_mod:
+        with gsd.hoomd.open(name=filename, mode="w") as f_mod:
             f_mod.append(s)
 
     @classmethod
@@ -1057,15 +1097,14 @@ class PointNetwork:
         stored in a `.gsd` file."""
 
         f = gsd.hoomd.open(name=filename, mode="r")[frame]
-        cutoff = f.log['cutoff']
-        G = ig.Graph(edges=f.bonds.group.tolist(),
-                     n=f.particles.N)
+        cutoff = f.log["cutoff"]
+        G = ig.Graph(edges=f.bonds.group.tolist(), n=f.particles.N)
         positions = np.array(f.particles.position)
         positions = base.shift(positions, _2d=False)[0]
         N = cls(positions, cutoff, periodic=False)
-        N.graph= G
-        N.periodic = bool(f.log['periodic'][0])
-        N.dim = f.log['dim']
-        N.box = f.log['box']
+        N.graph = G
+        N.periodic = bool(f.log["periodic"][0])
+        N.dim = f.log["dim"]
+        N.box = f.log["box"]
 
         return N
