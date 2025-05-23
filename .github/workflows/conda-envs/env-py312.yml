@@ -1,11 +1,10 @@
 name: test
 channels:
-  - conda-forge
   - defaults
 
 dependencies:
     # Base depends
-  - python
+  - python==3.12
   - numpy
   - cython
   - eigen
