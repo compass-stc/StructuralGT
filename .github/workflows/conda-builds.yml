@@ -1,7 +1,9 @@
 name: Python Package using Conda
 
-on: [push]
-
+on:
+  push:
+    branches:
+      - main
 jobs:
   test:
     name: Test on ${{ matrix.os }}, Python ${{ matrix.python-version }}
