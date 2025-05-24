@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+
+defaults:
+  run:
+    shell: bash -leo pipefail {0}
+
 jobs:
   test:
     name: Test on ${{ matrix.os }}, Python ${{ matrix.python }}
@@ -23,10 +28,6 @@ jobs:
         micromamba-version: '2.0.2-2'
         environment-name: test
         environment-file: .github/workflows/conda-envs/py${{ matrix.python }}-conda-lock.yml
-        channels: conda-forge,defaults
-        activate-environment: test
-        auto-activate-base: false
-        show-channel-urls: true
 
     - name: Install package
       shell: bash -l {0}  # conda stetup requires this special shell
