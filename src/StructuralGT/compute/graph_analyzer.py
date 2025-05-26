@@ -29,7 +29,7 @@ from networkx.algorithms.flow import maximum_flow
 from networkx.algorithms.distance_measures import diameter, periphery
 from networkx.algorithms.wiener import wiener_index
 
-import sgt_c_module as sgt
+# import sgt_c_module as sgt
 # from src.StructuralGT.modules import FiberNetworkBuilder, ImageProcessor
 from src.StructuralGT.utils.progress_update import ProgressUpdate
 from src.StructuralGT.networks.fiber_network import FiberNetworkBuilder
