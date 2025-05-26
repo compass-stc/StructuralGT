@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools >= 80.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "StructuralGT"
+dynamic = ["version"]
+dependencies = [
+  "numpy",
+  "pandas",
+  "scipy",
+  "matplotlib",
+  "networkx",
+  "sknw",
+  "scikit-image",
+  "opencv-python",
+  "pillow",
+  "PySide6"
+]
+requires-python = ">=3.13"
+authors = [
+  {name = "Dickson Owuor", email = "owuordickson@gmail.com"},
+  {name = "Nicholas Kotov", email = "kotov@umich.edu"}
+]
+maintainers = [
+  {name = "Dickson Owuor", email = "owuordickson@gmail.com"}
+]
+description = "A software tool that allows graph theory analysis of nano-structures."
+readme =  "README.md"
+license = {file = "LICENSE"}
+keywords = ["nano-particles", "nano-structures", "graph-theory"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python :: 3.13",
+  "License :: OSI Approved :: GNU General Public License v3 License",
+  "Operating System :: OS Independent",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+
+# docs = []
+
+[project.urls]
+Homepage = "https://github.com/owuordickson/structural-gt"
+Documentation = "http://structural-gt.readthedocs.io"
+Repository = "https://github.com/owuordickson/structural-gt.git"
+"Bug Tracker" = "https://github.com/owuordickson/structural-gt/issues"
+Changelog = "https://github.com/owuordickson/structural-gt/blob/main/CHANGELOG.md"
+
+[project.scripts]
+StructuralGT = "StructuralGT.entrypoints:main_gui"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]  # list of folders that contain the packages (["."] by default)
+include = ["*"]  # package names should match these glob patterns (["*"] by default)
+exclude = ["tests*"]  # exclude packages matching these glob patterns (empty by default)
+namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
+
+[tool.setuptools.dynamic]
+version = {attr = "StructuralGT.__version__"}
