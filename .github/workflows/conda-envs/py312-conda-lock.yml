@@ -7969,55 +7969,55 @@ package:
   category: main
   optional: false
 - name: libusb
-  version: 1.0.28
+  version: 1.0.29
   manager: conda
   platform: linux-64
   dependencies:
-    libgcc: '>=13'
     __glibc: '>=2.17,<3.0.a0'
+    libgcc: '>=13'
     libudev1: '>=257.4'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libusb-1.0.28-h73b1eb8_1.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libusb-1.0.29-h73b1eb8_0.conda
   hash:
-    md5: 45d8148c26a2a4e176bb92be19245e29
-    sha256: 73442e137742c46ca5d518c6efab10788ac7499f1f58dcb869476b1f3bf69423
+    md5: d17e3fb595a9f24fa9e149239a33475d
+    sha256: 89c84f5b26028a9d0f5c4014330703e7dff73ba0c98f90103e9cef6b43a5323c
   category: main
   optional: false
 - name: libusb
-  version: 1.0.28
+  version: 1.0.29
   manager: conda
   platform: osx-64
   dependencies:
     __osx: '>=10.13'
-  url: https://conda.anaconda.org/conda-forge/osx-64/libusb-1.0.28-he3325bb_1.conda
+  url: https://conda.anaconda.org/conda-forge/osx-64/libusb-1.0.29-h2287256_0.conda
   hash:
-    md5: fd0aedcfcee22ffd9a56979a020210c1
-    sha256: db7ce11c0b8fe0e56b1061d0505fc3e6364f83269031fc1d5a26903f3ded3154
+    md5: e5d5fd6235a259665d7652093dc7d6f1
+    sha256: b46c1c71d8be2d19615a10eaa997b3547848d1aee25a7e9486ad1ca8d61626a7
   category: main
   optional: false
 - name: libusb
-  version: 1.0.28
+  version: 1.0.29
   manager: conda
   platform: osx-arm64
   dependencies:
     __osx: '>=11.0'
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/libusb-1.0.28-h48c0fde_1.conda
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/libusb-1.0.29-hbc156a2_0.conda
   hash:
-    md5: d088291a858c85eb41904dbdb0c690f6
-    sha256: 9920d358e874aca8adeffe453a45ee9caca13e39fae1e9e56bd8620c489e6d90
+    md5: f6654e9e96e9d973981b3b2f898a5bfa
+    sha256: 5eee9a2bf359e474d4548874bcfc8d29ebad0d9ba015314439c256904e40aaad
   category: main
   optional: false
 - name: libusb
-  version: 1.0.28
+  version: 1.0.29
   manager: conda
   platform: win-64
   dependencies:
     vc: '>=14.2,<15'
     vc14_runtime: '>=14.29.30139'
     ucrt: '>=10.0.20348.0'
-  url: https://conda.anaconda.org/conda-forge/win-64/libusb-1.0.28-h1839187_1.conda
+  url: https://conda.anaconda.org/conda-forge/win-64/libusb-1.0.29-h1839187_0.conda
   hash:
-    md5: e9616dda79de6913bc8b1065642af0a4
-    sha256: 0a8f1cd097e2889c67b07364b501a189999e226874c85aeb79551f78b9fc9f0a
+    md5: a656b2c367405cd24988cf67ff2675aa
+    sha256: 9837f8e8de20b6c9c033561cd33b4554cd551b217e3b8d2862b353ed2c23d8b8
   category: main
   optional: false
 - name: libuuid
@@ -12233,59 +12233,59 @@ package:
   category: main
   optional: false
 - name: tifffile
-  version: 2025.5.26
+  version: 2025.6.1
   manager: conda
   platform: linux-64
   dependencies:
     imagecodecs: '>=2024.12.30'
     numpy: '>=1.19.2'
     python: '>=3.11'
-  url: https://conda.anaconda.org/conda-forge/noarch/tifffile-2025.5.26-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/tifffile-2025.6.1-pyhd8ed1ab_0.conda
   hash:
-    md5: 08759132f35646deb05d5f9f114f6512
-    sha256: b9bed643d716167e0cc2ee9c5c3170f41f30d52b228db0154857fb8c79849b76
+    md5: 4c621a043717043a530637597e1f27f4
+    sha256: 4c0f5ad393c7eaf9f4c51a2a7e73ba7addd0f5f19b634bd1fdd24244103f7e3e
   category: main
   optional: false
 - name: tifffile
-  version: 2025.5.26
+  version: 2025.6.1
   manager: conda
   platform: osx-64
   dependencies:
     python: '>=3.11'
     numpy: '>=1.19.2'
     imagecodecs: '>=2024.12.30'
-  url: https://conda.anaconda.org/conda-forge/noarch/tifffile-2025.5.26-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/tifffile-2025.6.1-pyhd8ed1ab_0.conda
   hash:
-    md5: 08759132f35646deb05d5f9f114f6512
-    sha256: b9bed643d716167e0cc2ee9c5c3170f41f30d52b228db0154857fb8c79849b76
+    md5: 4c621a043717043a530637597e1f27f4
+    sha256: 4c0f5ad393c7eaf9f4c51a2a7e73ba7addd0f5f19b634bd1fdd24244103f7e3e
   category: main
   optional: false
 - name: tifffile
-  version: 2025.5.26
+  version: 2025.6.1
   manager: conda
   platform: osx-arm64
   dependencies:
     python: '>=3.11'
     numpy: '>=1.19.2'
     imagecodecs: '>=2024.12.30'
-  url: https://conda.anaconda.org/conda-forge/noarch/tifffile-2025.5.26-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/tifffile-2025.6.1-pyhd8ed1ab_0.conda
   hash:
-    md5: 08759132f35646deb05d5f9f114f6512
-    sha256: b9bed643d716167e0cc2ee9c5c3170f41f30d52b228db0154857fb8c79849b76
+    md5: 4c621a043717043a530637597e1f27f4
+    sha256: 4c0f5ad393c7eaf9f4c51a2a7e73ba7addd0f5f19b634bd1fdd24244103f7e3e
   category: main
   optional: false
 - name: tifffile
-  version: 2025.5.26
+  version: 2025.6.1
   manager: conda
   platform: win-64
   dependencies:
     python: '>=3.11'
     numpy: '>=1.19.2'
     imagecodecs: '>=2024.12.30'
-  url: https://conda.anaconda.org/conda-forge/noarch/tifffile-2025.5.26-pyhd8ed1ab_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/tifffile-2025.6.1-pyhd8ed1ab_0.conda
   hash:
-    md5: 08759132f35646deb05d5f9f114f6512
-    sha256: b9bed643d716167e0cc2ee9c5c3170f41f30d52b228db0154857fb8c79849b76
+    md5: 4c621a043717043a530637597e1f27f4
+    sha256: 4c0f5ad393c7eaf9f4c51a2a7e73ba7addd0f5f19b634bd1fdd24244103f7e3e
   category: main
   optional: false
 - name: tk
