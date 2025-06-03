@@ -1,5 +1,6 @@
 name: test
 channels:
+  - https://conda.ovito.org
   - conda-forge
 
 dependencies:
