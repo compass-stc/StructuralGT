@@ -4,11 +4,6 @@ on:
   push:
     branches:
       - main
-
-defaults:
-  run:
-    shell: bash -leo pipefail {0}
-
 jobs:
   test:
     name: Test on ${{ matrix.os }}, Python ${{ matrix.python }}
