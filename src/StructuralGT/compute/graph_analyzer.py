@@ -4,9 +4,9 @@
 Compute graph theory metrics
 """
 
-import sys
 import os
 import math
+import time
 import datetime
 import itertools
 import logging
@@ -20,36 +20,29 @@ import matplotlib.pyplot as plt
 from cv2.typing import MatLike
 from collections import defaultdict
 from statistics import stdev, StatisticsError
+from matplotlib.backends.backend_pdf import PdfPages
 
-from networkx.algorithms.centrality import betweenness_centrality, closeness_centrality
-from networkx.algorithms.centrality import eigenvector_centrality, percolation_centrality
+from networkx.algorithms.centrality import betweenness_centrality, closeness_centrality, eigenvector_centrality
 from networkx.algorithms import average_node_connectivity, global_efficiency, clustering
 from networkx.algorithms import degree_assortativity_coefficient
 from networkx.algorithms.flow import maximum_flow
 from networkx.algorithms.distance_measures import diameter, periphery
 from networkx.algorithms.wiener import wiener_index
 
-# import sgt_c_module as sgt
-# from src.StructuralGT.modules import FiberNetworkBuilder, ImageProcessor
-from src.StructuralGT.utils.progress_update import ProgressUpdate
-from src.StructuralGT.networks.fiber_network import FiberNetworkBuilder
-from src.StructuralGT.imaging.image_processor import ImageProcessor
-from src.StructuralGT.utils.config_loader import load_gtc_configs
-from src.StructuralGT.utils.sgt_utils import get_num_cores
-
+from .c_lang import sgt_c_module as sgt
+from ..utils.progress_update import ProgressUpdate
+from ..networks.fiber_network import FiberNetworkBuilder
+from ..imaging.image_processor import ImageProcessor
+from ..utils.config_loader import load_gtc_configs
+from ..utils.sgt_utils import get_num_cores, AbortException, write_txt_file
 
 logger = logging.getLogger("SGT App")
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout)
-
 
 # WE ARE USING CPU BECAUSE CuPy generates some errors - yet to be resolved.
 COMPUTING_DEVICE = "CPU"
 """
 try:
     import sys
-
-    logger = logging.getLogger("SGT App")
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout)
     import cupy as cp
 
     # Check for GPU
@@ -73,6 +66,7 @@ except cp.cuda.runtime.CUDARuntimeError:
     xp = np  # Fallback to NumPy for CPU
     logging.info("Using CPU with NumPy!", extra={'user': 'SGT Logs'})
 """
+
 
 class GraphAnalyzer(ProgressUpdate):
     """
@@ -98,7 +92,7 @@ class GraphAnalyzer(ProgressUpdate):
         >>> metrics_obj.run_analyzer()
         """
         super(GraphAnalyzer, self).__init__()
-        self.configs: dict = load_gtc_configs()  # graph theory computation parameters and options.
+        self.configs: dict = load_gtc_configs(imp.config_file)  # graph theory computation parameters and options.
         self.allow_mp: bool = allow_multiprocessing
         self.ntwk_p: ImageProcessor = imp
         self.plot_figures: list | None = None
@@ -128,8 +122,8 @@ class GraphAnalyzer(ProgressUpdate):
         # 2. Apply image filters and extract the graph (only if it has not been executed)
         if graph_obj.nx_3d_graph is None:
             self.ntwk_p.add_listener(self.track_img_progress)
-            self.ntwk_p.apply_img_filters()                     # Apply image filters
-            self.ntwk_p.build_graph_network()                   # Extract graph from binary image
+            self.ntwk_p.apply_img_filters()  # Apply image filters
+            self.ntwk_p.build_graph_network()  # Extract graph from binary image
             self.ntwk_p.remove_listener(self.track_img_progress)
             self.abort = self.ntwk_p.abort
             self.update_status([100, "Graph successfully extracted!"]) if not self.abort else None
@@ -160,11 +154,12 @@ class GraphAnalyzer(ProgressUpdate):
         # 5. Generate results in PDF
         self.plot_figures = self.generate_pdf_output(graph_obj)
 
-    def compute_gt_metrics(self, graph: nx.Graph = None):
+    def compute_gt_metrics(self, graph: nx.Graph = None, save_histogram: bool = True):
         """
         Compute unweighted graph theory metrics.
 
         :param graph: NetworkX graph object.
+        :param save_histogram: Whether to save the histogram data.
 
         :return: A Pandas DataFrame containing the unweighted graph theory metrics.
         """
@@ -175,24 +170,39 @@ class GraphAnalyzer(ProgressUpdate):
         self.update_status([1, "Performing un-weighted analysis..."])
 
         opt_gtc = self.configs
-        data_dict = {"x": [], "y": []}
+        data_dict = {"parameter": [], "value": []}
 
         node_count = int(nx.number_of_nodes(graph))
         edge_count = int(nx.number_of_edges(graph))
 
-        data_dict["x"].append("Number of nodes")
-        data_dict["y"].append(node_count)
+        data_dict["parameter"].append("Number of nodes")
+        data_dict["value"].append(node_count)
 
-        data_dict["x"].append("Number of edges")
-        data_dict["y"].append(edge_count)
+        data_dict["parameter"].append("Number of edges")
+        data_dict["value"].append(edge_count)
+
+        """
+        # length of edges
+        length_arr = np.array(list(nx.get_edge_attributes(graph, 'length').values()))
+        data_dict["parameter"].append('Average length (nm)')
+        data_dict["value"].append(round(np.average(length_arr), 3))
+        data_dict["parameter"].append('Median length (nm)')
+        data_dict["value"].append(round(np.median(length_arr), 3))
+
+        # width of edges
+        width_arr = np.array(list(nx.get_edge_attributes(graph, 'width').values()))
+        data_dict["parameter"].append('Average width (nm)')
+        data_dict["value"].append(round(np.average(width_arr), 3))
+        data_dict["parameter"].append('Median width (nm)')
+        data_dict["value"].append(round(np.median(width_arr), 3))
+        """
 
         # angle of edges (inbound and outbound)
         angle_arr = np.array(list(nx.get_edge_attributes(graph, 'angle').values()))
-        data_dict["x"].append('Average edge angle (degrees)')
-        data_dict["y"].append(round(np.average(angle_arr), 3))
-
-        data_dict["x"].append('Median edge angle (degrees)')
-        data_dict["y"].append(round(np.median(angle_arr), 3))
+        data_dict["parameter"].append('Average edge angle (degrees)')
+        data_dict["value"].append(round(np.average(angle_arr), 3))
+        data_dict["parameter"].append('Median edge angle (degrees)')
+        data_dict["value"].append(round(np.median(angle_arr), 3))
 
         if graph.number_of_nodes() <= 0:
             self.update_status([-1, "Problem with graph (change filter and graph options)."])
@@ -203,9 +213,10 @@ class GraphAnalyzer(ProgressUpdate):
             self.update_status([5, "Computing graph degree..."])
             deg_distribution_1 = dict(nx.degree(graph))
             deg_distribution = np.array(list(deg_distribution_1.values()), dtype=float)
-            hist_name = "degree_distribution"
-            hist_label = "Average degree"
-            data_dict = self._update_histogram_data(data_dict, deg_distribution, hist_name, hist_label)
+            if save_histogram:
+                self.histogram_data["degree_distribution"] = deg_distribution
+            data_dict["parameter"].append("Average degree")
+            data_dict["value"].append(round(np.average(deg_distribution), 5))
 
         connected_graph = None
         if (opt_gtc["compute_network_diameter"]["value"] == 1) or (
@@ -221,9 +232,9 @@ class GraphAnalyzer(ProgressUpdate):
             if connected_graph:
                 dia = int(diameter(graph))
             else:
-                dia= np.nan
-            data_dict["x"].append("Network diameter")
-            data_dict["y"].append(dia)
+                dia = np.nan
+            data_dict["parameter"].append("Network diameter")
+            data_dict["value"].append(dia)
 
         # calculating average nodal connectivity
         if opt_gtc["compute_avg_node_connectivity"]["value"] == 1:
@@ -247,17 +258,17 @@ class GraphAnalyzer(ProgressUpdate):
                         avg_node_con = average_node_connectivity(graph)
                 avg_node_con = round(avg_node_con, 5)
             else:
-                avg_node_con= np.nan
-            data_dict["x"].append("Average node connectivity")
-            data_dict["y"].append(avg_node_con)
+                avg_node_con = np.nan
+            data_dict["parameter"].append("Average node connectivity")
+            data_dict["value"].append(avg_node_con)
 
         # calculating graph density
         if opt_gtc["compute_graph_density"]["value"] == 1:
             self.update_status([20, "Computing graph density..."])
             g_density = nx.density(graph)
             g_density = round(g_density, 5)
-            data_dict["x"].append("Graph density")
-            data_dict["y"].append(g_density)
+            data_dict["parameter"].append("Graph density")
+            data_dict["value"].append(g_density)
 
         # calculating global efficiency
         if opt_gtc["compute_global_efficiency"]["value"] == 1:
@@ -267,42 +278,44 @@ class GraphAnalyzer(ProgressUpdate):
             self.update_status([25, "Computing global efficiency..."])
             g_eff = global_efficiency(graph)
             g_eff = round(g_eff, 5)
-            data_dict["x"].append("Global efficiency")
-            data_dict["y"].append(g_eff)
+            data_dict["parameter"].append("Global efficiency")
+            data_dict["value"].append(g_eff)
 
         if opt_gtc["compute_wiener_index"]["value"] == 1:
             self.update_status([30, "Computing wiener index..."])
             # settings.update_label("Calculating w_index...")
             w_index = wiener_index(graph)
             w_index = round(w_index, 1)
-            data_dict["x"].append("Wiener Index")
-            data_dict["y"].append(w_index)
+            data_dict["parameter"].append("Wiener Index")
+            data_dict["value"].append(w_index)
 
         # calculating assortativity coefficient
         if opt_gtc["compute_assortativity_coef"]["value"] == 1:
             self.update_status([35, "Computing assortativity coefficient..."])
             a_coef = degree_assortativity_coefficient(graph)
             a_coef = round(a_coef, 5)
-            data_dict["x"].append("Assortativity coefficient")
-            data_dict["y"].append(a_coef)
+            data_dict["parameter"].append("Assortativity coefficient")
+            data_dict["value"].append(a_coef)
 
         # calculating clustering coefficients
         if opt_gtc["compute_avg_clustering_coef"]["value"] == 1:
             self.update_status([40, "Computing clustering coefficients..."])
             coefficients_1 = clustering(graph)
             cl_coefficients = np.array(list(coefficients_1.values()), dtype=float)
-            hist_name = "clustering_coefficients"
-            hist_label = "Average clustering coefficient"
-            data_dict = self._update_histogram_data(data_dict, cl_coefficients, hist_name, hist_label)
+            if save_histogram:
+                self.histogram_data["clustering_coefficients"] = cl_coefficients
+            data_dict["parameter"].append("Average clustering coefficient")
+            data_dict["value"].append(round(np.average(cl_coefficients), 5))
 
         # calculating betweenness centrality histogram
         if opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1:
             self.update_status([45, "Computing betweenness centrality..."])
             b_distribution_1 = betweenness_centrality(graph)
             b_distribution = np.array(list(b_distribution_1.values()), dtype=float)
-            hist_name = "betweenness_distribution"
-            hist_label = "Average betweenness centrality"
-            data_dict = self._update_histogram_data(data_dict, b_distribution, hist_name, hist_label)
+            if save_histogram:
+                self.histogram_data["betweenness_distribution"] = b_distribution
+            data_dict["parameter"].append("Average betweenness centrality")
+            data_dict["value"].append(round(np.average(b_distribution), 5))
 
         # calculating eigenvector centrality
         if opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1:
@@ -312,77 +325,49 @@ class GraphAnalyzer(ProgressUpdate):
             except nx.exception.PowerIterationFailedConvergence:
                 e_vecs_1 = eigenvector_centrality(graph, max_iter=10000)
             e_vecs = np.array(list(e_vecs_1.values()), dtype=float)
-            hist_name = "eigenvector_distribution"
-            hist_label = "Average eigenvector centrality"
-            data_dict = self._update_histogram_data(data_dict, e_vecs, hist_name, hist_label)
+            if save_histogram:
+                self.histogram_data["eigenvector_distribution"] = e_vecs
+            data_dict["parameter"].append("Average eigenvector centrality")
+            data_dict["value"].append(round(np.average(e_vecs), 5))
 
         # calculating closeness centrality
         if opt_gtc["display_closeness_centrality_histogram"]["value"] == 1:
             self.update_status([55, "Computing closeness centrality..."])
             close_distribution_1 = closeness_centrality(graph)
             close_distribution = np.array(list(close_distribution_1.values()), dtype=float)
-            hist_name = "closeness_distribution"
-            hist_label = "Average closeness centrality"
-            data_dict = self._update_histogram_data(data_dict, close_distribution, hist_name, hist_label)
+            if save_histogram:
+                self.histogram_data["closeness_distribution"] = close_distribution
+            data_dict["parameter"].append("Average closeness centrality")
+            data_dict["value"].append(round(np.average(close_distribution), 5))
 
         # calculating Ohms centrality
         if opt_gtc["display_ohms_histogram"]["value"] == 1:
             self.update_status([60, "Computing Ohms centrality..."])
             o_distribution_1, res = self.compute_ohms_centrality(graph)
             o_distribution = np.array(list(o_distribution_1.values()), dtype=float)
-            hist_name = "ohms_distribution"
-            hist_label = "Average Ohms centrality"
-            data_dict = self._update_histogram_data(data_dict, o_distribution, hist_name, hist_label)
-            data_dict["x"].append("Ohms centrality -- avg. area "+ r"($m^2$)")
-            data_dict["y"].append(res['avg area'])
-            data_dict["x"].append("Ohms centrality -- avg. length (m)")
-            data_dict["y"].append(res['avg length'])
-            data_dict["x"].append("Ohms centrality -- avg. width (m)")
-            data_dict["y"].append(res['avg width'])
-            data_dict["x"].append("Ohms centrality -- g shape coeff.")
-            data_dict["y"].append(res['g shape'])
-            data_dict["x"].append("Ohms centrality -- conductivity (S/m)")
-            data_dict["y"].append(res['conductivity'])
-
-            # calculating current-flow betweenness centrality
-        """
-        if opt_gtc["display_current_flow_betweenness_centrality_histogram"]["value"] == 1:
-            # We select source nodes and target nodes with highest degree-centrality
-
-            gph = self.g_obj.nx_connected_graph
-            all_nodes = list(gph.nodes())
-            # source_nodes = random.sample(all_nodes, k=5)
-            # rem_nodes = list(set(source_nodes) - set(source_nodes))
-            # target_nodes = random.sample(rem_nodes, k=5)
-            degree_centrality = nx.degree_centrality(gph)
-            sorted_nodes = sorted(all_nodes, key=lambda x: degree_centrality[x], reverse=True)
-            source_nodes = sorted_nodes[:5]
-            target_nodes = sorted_nodes[-5:]
-
-            self.update_status([62, "Computing current-flow betweenness centrality..."])
-            cf_distribution_1 = nx.current_flow_betweenness_centrality_subset(gph, source_nodes, target_nodes)
-            cf_distribution = np.array(list(cf_distribution_1.values()), dtype=float)
-            hist_name = "currentflow_distribution"
-            hist_label = "Average current-flow betweenness centrality"
-            data_dict = self.update_histogram_data(data_dict, cf_distribution, hist_name, hist_label)
-        """
-
-        # calculating percolation centrality
-        if opt_gtc["display_percolation_histogram"]["value"] == 1:
-            self.update_status([65, "Computing percolation centrality..."])
-            p_distribution_1 = percolation_centrality(graph, states=None)
-            p_distribution = np.array(list(p_distribution_1.values()), dtype=float)
-            hist_name = "percolation_distribution"
-            hist_label = "Average percolation centrality"
-            data_dict = self._update_histogram_data(data_dict, p_distribution, hist_name, hist_label)
+            if save_histogram:
+                self.histogram_data["ohms_distribution"] = o_distribution
+            data_dict["parameter"].append("Average Ohms centrality")
+            data_dict["value"].append(round(np.average(o_distribution), 5))
+            data_dict["parameter"].append("Ohms centrality -- avg. area " + r"($m^2$)")
+            data_dict["value"].append(res['avg area'])
+            data_dict["parameter"].append("Ohms centrality -- avg. length (m)")
+            data_dict["value"].append(res['avg length'])
+            data_dict["parameter"].append("Ohms centrality -- avg. width (m)")
+            data_dict["value"].append(res['avg width'])
+            data_dict["parameter"].append("Ohms centrality -- g shape coeff.")
+            data_dict["value"].append(res['g shape'])
+            data_dict["parameter"].append("Ohms centrality -- conductivity (S/m)")
+            data_dict["value"].append(res['conductivity'])
 
         return pd.DataFrame(data_dict)
 
-    def compute_weighted_gt_metrics(self, graph_obj: FiberNetworkBuilder = None):
+    def compute_weighted_gt_metrics(self, graph_obj: FiberNetworkBuilder = None, save_histogram: bool = True):
         """
         Compute weighted graph theory metrics.
 
         :param graph_obj: GraphExtractor object.
+        :param save_histogram: Whether to save histogram data.
 
         :return: A Pandas DataFrame containing the weighted graph theory metrics.
         """
@@ -398,7 +383,7 @@ class GraphAnalyzer(ProgressUpdate):
         opt_gtc = self.configs
         wt_type = graph_obj.get_weight_type()
         weight_type = FiberNetworkBuilder.get_weight_options().get(wt_type)
-        data_dict = {"x": [], "y": []}
+        data_dict = {"parameter": [], "value": []}
 
         if graph.number_of_nodes() <= 0:
             self.update_status([-1, "Problem with graph (change filter and graph options)."])
@@ -408,16 +393,17 @@ class GraphAnalyzer(ProgressUpdate):
             self.update_status([72, "Compute weighted graph degree..."])
             deg_distribution_1 = dict(nx.degree(graph, weight='weight'))
             deg_distribution = np.array(list(deg_distribution_1.values()), dtype=float)
-            hist_name = "weighted_degree_distribution"
-            hist_label = f"{weight_type}-weighted average degree"
-            data_dict = self._update_histogram_data(data_dict, deg_distribution, hist_name, hist_label)
+            if save_histogram:
+                self.histogram_data["weighted_degree_distribution"] = deg_distribution
+            data_dict["parameter"].append(f"{weight_type}-weighted average degree")
+            data_dict["value"].append(round(np.average(deg_distribution), 5))
 
         if opt_gtc["compute_wiener_index"]["value"] == 1:
             self.update_status([74, "Compute weighted wiener index..."])
             w_index = wiener_index(graph, weight='length')
             w_index = round(w_index, 1)
-            data_dict["x"].append("Length-weighted Wiener Index")
-            data_dict["y"].append(w_index)
+            data_dict["parameter"].append("Length-weighted Wiener Index")
+            data_dict["value"].append(w_index)
 
         if opt_gtc["compute_avg_node_connectivity"]["value"] == 1:
             self.update_status([76, "Compute weighted node connectivity..."])
@@ -433,32 +419,34 @@ class GraphAnalyzer(ProgressUpdate):
                             max_flow = flow_value
                 max_flow = round(max_flow, 5)
             else:
-                max_flow= np.nan
-            data_dict["x"].append("Max flow between periphery")
-            data_dict["y"].append(max_flow)
+                max_flow = np.nan
+            data_dict["parameter"].append("Max flow between periphery")
+            data_dict["value"].append(max_flow)
 
         if opt_gtc["compute_assortativity_coef"]["value"] == 1:
             self.update_status([78, "Compute weighted assortativity..."])
             a_coef = degree_assortativity_coefficient(graph, weight='width')
             a_coef = round(a_coef, 5)
-            data_dict["x"].append("Width-weighted assortativity coefficient")
-            data_dict["y"].append(a_coef)
+            data_dict["parameter"].append("Width-weighted assortativity coefficient")
+            data_dict["value"].append(a_coef)
 
         if opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1:
             self.update_status([80, "Compute weighted betweenness centrality..."])
             b_distribution_1 = betweenness_centrality(graph, weight='weight')
             b_distribution = np.array(list(b_distribution_1.values()), dtype=float)
-            hist_name = "weighted_betweenness_distribution"
-            hist_label = f"{weight_type}-weighted average betweenness centrality"
-            data_dict = self._update_histogram_data(data_dict, b_distribution, hist_name, hist_label)
+            if save_histogram:
+                self.histogram_data["weighted_betweenness_distribution"] = b_distribution
+            data_dict["parameter"].append(f"{weight_type}-weighted betweenness centrality")
+            data_dict["value"].append(round(np.average(b_distribution), 5))
 
         if opt_gtc["display_closeness_centrality_histogram"]["value"] == 1:
             self.update_status([82, "Compute weighted closeness centrality..."])
             close_distribution_1 = closeness_centrality(graph, distance='length')
             close_distribution = np.array(list(close_distribution_1.values()), dtype=float)
-            hist_name = "weighted_closeness_distribution"
-            hist_label = f"Length-weighted average closeness centrality"
-            data_dict = self._update_histogram_data(data_dict, close_distribution, hist_name, hist_label)
+            if save_histogram:
+                self.histogram_data["weighted_closeness_distribution"] = close_distribution
+            data_dict["parameter"].append(f"Length-weighted average closeness centrality")
+            data_dict["value"].append(round(np.average(close_distribution), 5))
 
         if opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1:
             if self.abort:
@@ -470,17 +458,10 @@ class GraphAnalyzer(ProgressUpdate):
             except nx.exception.PowerIterationFailedConvergence:
                 e_vecs_1 = eigenvector_centrality(graph, max_iter=10000, weight='weight')
             e_vecs = np.array(list(e_vecs_1.values()), dtype=float)
-            hist_name = "weighted_eigenvector_distribution"
-            hist_label = f"{weight_type}-weighted average eigenvector centrality"
-            data_dict = self._update_histogram_data(data_dict, e_vecs, hist_name, hist_label)
-
-        if opt_gtc["display_percolation_histogram"]["value"] == 1:
-            self.update_status([86, "Compute weighted percolation centrality..."])
-            p_distribution_1 = percolation_centrality(graph, states=None, weight='weight')
-            p_distribution = np.array(list(p_distribution_1.values()), dtype=float)
-            hist_name = "weighted_percolation_distribution"
-            hist_label = f"{weight_type}-weighted average percolation centrality"
-            data_dict = self._update_histogram_data(data_dict, p_distribution, hist_name, hist_label)
+            if save_histogram:
+                self.histogram_data["weighted_eigenvector_distribution"] = e_vecs
+            data_dict["parameter"].append(f"{weight_type}-weighted average eigenvector centrality")
+            data_dict["value"].append(round(np.average(e_vecs), 5))
 
         # calculate cross-sectional area of edges
         wt_type = graph_obj.get_weight_type()
@@ -492,8 +473,8 @@ class GraphAnalyzer(ProgressUpdate):
             a_distribution = np.array(temp_distribution, dtype=float)
             ae_val = np.average(a_distribution)
             ae_val = round(ae_val, 5)
-            data_dict["x"].append(f"Average edge cross-sectional area (nm\u00b2)")
-            data_dict["y"].append(ae_val)
+            data_dict["parameter"].append(f"Average edge cross-sectional area (nm\u00b2)")
+            data_dict["value"].append(ae_val)
 
         return pd.DataFrame(data_dict)
 
@@ -509,24 +490,28 @@ class GraphAnalyzer(ProgressUpdate):
         for (h, w), nx_graphs in graph_groups.items():
             num_patches = len(nx_graphs)
             for nx_graph in nx_graphs:
-                temp_df = self.compute_gt_metrics(nx_graph)
+                temp_df = self.compute_gt_metrics(nx_graph, save_histogram=False)
                 if temp_df is None:
                     # Skip the problematic graph
                     continue
 
                 for _, row in temp_df.iterrows():
-                    x_param = row["x"]
-                    y_value = row["y"]
+                    x_param = row["parameter"]
+                    y_value = row["value"]
+                    if ' edge angle' in x_param:  # Skip this
+                        continue
                     sorted_plt_data[x_param][h].append(y_value)
 
+        # Include the computed GT metrics of the entire image
         if full_img_df is not None:
             # Get full image dimensions
             sel_batch = self.ntwk_p.get_selected_batch()
             h, w = sel_batch.images[0].img_bin.shape
             for _ in range(num_patches):
                 for _, row in full_img_df.iterrows():
-                    x_param = row["x"]
-                    y_value = row["y"]
+                    x_param = row["parameter"]
+                    y_value = row["value"]
+                    # print(f"{x_param}-{h}: {y_value}")
                     # sorted_plt_data[x_param][h].append(y_value)
         return sorted_plt_data
 
@@ -583,10 +568,16 @@ class GraphAnalyzer(ProgressUpdate):
                 # if n < 5:
             ohms_dict[n] = ohms_val
         avg_area = np.average(np.array(lst_area, dtype=float))
+        med_area = np.median(np.array(lst_area, dtype=float))
         avg_len = np.average(np.array(lst_len, dtype=float))
+        med_len = np.median(np.array(lst_len, dtype=float))
         avg_width = np.average(np.array(lst_width, dtype=float))
-        res = {'avg area': avg_area, 'avg length': avg_len, 'avg width': avg_width,
-               'g shape': g_shape, 'conductivity': round((1 / rho_dim), 2)}
+        med_width = np.median(np.array(lst_width, dtype=float))
+        res = {
+            'avg area': avg_area, 'med area': med_area,
+            'avg length': avg_len, 'med length': med_len,
+            'avg width': avg_width, 'med width': med_width,
+            'g shape': g_shape, 'conductivity': round((1 / rho_dim), 2)}
 
         return ohms_dict, res
 
@@ -659,7 +650,11 @@ class GraphAnalyzer(ProgressUpdate):
         """
 
         cpu_count = get_num_cores()
-        num_threads = cpu_count * 10 if nx.number_of_nodes(nx_graph) < 2000 else cpu_count * 20
+        if cpu_count > 10:
+            num_threads = cpu_count
+        else:
+            num_threads = 10
+        num_threads = num_threads if nx.number_of_nodes(nx_graph) < 2000 else cpu_count * 10
         anc = 0
 
         try:
@@ -734,13 +729,6 @@ class GraphAnalyzer(ProgressUpdate):
         fig = self.plot_run_configs(graph_obj)
         out_figs.append(fig)
         return out_figs
-
-    def _update_histogram_data(self, data_dict: dict, arr_distribution: np.ndarray, hist_name: str, hist_label: str):
-        val = round(np.average(arr_distribution), 5)
-        self.histogram_data[hist_name] = arr_distribution
-        data_dict["x"].append(hist_label)
-        data_dict["y"].append(val)
-        return data_dict
 
     def plot_gt_results(self, graph_obj: FiberNetworkBuilder):
         """
@@ -830,17 +818,6 @@ class GraphAnalyzer(ProgressUpdate):
             GraphAnalyzer.plot_distribution_histogram(ax_4, ec_title, eig_distribution, 'Eigenvector value')
         figs.append(fig)
 
-        # Currentflow
-
-        # Percolation
-        if opt_gtc["display_percolation_histogram"]["value"] == 1:
-            per_distribution = self.histogram_data["percolation_distribution"]
-            fig = plt.Figure(figsize=(8.5, 11), dpi=300)
-            pc_title = r"Percolation Centrality: $\sigma$="
-            ax_1 = fig.add_subplot(2, 2, 1)
-            GraphAnalyzer.plot_distribution_histogram(ax_1, pc_title, per_distribution, 'Percolation value')
-            figs.append(fig)
-
         # weighted histograms
         if opt_gte["has_weights"]["value"] == 1:
             wt_type = graph_obj.get_weight_type()
@@ -874,15 +851,6 @@ class GraphAnalyzer(ProgressUpdate):
                 GraphAnalyzer.plot_distribution_histogram(ax_4, w_ec_title, w_eig_distribution, 'Eigenvector value')
             figs.append(fig)
 
-            # percolation
-            if opt_gtc["display_percolation_histogram"]["value"] == 1:
-                w_per_distribution = self.histogram_data["weighted_percolation_distribution"]
-                fig = plt.Figure(figsize=(8.5, 11), dpi=300)
-                w_pc_title = weight_type + r"-Weighted Percolation Cent.: $\sigma$="
-                ax_1 = fig.add_subplot(2, 2, 1)
-                GraphAnalyzer.plot_distribution_histogram(ax_1, w_pc_title, w_per_distribution, 'Percolation value')
-                figs.append(fig)
-
         return figs
 
     def plot_2d_heatmaps(self, graph_obj: FiberNetworkBuilder, image_2d: MatLike = None):
@@ -906,54 +874,57 @@ class GraphAnalyzer(ProgressUpdate):
 
         if opt_gtc["display_degree_histogram"]["value"] == 1:
             deg_distribution = self.histogram_data["degree_distribution"]
-            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, deg_distribution, 'Degree Heatmap', sz, lw)
+            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, deg_distribution, 'Degree Heatmap', sz,
+                                                          lw)
             figs.append(fig)
         if (opt_gtc["display_degree_histogram"]["value"] == 1) and (opt_gte["has_weights"]["value"] == 1):
             w_deg_distribution = self.histogram_data["weighted_degree_distribution"]
-            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, w_deg_distribution, 'Weighted Degree Heatmap', sz, lw)
+            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, w_deg_distribution,
+                                                          'Weighted Degree Heatmap', sz, lw)
             figs.append(fig)
         if opt_gtc["compute_avg_clustering_coef"]["value"] == 1:
             cluster_coefs = self.histogram_data["clustering_coefficients"]
-            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, cluster_coefs, 'Clustering Coefficient Heatmap', sz, lw)
+            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, cluster_coefs,
+                                                          'Clustering Coefficient Heatmap', sz, lw)
             figs.append(fig)
         if opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1:
             bet_distribution = self.histogram_data["betweenness_distribution"]
-            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, bet_distribution, 'Betweenness Centrality Heatmap', sz, lw)
+            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, bet_distribution,
+                                                          'Betweenness Centrality Heatmap', sz, lw)
             figs.append(fig)
-        if (opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1) and (opt_gte["has_weights"]["value"] == 1):
+        if (opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1) and (
+                opt_gte["has_weights"]["value"] == 1):
             w_bet_distribution = self.histogram_data["weighted_betweenness_distribution"]
             fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, w_bet_distribution,
-                                    f'{weight_type}-Weighted Betweenness Centrality Heatmap', sz, lw)
+                                                          f'{weight_type}-Weighted Betweenness Centrality Heatmap', sz,
+                                                          lw)
             figs.append(fig)
         if opt_gtc["display_closeness_centrality_histogram"]["value"] == 1:
             clo_distribution = self.histogram_data["closeness_distribution"]
-            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, clo_distribution, 'Closeness Centrality Heatmap', sz, lw)
+            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, clo_distribution,
+                                                          'Closeness Centrality Heatmap', sz, lw)
             figs.append(fig)
         if (opt_gtc["display_closeness_centrality_histogram"]["value"] == 1) and (opt_gte["has_weights"]["value"] == 1):
             w_clo_distribution = self.histogram_data["weighted_closeness_distribution"]
-            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, w_clo_distribution, 'Length-Weighted Closeness Centrality Heatmap', sz, lw)
+            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, w_clo_distribution,
+                                                          'Length-Weighted Closeness Centrality Heatmap', sz, lw)
             figs.append(fig)
         if opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1:
             eig_distribution = self.histogram_data["eigenvector_distribution"]
-            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, eig_distribution, 'Eigenvector Centrality Heatmap', sz, lw)
+            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, eig_distribution,
+                                                          'Eigenvector Centrality Heatmap', sz, lw)
             figs.append(fig)
-        if (opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1) and (opt_gte["has_weights"]["value"] == 1):
+        if (opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1) and (
+                opt_gte["has_weights"]["value"] == 1):
             w_eig_distribution = self.histogram_data["weighted_eigenvector_distribution"]
             fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, w_eig_distribution,
-                                    f'{weight_type}-Weighted Eigenvector Centrality Heatmap', sz, lw)
+                                                          f'{weight_type}-Weighted Eigenvector Centrality Heatmap', sz,
+                                                          lw)
             figs.append(fig)
         if opt_gtc["display_ohms_histogram"]["value"] == 1:
             ohm_distribution = self.histogram_data["ohms_distribution"]
-            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, ohm_distribution, 'Ohms Centrality Heatmap', sz, lw)
-            figs.append(fig)
-        if opt_gtc["display_percolation_histogram"]["value"] == 1:
-            per_distribution = self.histogram_data["percolation_distribution"]
-            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, per_distribution, 'Percolation Centrality Heatmap', sz, lw)
-            figs.append(fig)
-        if (opt_gtc["display_percolation_histogram"]["value"] == 1) and (opt_gte["has_weights"]["value"] == 1):
-            w_per_distribution = self.histogram_data["weighted_percolation_distribution"]
-            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, w_per_distribution,
-                                    f'{weight_type}-Weighted Percolation Centrality Heatmap', sz, lw)
+            fig = GraphAnalyzer.plot_distribution_heatmap(graph_obj, image_2d, ohm_distribution,
+                                                          'Ohms Centrality Heatmap', sz, lw)
             figs.append(fig)
         return figs
 
@@ -1069,14 +1040,15 @@ class GraphAnalyzer(ProgressUpdate):
             # Maximum Conductance
             val_max = math.sqrt((2 * sorted_vals[1]))
         except ValueError:
-            val_max= np.nan
+            val_max = np.nan
         # Minimum Graph Conductance
         val_min = sorted_vals[1] / 2
 
         return val_max, val_min
 
     @staticmethod
-    def plot_distribution_heatmap(graph_obj: FiberNetworkBuilder, image: MatLike, distribution: list, title: str, size: float, line_width: float):
+    def plot_distribution_heatmap(graph_obj: FiberNetworkBuilder, image: MatLike, distribution: list, title: str,
+                                  size: float, line_width: float):
         """
         Create a heatmap from a distribution.
 
@@ -1097,7 +1069,8 @@ class GraphAnalyzer(ProgressUpdate):
         ax.set_title(title, fontdict=font_1)
 
         FiberNetworkBuilder.plot_graph_edges(ax, image, nx_graph, is_graph_2d=is_2d, line_width=line_width)
-        c_set = FiberNetworkBuilder.plot_graph_nodes(ax, nx_graph, is_graph_2d=is_2d, marker_size=size, distribution_data=distribution)
+        c_set = FiberNetworkBuilder.plot_graph_nodes(ax, nx_graph, is_graph_2d=is_2d, marker_size=size,
+                                                     distribution_data=distribution)
 
         fig.colorbar(c_set, ax=ax, orientation='vertical', label='Value')
         return fig
@@ -1131,57 +1104,135 @@ class GraphAnalyzer(ProgressUpdate):
     @staticmethod
     def plot_scaling_behavior(scaling_data: defaultdict = None):
         """"""
+
+        # Define our 'best-fit' model
+        def power_law_model(x, a, k):
+            """
+            A best-fit model that follows the power law distribution: y = (a * x)^(-k),
+            where a and k are fitting parameters.
+
+            Args:
+                x (np.array): Array of x values
+                a (float): fitting parameter
+                k (float): fitting parameter
+            """
+            return a * x ** (-k)
+
+        def lognormal_model(x, mu, sigma, a):
+            """
+            Log-normal model (Y depends on X, X is log-normal).
+
+            Args:
+                x (np.array): Array of x values
+                mu (float): fitting parameter
+                sigma (float): fitting parameter
+                a (float): fitting parameter
+
+            Returns:
+
+            """
+            return a * (1 / (x * sigma * np.sqrt(2 * np.pi))) * np.exp(-((np.log(x) - mu) ** 2) / (2 * sigma ** 2))
+
+        # Initialize plot figures
         figs = []
         if scaling_data is None:
             return figs
 
-        i = 1
+        # Plot scaling behavior
+        i = 0
         x_label = None
-        x_values = None
+        x_values, x_avg, x_err = np.nan, np.nan, np.nan
         fig = plt.Figure(figsize=(8.5, 11), dpi=300)
         for param_name, plt_dict in scaling_data.items():
             # Retrieve plot data
-            box_labels = sorted(plt_dict.keys())            # Optional: sort heights
-            y_lst = [plt_dict[h] for h in box_labels]       # shape: (n_samples, n_boxes)
-            # y_values = [list(row) for row in zip(*y_lst)]
+            box_labels = sorted(plt_dict.keys())  # Optional: sort heights
+            y_lst = [plt_dict[h] for h in box_labels]  # shape: (n_samples, n_boxes)
 
             # Pad with NaN
             max_len = max(len(row) for row in y_lst)
             padded_lst = [row + [np.nan] * (max_len - len(row)) for row in y_lst]
 
-            # Convert to a Numpy array and replace NaN values with the median of their respective columns
+            # Convert to a Numpy array
             y_values = np.array(padded_lst).T
-            # y_values = np.nan_to_num(y_values, nan=0.0)  # replace NaN values with 0
-            col_medians = np.nanmedian(y_values, axis=0)
-            idx_s = np.where(np.isnan(y_values))
-            y_values[idx_s] = np.take(col_medians, idx_s[1])
-            # print(f"{i}. {param_name}\n{y_values}\n\n")
-
-            # Box plot
-            # ax = fig.add_subplot(2, 2, i)
-            # ax.boxplot(y_values, tick_labels=box_labels, patch_artist=True, boxprops={'facecolor': 'bisque'})
-            # Mean line (center of each box)
-            # means = np.mean(y_values, axis=0)
-            # ax.plot(range(1, len(means) + 1), means, marker='o', color='blue', linestyle='--', label='Mean')
-            # ax.set_title(param_name)
-            # ax.set(xlabel='Image Height Filter Size (px)', ylabel='Value')
-            # ax.legend()
+            # Replace NaN values with the median of their respective columns
+            # col_medians = np.nanmedian(y_values, axis=0)
+            # idx_s = np.where(np.isnan(y_values))
+            # y_values[idx_s] = np.take(col_medians, idx_s[1])
+            y_avg = np.nanmean(y_values, axis=0)
+            y_err = np.nanstd(y_values, axis=0, ddof=1) / np.sqrt(y_values.shape[0])
+            # print(f"{i}. {param_name}\n{y_values}\n{y_avg} - {y_err}\n\n")
+            if np.any(np.isnan(y_avg)):
+                # print(f"{param_name} has NaN values: {y_avg}")
+                continue
 
             # Plot of the nodes counts against others
             if x_label is None:
                 x_label = param_name
-                x_values = y_values
+                # x_values = y_values
+                x_avg = y_avg
+                x_err = y_err
             else:
-                # i = i + 1
-                ax = fig.add_subplot(2, 2, i)
-                ax.plot(x_values, y_values, 'b.', markersize=3)
+                # 1. Transform to log-log scale
+                log_x = np.log(x_avg)
+                log_y = np.log(y_avg)
+
+                # 2a. Perform linear regression in log-log scale
+                slope, intercept, r_value, p_value, std_err = sp.stats.linregress(log_x, log_y)
+                # Compute line of best-fit
+                log_y_fit = slope * log_x + intercept
+
+                # 2b. Compute the line of best-fit on our data according to our power-law model
+                init_params = [1.0, 1.0]  # initial guess for [a, k]
+                optimal_params: np.ndarray = sp.optimize.curve_fit(power_law_model, x_avg, y_avg, p0=init_params)[0]
+                a_fit, k_fit = float(optimal_params[0]), float(optimal_params[1])
+                # print(f"Fitted parameters: a = {a_fit:.4f}, k = {k_fit:.4f}")
+                # Generate points for the best-fit curve
+                x_fit = np.linspace(min(x_avg), max(x_avg), 100)
+                y_fit = power_law_model(x_fit, a_fit, k_fit)
+
+                # 2c. Compute best-fit, assuming Log-Normal dependence on X
+                try:
+                    init_params_log = [1.0, 1.0, 10]
+                    opt_params_log: np.ndarray = sp.optimize.curve_fit(lognormal_model, x_avg, y_avg, p0=init_params_log, bounds=([0, 0, 0], [np.inf, np.inf, np.inf]), maxfev=1000)[0]
+                    mu_fit, sigma_fit, a_log_fit = float(opt_params_log[0]), float(opt_params_log[1]), float(opt_params_log[2])
+                except RuntimeError:
+                    mu_fit, sigma_fit, a_log_fit = 1.0, 1.0, 10.0
+                # Generate predicted points for the best-fit curve
+                y_fit_ln = lognormal_model(x_fit, mu_fit, sigma_fit, a_log_fit)
+
+                # 3a. Plot data (Log-Log scale with the line best-fit)
+                i = i + 1
                 y_title = param_name.split('(')[0] if '(' in param_name else param_name
-                ax.set_title(f"Nodes vs {y_title}")
+                ax = fig.add_subplot(2, 2, i)
+                # ax.plot(x_values, y_values, 'b.', markersize=3)
+                ax.plot(log_x, log_y, label='Data', color='b', marker='s', markersize=3)
+                ax.plot(log_x, log_y_fit, label=f'Fit: slope={slope:.2f}, $R^2$={r_value ** 2:.3f}', color='r')
+                ax.set_title(f"Log-Log Plot of Nodes vs {y_title}", fontsize=10)
+                ax.set(xlabel='No. of Nodes (log scale)', ylabel=f'{param_name} (log scale)')
+                ax.legend()
+
+                # 3b. Plot data (power-law best fit)
+                i = i + 1
+                ax = fig.add_subplot(2, 2, i)
+                ax.errorbar(x_avg, y_avg, xerr=x_err, yerr=y_err, label='Data', color='b', capsize=4, marker='s', markersize=4, linewidth=1, linestyle='-')
+                ax.plot(x_fit, y_fit, label=f'Fit: $y = ax^{{-k}}$\n$a={a_fit:.2f}, k={k_fit:.2f}$', color='red')
+                ax.set_title(f"Nodes vs {y_title}", fontsize=10)
                 ax.set(xlabel='No. of Nodes', ylabel=f'{param_name}')
+                ax.legend()
+
+                # 3c. Plot data (Log-normal distribution best fit)
+                i = i + 1
+                ax = fig.add_subplot(2, 2, i)
+                ax.errorbar(x_avg, y_avg, xerr=x_err, yerr=y_err, label='Data', color='b', capsize=4, marker='s',
+                            markersize=4, linewidth=1, linestyle='-')
+                ax.plot(x_fit, y_fit_ln, label=f'Fit: log-normal shape\n$\\mu={mu_fit:.2f}$, $\\sigma={sigma_fit:.2f}$',
+                         color='red')
+                ax.set_title(f"Fit Assuming Log-Normal Dependence on\n Nodes vs {y_title}", fontsize=10)
+                ax.set(xlabel='No. of Nodes', ylabel=f'{param_name}')
+                ax.legend()
 
             # Navigate to the next subplot
-            i = i + 1
-            if i > 4:
+            if (i+1) > 2:
                 figs.append(fig)
                 fig = plt.Figure(figsize=(8.5, 11), dpi=300)
                 i = 1
@@ -1212,3 +1263,117 @@ class GraphAnalyzer(ProgressUpdate):
                               colWidths=col_width,
                               cellLoc='left')
             table.scale(1, 1.5)
+
+    @staticmethod
+    def write_to_pdf(sgt_obj, update_func=None):
+        """
+        Write results to a PDF file.
+
+        Args:
+            sgt_obj: StructuralGT object with calculated GT parameters
+            update_func: Callable for progress updates (e.g., update_func(percentage, message))
+
+        Returns:
+            True if the PDF file is written successfully, otherwise False
+        """
+        try:
+            if update_func:
+                update_func(98, "Writing PDF...")
+
+            filename, output_location = sgt_obj.ntwk_p.get_filenames()
+            pdf_filename = filename + "_SGT_results.pdf"
+            pdf_file = os.path.join(output_location, pdf_filename)
+
+            if not sgt_obj.plot_figures:
+                raise ValueError("No figures available to write to PDF.")
+
+            with PdfPages(pdf_file) as pdf:
+                for fig in sgt_obj.plot_figures:
+                    pdf.savefig(fig)
+
+            if update_func:
+                update_func(100, "GT PDF successfully generated!")
+            return True
+        except Exception as err:
+            logging.exception("GT Computation Error: %s", err, extra={'user': 'SGT Logs'})
+            if update_func:
+                update_func(-1, "Error occurred while trying to write to PDF.")
+            return False
+
+    @staticmethod
+    def safe_run_analyzer(sgt_obj, update_func):
+        """
+        Safely compute GT metrics without raising exceptions or crushing app.
+
+        Args:
+            sgt_obj: StructuralGT object with calculated GT parameters
+            update_func: Callable for progress updates (e.g., update_func(percentage, message))
+        """
+        try:
+            # Add Listeners
+            sgt_obj.add_listener(update_func)
+
+            sgt_obj.run_analyzer()
+            if sgt_obj.abort:
+                raise AbortException("Process aborted")
+
+            # Cleanup - remove listeners
+            sgt_obj.remove_listener(update_func)
+            return True, sgt_obj
+        except AbortException:
+            update_func(-1, "Task aborted by user or a fatal error occurred!")
+            sgt_obj.remove_listener(update_func)
+            return False, None
+        except Exception as err:
+            update_func(-1, "Error encountered! Try again")
+            logging.exception("Error: %s", err, extra={'user': 'SGT Logs'})
+            # Clean up listeners before exiting
+            sgt_obj.remove_listener(update_func)
+            return False, None
+
+    @staticmethod
+    def safe_run_multi_analyzer(sgt_objs, update_func):
+        """
+        Safely compute GT metrics of multiple images without raising exceptions or crushing the app.
+
+        Args:
+            sgt_objs: List of StructuralGT objects with calculated GT parameters
+            update_func: Callable for progress updates (e.g., update_func(percentage, message))
+        """
+        try:
+            i = 0
+            keys_list = list(sgt_objs.keys())
+            for key in keys_list:
+                sgt_obj = sgt_objs[key]
+
+                status_msg = f"Analyzing Image: {(i + 1)} / {len(sgt_objs)}"
+                update_func(101, status_msg)
+
+                start = time.time()
+                success, new_sgt = GraphAnalyzer.safe_run_analyzer(sgt_obj, update_func)
+                # TerminalApp.is_aborted(sgt_obj)
+                if success:
+                    GraphAnalyzer.write_to_pdf(new_sgt, update_func)
+                end = time.time()
+
+                i += 1
+                num_cores = get_num_cores()
+                sel_batch = sgt_obj.ntwk_p.get_selected_batch()
+                graph_obj = sel_batch.graph_obj
+                output = status_msg + "\n" + f"Run-time: {str(end - start)}  seconds\n"
+                output += "Number of cores: " + str(num_cores) + "\n"
+                output += "Results generated for: " + sgt_obj.ntwk_p.img_path + "\n"
+                output += "Node Count: " + str(graph_obj.nx_3d_graph.number_of_nodes()) + "\n"
+                output += "Edge Count: " + str(graph_obj.nx_3d_graph.number_of_edges()) + "\n"
+                filename, out_dir = sgt_obj.ntwk_p.get_filenames()
+                out_file = os.path.join(out_dir, filename + '-v2_results.txt')
+                write_txt_file(output, out_file)
+                logging.info(output, extra={'user': 'SGT Logs'})
+            return sgt_objs
+        except AbortException:
+            update_func(-1, "Task aborted by user or a fatal error occurred!")
+            return None
+        except Exception as err:
+            update_func(-1, "Error encountered! Try again")
+            logging.exception("Error: %s", err, extra={'user': 'SGT Logs'})
+            return None

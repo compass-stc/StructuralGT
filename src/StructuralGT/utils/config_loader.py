@@ -6,12 +6,65 @@ Loads default configurations from 'configs.ini' file
 
 import os
 import configparser
+from typing import Union
+
+from .sgt_utils import verify_path
 
 
-def load_img_configs():
+def strict_read_config_file(config_path, update_func=None):
+    """
+    Strictly read the contents of the 'configs.ini' file, otherwise stop execution.
+
+    Args:
+        config_path (str): path to config file
+        update_func (function): function that will be called to give message updates
+
+    Returns:
+        ConfigParser object or None if an error occurs.
+    """
+    success, result = verify_path(config_path)
+    if not success:
+        if update_func is not None:
+            update_func(-1, f"File Error: unable to find config file {config_path}.")
+        return False
+
+    config = configparser.ConfigParser()
+    config_file = result
+    try:
+        config.read(config_file)
+        return True
+    except configparser.Error:
+        if update_func is not None:
+            update_func(-1, f"Unable to read the configs from {config_file}.")
+        return False
+
+
+
+def read_config_file(config_path):
+    """Read the contents of the 'configs.ini' file"""
+    config = configparser.ConfigParser()
+    success, result = verify_path(config_path)
+    if success:
+        config_file = result
+    else:
+        # print(f"File Error: unable to find config file {config_path}. Using the default config file")
+        # Get the directory of the current script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = 'configs.ini'
+        config_file = os.path.join(script_dir, config_path)
+    # Load the default configuration from the file
+    try:
+        config.read(config_file)
+        return config
+    except configparser.Error:
+        # print(f"Unable to read the configs from {config_file}.")
+        return None
+
+
+def load_img_configs(cfg_path: str = ""):
     """Image Detection settings"""
 
-    options_img = {
+    options_img: dict[str, dict[str, Union[int, float]]] = {
         "threshold_type": {"id": "threshold_type", "type": "binary-filter", "text": "", "visible": 1, "value": 1 },
         "global_threshold_value": {"id": "global_threshold_value", "type": "binary-filter", "text": "", "visible": 1, "value": 127 },
         "adaptive_local_threshold_value": {"id": "adaptive_local_threshold_value", "type": "binary-filter", "text": "", "visible": 1, "value": 11 },
@@ -45,14 +98,11 @@ def load_img_configs():
     }
 
     # Load configuration from the file
-    config = configparser.ConfigParser()
-    try:
-        # Get the directory of the current script
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = 'configs.ini'
-        config_file = os.path.join(script_dir, config_path)
-        config.read(config_file)
+    config = read_config_file(cfg_path)
+    if config is None:
+        return options_img
 
+    try:
         options_img["threshold_type"]["value"] = int(config.get('filter-settings', 'threshold_type'))
         options_img["global_threshold_value"]["value"] = int(config.get('filter-settings', 'global_threshold_value'))
         options_img["adaptive_local_threshold_value"]["value"] = int(config.get('filter-settings', 'adaptive_local_threshold_value'))
@@ -87,7 +137,7 @@ def load_img_configs():
         return options_img
 
 
-def load_gte_configs():
+def load_gte_configs(cfg_path: str = ""):
     """Graph Extraction Settings"""
 
     options_gte = {
@@ -114,13 +164,11 @@ def load_gte_configs():
     }
 
     # Load configuration from the file
-    config = configparser.ConfigParser()
+    config = read_config_file(cfg_path)
+    if config is None:
+        return options_gte
+
     try:
-        # Get the directory of the current script
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = 'configs.ini'
-        config_file = os.path.join(script_dir, config_path)
-        config.read(config_file)
 
         options_gte["merge_nearby_nodes"]["value"] = int(config.get('extraction-settings', 'merge_nearby_nodes'))
         options_gte["prune_dangling_edges"]["value"] = int(config.get('extraction-settings', 'prune_dangling_edges'))
@@ -143,7 +191,7 @@ def load_gte_configs():
         return options_gte
 
 
-def load_gtc_configs():
+def load_gtc_configs(cfg_path: str = ""):
     """Networkx Calculation Settings"""
 
     options_gtc = {
@@ -161,36 +209,26 @@ def load_gtc_configs():
         "display_eigenvector_centrality_histogram": {"id": "display_eigenvector_centrality_histogram", "text": "Eigenvector Centrality", "value": 1},
         "display_ohms_histogram": {"id": "display_ohms_histogram", "text": "Ohms Centrality", "value": 0},
         "display_scaling_scatter_plot": {"id": "display_scaling_scatter_plot", "text": "Scaling Scatter Plot", "value": 0},
-        #"display_currentflow_histogram": {"id": "display_currentflow_histogram", "text": "Current Flow Betweenness Centrality", "value": 0},
         "display_edge_angle_centrality_histogram": {"id": "display_edge_angle_centrality_histogram", "text": "Edge Angle Centrality", "value": 0},
-        #"compute_graph_conductance": {"id": "compute_graph_conductance", "text": "Graph Conductance", "value": 0},
-        "display_percolation_histogram": {"id": "display_percolation_histogram", "text": "Percolation Centrality", "value": 0},
         #"compute_lang": {"id": "compute_lang", "text": "Programming Language", "value": 'Py'}
     }
 
     # Load configuration from the file
-    config = configparser.ConfigParser()
-    try:
-        # Get the directory of the current script
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = 'configs.ini'
-        config_file = os.path.join(script_dir, config_path)
-        config.read(config_file)
+    config = read_config_file(cfg_path)
+    if config is None:
+        return options_gtc
 
+    try:
         options_gtc["display_heatmaps"]["value"] = int(config.get('sgt-settings', 'display_heatmaps'))
         options_gtc["display_degree_histogram"]["value"] = int(config.get('sgt-settings', 'display_degree_histogram'))
         options_gtc["display_betweenness_centrality_histogram"]["value"] = int(config.get('sgt-settings', 'display_betweenness_centrality_histogram'))
-        # options_gtc["display_current_flow_betweenness_centrality_histogram"]["value"] = int(
-        #    config.get('sgt-settings', 'display_current_flow_betweenness_centrality_histogram'))
         options_gtc["display_closeness_centrality_histogram"]["value"] = int(config.get('sgt-settings', 'display_closeness_centrality_histogram'))
         options_gtc["display_eigenvector_centrality_histogram"]["value"] = int(config.get('sgt-settings', 'display_eigenvector_centrality_histogram'))
         options_gtc["display_edge_angle_centrality_histogram"]["value"] = int(config.get('sgt-settings', 'display_edge_angle_centrality_histogram'))
         options_gtc["display_ohms_histogram"]["value"] = int(config.get('sgt-settings', 'display_ohms_histogram'))
-        options_gtc["display_percolation_histogram"]["value"] = int(config.get('sgt-settings', 'display_percolation_histogram'))
         options_gtc["display_scaling_scatter_plot"]["value"] = int(config.get('sgt-settings', 'display_scaling_scatter_plot'))
         options_gtc["compute_avg_node_connectivity"]["value"] = int(config.get('sgt-settings', 'compute_avg_node_connectivity'))
         options_gtc["compute_graph_density"]["value"] = int(config.get('sgt-settings', 'compute_graph_density'))
-        # options_gtc["compute_graph_conductance"]["value"] = int(config.get('sgt-settings', 'compute_graph_conductance'))
         options_gtc["compute_global_efficiency"]["value"] = int(config.get('sgt-settings', 'compute_global_efficiency'))
         options_gtc["compute_avg_clustering_coef"]["value"] = int(config.get('sgt-settings', 'compute_avg_clustering_coef'))
         options_gtc["compute_assortativity_coef"]["value"] = int(config.get('sgt-settings', 'compute_assortativity_coef'))

@@ -38,17 +38,10 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence"
 ]
 
-# docs = []
-
-[project.urls]
-Homepage = "https://github.com/owuordickson/structural-gt"
-Documentation = "http://structural-gt.readthedocs.io"
-Repository = "https://github.com/owuordickson/structural-gt.git"
-"Bug Tracker" = "https://github.com/owuordickson/structural-gt/issues"
-Changelog = "https://github.com/owuordickson/structural-gt/blob/main/CHANGELOG.md"
 
 [project.scripts]
 StructuralGT = "StructuralGT.entrypoints:main_gui"
+StructuralGT-cli = "StructuralGT.entrypoints:main_cli"
 
 [tool.setuptools]
 include-package-data = true

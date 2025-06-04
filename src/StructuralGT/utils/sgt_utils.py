@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: GNU GPL v3
+
+"""
+StructuralGT utility functions.
+"""
 
 import os
 import io
@@ -5,9 +10,9 @@ import sys
 import csv
 import cv2
 import base64
-import socket
+# import socket
 import logging
-import platform
+# import platform
 import subprocess
 import gsd.hoomd
 import numpy as np
@@ -17,6 +22,10 @@ from PIL import Image
 from typing import LiteralString
 from cv2.typing import MatLike
 
+
+class AbortException(Exception):
+    """Custom exception to handle task cancellation initiated by the user or an error."""
+    pass
 
 
 def get_num_cores():
@@ -55,6 +64,27 @@ def get_num_cores():
     return num_cores
 
 
+def verify_path(a_path):
+    if not a_path:
+        return False, "No folder/file selected."
+
+    # Convert QML "file:///" path format to a proper OS path
+    if a_path.startswith("file:///"):
+        if sys.platform.startswith("win"):
+            # Windows Fix (remove extra '/')
+            a_path = a_path[8:]
+        else:
+            # macOS/Linux (remove "file://")
+            a_path = a_path[7:]
+
+    # Normalize the path
+    a_path = os.path.normpath(a_path)
+
+    if not os.path.exists(a_path):
+        return False, f"File/Folder in {a_path} does not exist. Try again."
+    return True, a_path
+
+
 def install_package(package):
     try:
         subprocess.check_call([sys.executable, "-m", "pip", "install", package])
@@ -78,6 +108,7 @@ def detect_cuda_version():
         return None
 
 
+"""
 def detect_cuda_and_install_cupy():
     try:
         import cupy
@@ -87,7 +118,7 @@ def detect_cuda_and_install_cupy():
         logging.info("CuPy is not installed.", extra={'user': 'SGT Logs'})
 
     def is_connected(host="8.8.8.8", port=53, timeout=3):
-        """Check if the system has an active internet connection."""
+        # Check if the system has an active internet connection.
         try:
             socket.setdefaulttimeout(timeout)
             socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
@@ -131,6 +162,7 @@ def detect_cuda_and_install_cupy():
     else:
         logging.info("No CUDA detected or NVIDIA GPU Toolkit not installed. Installing CPU-only CuPy.", extra={'user': 'SGT Logs'})
         install_package('cupy')
+"""
 
 
 def write_txt_file(data: str, path: LiteralString | str | bytes, wr=True):

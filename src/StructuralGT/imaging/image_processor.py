@@ -6,12 +6,11 @@ Processes 2D or 3D images and generate a fiber graph network.
 
 import re
 import os
-import sys
 import cv2
-import pydicom
+# import pydicom
 import logging
 import numpy as np
-import nibabel as nib
+# import nibabel as nib
 import matplotlib.pyplot as plt
 from PIL import Image
 from math import isqrt
@@ -19,12 +18,11 @@ from cv2.typing import MatLike
 from dataclasses import dataclass
 from collections import defaultdict
 
-from src.StructuralGT.utils.progress_update import ProgressUpdate
-from src.StructuralGT.imaging.base_image import BaseImage
-from src.StructuralGT.networks.fiber_network import FiberNetworkBuilder
+from ..utils.progress_update import ProgressUpdate
+from ..imaging.base_image import BaseImage
+from ..networks.fiber_network import FiberNetworkBuilder
 
 logger = logging.getLogger("SGT App")
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stdout)
 
 Image.MAX_IMAGE_PIXELS = None  # Disable limit on maximum image size
 ALLOWED_IMG_EXTENSIONS = ('*.jpg', '*.png', '*.jpeg', '*.tif', '*.tiff', '*.qptiff')
@@ -52,13 +50,15 @@ class ImageProcessor(ProgressUpdate):
         current_view: str
         graph_obj: FiberNetworkBuilder
 
-    def __init__(self, img_path, out_dir, auto_scale=True):
+    def __init__(self, img_path, out_dir, cfg_file="", auto_scale=True):
         """
         A class for processing and preparing microscopy images for building a fiber graph network.
 
         Args:
             img_path (str | list): input image path
-            out_dir (str): directory path for storing results.
+            out_dir (str): directory path for storing results
+            cfg_file (str): configuration file path
+            auto_scale (bool): whether to automatically scale the image
 
         >>>
         >>> i_path = "path/to/image"
@@ -70,6 +70,7 @@ class ImageProcessor(ProgressUpdate):
         super(ImageProcessor, self).__init__()
         self.img_path: str = img_path if type(img_path) is str else img_path[0]
         self.output_dir: str = out_dir
+        self.config_file: str = cfg_file
         self.auto_scale: bool = auto_scale
         self.image_batches: list[ImageProcessor.ImageBatch] = []
         self.selected_batch: int = 0
@@ -113,7 +114,8 @@ class ImageProcessor(ProgressUpdate):
                     # Cluster the images into batches based on (h, w) size
                     h, w = image.shape[:2]
                     image_groups[(h, w)].append(image)
-                img_batch_groups = ImageProcessor.create_img_batch_groups(image_groups, self.auto_scale)
+                img_batch_groups = ImageProcessor.create_img_batch_groups(image_groups, self.config_file,
+                                                                          self.auto_scale)
                 return img_batch_groups
             elif ext in ['.tif', '.tiff', '.qptiff']:
                 image_groups = defaultdict(list)
@@ -138,22 +140,25 @@ class ImageProcessor(ProgressUpdate):
                         except EOFError:
                             # Stop when all frames are read
                             break
-                img_batch_groups = ImageProcessor.create_img_batch_groups(image_groups, self.auto_scale)
+                img_batch_groups = ImageProcessor.create_img_batch_groups(image_groups, self.config_file,
+                                                                          self.auto_scale)
                 return img_batch_groups
             elif ext in ['.nii', '.nii.gz']:
-                # Load NIfTI image using nibabel
+                """# Load NIfTI image using nibabel
                 img_nib = nib.load(file)
                 data = img_nib.get_fdata()
                 # Normalize and convert to uint8 for OpenCV compatibility
                 data = cv2.normalize(data, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-                return data
+                return data"""
+                return []
             elif ext == '.dcm':
-                # Load DICOM image using pydicom
+                """# Load DICOM image using pydicom
                 dcm = pydicom.dcmread(file)
                 data = dcm.pixel_array
                 # Normalize and convert to uint8 if needed
                 data = cv2.normalize(data, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-                return data
+                return data"""
+                return []
             else:
                 raise ValueError(f"Unsupported file format: {ext}")
         except Exception as err:
@@ -170,7 +175,7 @@ class ImageProcessor(ProgressUpdate):
         # Check if image batches exist
         if len(img_batches) == 0:
             raise ValueError("No images available! Please add at least one image.")
-        
+
         for i, img_batch in enumerate(img_batches):
             img_data = img_batch.numpy_image
             scale_factor = img_batch.scale_factor
@@ -183,9 +188,9 @@ class ImageProcessor(ProgressUpdate):
             image_list = []
             if (len(img_data.shape) >= 3) and (not has_alpha):
                 # If the image has shape (d, h, w) and does not an alpha channel which is less than 4 - (h, w, a)
-                image_list = [BaseImage(img, scale_factor) for img in img_data]
+                image_list = [BaseImage(img, self.config_file, scale_factor) for img in img_data]
             else:
-                img_obj = BaseImage(img_data, scale_factor)
+                img_obj = BaseImage(img_data, self.config_file, scale_factor)
                 image_list.append(img_obj)
 
             is_2d = True
@@ -200,7 +205,6 @@ class ImageProcessor(ProgressUpdate):
                 is_2d = False
                 logging.info("Image is 3D.", extra={'user': 'SGT Logs'})
                 # self.update_status([101, "Image is 3D"])
-
 
             img_batch.images = image_list
             img_batch.is_2d = is_2d
@@ -220,7 +224,8 @@ class ImageProcessor(ProgressUpdate):
         """
 
         if sel_batch_idx >= len(self.image_batches):
-            raise ValueError(f"Selected image batch {sel_batch_idx} out of range! Select in range 0-{len(self.image_batches)}")
+            raise ValueError(
+                f"Selected image batch {sel_batch_idx} out of range! Select in range 0-{len(self.image_batches)}")
 
         self.selected_batch = sel_batch_idx
         self.update_image_props(self.image_batches[sel_batch_idx])
@@ -249,7 +254,7 @@ class ImageProcessor(ProgressUpdate):
         self.update_status([10, "Processing image..."])
         if filter_type == 2:
             self.reset_img_filters()
-        
+
         sel_batch = self.get_selected_batch()
         progress = 10
         incr = 90 / len(sel_batch.images) - 1
@@ -330,7 +335,8 @@ class ImageProcessor(ProgressUpdate):
         """
         sel_batch = self.get_selected_batch()
         if len(sel_batch.selected_images) > 0:
-            [sel_batch.images[i].apply_img_crop(x, y, crop_w, crop_h, actual_w, actual_h) for i in sel_batch.selected_images]
+            [sel_batch.images[i].apply_img_crop(x, y, crop_w, crop_h, actual_w, actual_h) for i in
+             sel_batch.selected_images]
         self.update_image_props(sel_batch)
         sel_batch.current_view = 'processed'
 
@@ -366,7 +372,8 @@ class ImageProcessor(ProgressUpdate):
 
             sel_batch.graph_obj.abort = False
             sel_batch.graph_obj.add_listener(self.track_progress)
-            sel_batch.graph_obj.fit_graph(out_dir, img_bin, img_3d, sel_batch.is_2d, px_size, rho_val, image_file=f_name)
+            sel_batch.graph_obj.fit_graph(out_dir, img_bin, img_3d, sel_batch.is_2d, px_size, rho_val,
+                                          image_file=f_name)
             sel_batch.graph_obj.remove_listener(self.track_progress)
             self.abort = sel_batch.graph_obj.abort
             if self.abort:
@@ -388,14 +395,16 @@ class ImageProcessor(ProgressUpdate):
         # Get binary image
         img_obj = sel_batch.images[0]  # ONLY works for 2D
         if len(img_obj.image_segments) <= 0:
-            img_obj.image_segments = ImageProcessor.extract_cnn_patches(img_obj.img_bin)
+            filter_count = 10
+            window_count = 20
+            img_obj.image_segments = ImageProcessor.extract_cnn_patches(img_obj.img_bin, num_filters=filter_count, num_patches=window_count)
 
         seg_count = len(img_obj.image_segments)
         graph_groups = defaultdict(list)
         for i, scale_filter in enumerate(img_obj.image_segments):
-            self.update_status([101, f"Extracting graphs from image filter {i+1}/{seg_count}..."])
+            self.update_status([101, f"Extracting graphs from image filter {i + 1}/{seg_count}..."])
             for img_patch in scale_filter.image_patches:
-                graph_patch = FiberNetworkBuilder()
+                graph_patch = FiberNetworkBuilder(cfg_file=self.config_file)
                 graph_patch.configs = graph_configs
                 success = graph_patch.extract_graph(img_patch, is_img_2d=True)
                 if success:
@@ -408,10 +417,10 @@ class ImageProcessor(ProgressUpdate):
             #    fig, ax = plt.subplots()
             #    im = ax.imshow(img_patch, cmap='gray')
             #    ax.axis('off')
-            #print(f"Patch Count: {len(scale_filter.image_patches)}, Stride: {scale_filter.stride}, Filter Size: {scale_filter.filter_size}")
+            # print(f"Patch Count: {len(scale_filter.image_patches)}, Stride: {scale_filter.stride}, Filter Size: {scale_filter.filter_size}")
             # --------------------------------------------------
         # --------------------------------------------------
-        #plt.show()
+        # plt.show()
         # --------------------------------------------------
         return graph_groups
 
@@ -446,7 +455,7 @@ class ImageProcessor(ProgressUpdate):
         :param selected_batch: The selected batch ImageBatch object.
         """
         if selected_batch is None:
-           selected_batch = self.get_selected_batch()
+            selected_batch = self.get_selected_batch()
 
         sel_images = [selected_batch.images[i] for i in selected_batch.selected_images]
         return sel_images
@@ -482,7 +491,7 @@ class ImageProcessor(ProgressUpdate):
         props = [
             ["Name", f_name],
             ["Height x Width", f"({height} x {width}) pixels"] if slices == 0
-                                                            else ["Depth x H x W", f"({slices} x {height} x {width}) pixels"],
+            else ["Depth x H x W", f"({slices} x {height} x {width}) pixels"],
             ["Dimensions", f"{num_dim}D"],
             ["Format", f"{fmt}"],
             # ["Pixel Size", "2nm x 2nm"]
@@ -527,7 +536,8 @@ class ImageProcessor(ProgressUpdate):
             ax_3.set_axis_off()
             ax_3.imshow(img_bin, cmap='gray')
 
-            ax_4.set_title(f"Frame {i}: Histogram of Processed Image") if is_3d else ax_4.set_title(f"Histogram of Processed Image")
+            ax_4.set_title(f"Frame {i}: Histogram of Processed Image") if is_3d else ax_4.set_title(
+                f"Histogram of Processed Image")
             ax_4.set(yticks=[], xlabel='Pixel values', ylabel='Counts')
             ax_4.plot(img_histogram)
             if opt_img["threshold_type"]["value"] == 0:
@@ -641,8 +651,9 @@ class ImageProcessor(ProgressUpdate):
                 img_3d.append(img_small)
         return np.array(img_3d), scale_factor
 
+    # MODIFIED TO EXCLUDE 3D IMAGES (TO BE REVISITED LATER)
     @staticmethod
-    def create_img_batch_groups(img_groups: defaultdict, auto_scale: bool):
+    def create_img_batch_groups(img_groups: defaultdict, cfg_file: str, auto_scale: bool):
         """"""
         img_info_list = []
         for (h, w), images in img_groups.items():
@@ -657,6 +668,7 @@ class ImageProcessor(ProgressUpdate):
 
             # Convert back to numpy arrays
             images = images_small if len(images_small) > 0 else images
+            images = np.array([images[0]])  # REMOVE TO ALLOW 3D
             img_batch = ImageProcessor.ImageBatch(
                 numpy_image=images,
                 images=[],
@@ -666,10 +678,11 @@ class ImageProcessor(ProgressUpdate):
                 scale_factor=scale_factor,
                 scaling_options=scaling_opts,
                 selected_images=set(range(len(images))),
-                current_view = 'original',              # 'original', 'binary', 'processed', 'graph'
-                graph_obj=FiberNetworkBuilder()
+                current_view='original',  # 'original', 'binary', 'processed', 'graph'
+                graph_obj=FiberNetworkBuilder(cfg_file=cfg_file)
             )
             img_info_list.append(img_batch)
+            break  # REMOVE TO ALLOW 3D
         return img_info_list
 
     @staticmethod
@@ -729,3 +742,54 @@ class ImageProcessor(ProgressUpdate):
                     img_scaling.image_patches.append(patch)
             lst_img_seg.append(img_scaling)
         return lst_img_seg
+
+    @classmethod
+    def create_imp_object(cls, img_path: str, out_path: str = "", config_file: str = "", allow_auto_scale: bool = True):
+        """
+        Creates an ImageProcessor object. Make sure the image path exists, is verified, and points to an image.
+        :param img_path: Path to the image to be processed
+        :param out_path: Path to the output directory
+        :param config_file: Path to the config file
+        :param allow_auto_scale: Allows automatic scaling of the image
+        :return: ImageProcessor object.
+        """
+
+        # Get the image path and folder
+        img_files = []
+        img_dir, img_file = os.path.split(str(img_path))
+        img_file_ext = os.path.splitext(img_file)[1].lower()
+
+        is_prefix = True
+        # Regex pattern to extract the prefix (non-digit characters at the beginning of the file name)
+        img_name_pattern = re.match(r'^([a-zA-Z_]+)(\d+)(?=\.[a-zA-Z]+$)', img_file)
+        if img_name_pattern is None:
+            # Regex pattern to extract the suffix (non-digit characters at the end of the file name)
+            is_prefix = False
+            img_name_pattern = re.match(r'^\d+([a-zA-Z_]+)(?=\.[a-zA-Z]+$)', img_file)
+
+        if img_name_pattern:
+            img_files.append(img_path)
+            f_name = img_name_pattern.group(1)
+            name_pattern = re.compile(rf'^{f_name}\d+{re.escape(img_file_ext)}$', re.IGNORECASE) \
+                if is_prefix else re.compile(rf'^\d+{f_name}{re.escape(img_file_ext)}$', re.IGNORECASE)
+
+            # Check if 3D image slices exist in the image folder. Same file name but different number
+            files = sorted(os.listdir(img_dir))
+            for a_file in files:
+                if a_file.endswith(img_file_ext):
+                    if name_pattern.match(a_file):
+                        img_files.append(os.path.join(img_dir, a_file))
+
+        # Create the Output folder if it does not exist
+        default_out_dir = img_dir
+        if out_path != "":
+            default_out_dir = out_path
+
+        out_dir_name = "sgt_files"
+        out_dir = os.path.join(default_out_dir, out_dir_name)
+        out_dir = os.path.normpath(out_dir)
+        os.makedirs(out_dir, exist_ok=True)
+
+        # Create the StructuralGT object
+        input_file = img_files if len(img_files) > 1 else str(img_path)
+        return cls(input_file, out_dir, config_file, allow_auto_scale), img_file

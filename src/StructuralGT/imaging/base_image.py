@@ -11,8 +11,8 @@ from dataclasses import dataclass
 from skimage.morphology import disk
 from skimage.filters.rank import autolevel, median
 
-from src.StructuralGT.utils.config_loader import load_img_configs
-from src.StructuralGT.utils.sgt_utils import safe_uint8_image
+from ..utils.config_loader import load_img_configs
+from ..utils.sgt_utils import safe_uint8_image
 
 
 
@@ -31,15 +31,16 @@ class BaseImage:
         filter_size: tuple
         stride: tuple
 
-    def __init__(self, raw_img: MatLike, scale_factor: float = 1.0):
+    def __init__(self, raw_img: MatLike, cfg_file="", scale_factor=1.0):
         """
         A class that is used to binarize an image by applying filters to it and converting it to a binary version.
 
         Args:
-            raw_img: Raw image in OpenCV format.
-            scale_factor: Scale factor used to downsample/up-sample the image.
+            raw_img: Raw image in OpenCV format
+            cfg_file (str): Configuration file path
+            scale_factor (float): Scale factor used to downsample/up-sample the image.
         """
-        self.configs: dict = load_img_configs()  # image processing configuration parameters and options.
+        self.configs: dict = load_img_configs(cfg_file)  # image processing configuration parameters and options.
         self.img_raw: MatLike | None = safe_uint8_image(raw_img)
         self.img_2d: MatLike | None = None
         self.img_bin: MatLike | None = None
@@ -110,8 +111,9 @@ class BaseImage:
 
         if float(opt_img["apply_gamma"]["dataValue"]) != 1.00:
             inv_gamma = 1.00 / float(opt_img["apply_gamma"]["dataValue"])
-            table = np.array([((i / 255.0) ** inv_gamma) * 255
-                              for i in np.arange(0, 256)]).astype('uint8')
+            inv_gamma = float(inv_gamma)
+            lst_tbl = [((float(i) / 255.0) ** inv_gamma) * 255.0 for i in np.arange(0, 256)]
+            table = np.array(lst_tbl).astype('uint8')
             filtered_img = cv2.LUT(filtered_img, table)
 
         # applies a low-pass filter

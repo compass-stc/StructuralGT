@@ -1,4 +1,4 @@
-import re
+
 import os
 import sys
 import logging
@@ -11,9 +11,6 @@ from ovito.gui import create_qwidget
 from typing import TYPE_CHECKING, Optional
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QObject,Signal,Slot
-from matplotlib.backends.backend_pdf import PdfPages
-
-from .imagegrid_model import ImageGridModel
 
 if TYPE_CHECKING:
     # False at run time, only for a type-checker
@@ -22,13 +19,14 @@ if TYPE_CHECKING:
 from .tree_model import TreeModel
 from .table_model import TableModel
 from .checkbox_model import CheckBoxModel
+from .imagegrid_model import ImageGridModel
 from .qthread_worker import QThreadWorker, WorkerTask
 
-from src.StructuralGT import __version__
-from src.StructuralGT import ALLOWED_IMG_EXTENSIONS, COMPUTING_DEVICE
-from src.StructuralGT.utils.sgt_utils import img_to_base64
-from src.StructuralGT.imaging.image_processor import ImageProcessor, FiberNetworkBuilder
-from src.StructuralGT.compute.graph_analyzer import GraphAnalyzer
+from ... import __version__
+from ... import ALLOWED_IMG_EXTENSIONS, COMPUTING_DEVICE
+from ...utils.sgt_utils import img_to_base64, verify_path
+from ...imaging.image_processor import ImageProcessor, FiberNetworkBuilder
+from ...compute.graph_analyzer import GraphAnalyzer
 
 
 class MainController(QObject):
@@ -168,47 +166,17 @@ class MainController(QObject):
         Returns:
         """
 
-        img_path = self.verify_path(img_path)
-        if not img_path:
+        success, result = verify_path(img_path)
+        if success:
+            img_path = result
+        else:
+            logging.info(result, extra={'user': 'SGT Logs'})
+            self.showAlertSignal.emit("File/Directory Error", result)
             return False
 
-        # Try reading the image
+        # Create an SGT object as a GraphAnalyzer object.
         try:
-            # Get the image path and folder
-            img_files = []
-            img_dir, img_file = os.path.split(str(img_path))
-            img_file_ext = os.path.splitext(img_file)[1].lower()
-
-            is_prefix = True
-            # Regex pattern to extract the prefix (non-digit characters at the beginning of the file name)
-            img_name_pattern = re.match(r'^([a-zA-Z_]+)(\d+)(?=\.[a-zA-Z]+$)', img_file)
-            if img_name_pattern is None:
-                # Regex pattern to extract the suffix (non-digit characters at the end of the file name)
-                is_prefix = False
-                img_name_pattern = re.match(r'^\d+([a-zA-Z_]+)(?=\.[a-zA-Z]+$)', img_file)
-
-            if img_name_pattern:
-                img_files.append(img_path)
-                f_name = img_name_pattern.group(1)
-                name_pattern = re.compile(rf'^{f_name}\d+{re.escape(img_file_ext)}$', re.IGNORECASE) \
-                    if is_prefix else re.compile(rf'^\d+{f_name}{re.escape(img_file_ext)}$', re.IGNORECASE)
-
-                # Check if 3D image slices exist in the image folder. Same file name but different number
-                files = sorted(os.listdir(img_dir))
-                for a_file in files:
-                    if a_file.endswith(img_file_ext):
-                        if name_pattern.match(a_file):
-                            img_files.append(os.path.join(img_dir, a_file))
-
-            # Create the Output folder if it does not exist
-            out_dir_name = "sgt_files"
-            out_dir = os.path.join(img_dir, out_dir_name)
-            out_dir = os.path.normpath(out_dir)
-            os.makedirs(out_dir, exist_ok=True)
-
-            # Create the StructuralGT object
-            input_file = img_files if len(img_files) > 1 else str(img_path)
-            ntwk_p = ImageProcessor(input_file, out_dir, self.allow_auto_scale)
+            ntwk_p, img_file = ImageProcessor.create_imp_object(img_path, config_file="", allow_auto_scale=self.allow_auto_scale)
             sgt_obj = GraphAnalyzer(ntwk_p)
 
             # Store the StructuralGT object and sync application
@@ -286,54 +254,6 @@ class MainController(QObject):
         if img_view is not None:
             sel_img_batch.current_view = img_view
         return sel_images
-
-    def verify_path(self, a_path):
-        if not a_path:
-            logging.info("No folder/file selected.", extra={'user': 'SGT Logs'})
-            self.showAlertSignal.emit("File/Directory Error", "No folder/file selected.")
-            return False
-
-        # Convert QML "file:///" path format to a proper OS path
-        if a_path.startswith("file:///"):
-            if sys.platform.startswith("win"):
-                # Windows Fix (remove extra '/')
-                a_path = a_path[8:]
-            else:
-                # macOS/Linux (remove "file://")
-                a_path = a_path[7:]
-
-        # Normalize the path
-        a_path = os.path.normpath(a_path)
-
-        if not os.path.exists(a_path):
-            logging.exception("Path Error: %s", IOError, extra={'user': 'SGT Logs'})
-            self.showAlertSignal.emit("Path Error", f"File/Folder in {a_path} does not exist. Try again.")
-            return False
-        return a_path
-
-    def write_to_pdf(self, sgt_obj):
-        """
-        Write results to the PDF file.
-        Args:
-            sgt_obj:
-
-        Returns:
-
-        """
-        try:
-            self._handle_progress_update(98, "Writing PDF...")
-
-            filename, output_location = sgt_obj.ntwk_p.get_filenames()
-            pdf_filename = filename + "_SGT_results.pdf"
-            pdf_file = os.path.join(output_location, pdf_filename)
-            with (PdfPages(pdf_file) as pdf):
-                for fig in sgt_obj.plot_figures:
-                    pdf.savefig(fig)
-
-            self._handle_finished(True, sgt_obj)
-        except Exception as err:
-            logging.exception("GT Computation Error: %s", err, extra={'user': 'SGT Logs'})
-            self.worker_task.inProgressSignal.emit(-1, "Error occurred while trying to write to PDF.")
 
     def load_graph_simulation(self):
         """Render and visualize OVITO graph network simulation."""
@@ -425,7 +345,9 @@ class MainController(QObject):
                 logging.info(result[0] + ": " + result[1], extra={'user': 'SGT Logs'})
                 self.taskTerminatedSignal.emit(success_val, result)
             elif type(result) is GraphAnalyzer:
-                self.write_to_pdf(result)
+                pdf_saved = GraphAnalyzer.write_to_pdf(result, self._handle_progress_update)
+                if pdf_saved:
+                    self._handle_finished(True, result)
         else:
             if type(result) is ImageProcessor:
                 self._handle_progress_update(100, "Graph extracted successfully!")
@@ -786,8 +708,8 @@ class MainController(QObject):
         except Exception as err:
             self.wait_flag = False
             logging.exception("Graph Extraction Error: %s", err, extra={'user': 'SGT Logs'})
-            self.worker_task.inProgressSignal.emit(-1, "Fatal error occurred! Close the app and try again.")
-            self.worker_task.taskFinishedSignal.emit(False, ["Graph Extraction Error",
+            self._handle_progress_update(-1, "Fatal error occurred! Close the app and try again.")
+            self._handle_finished(False, ["Graph Extraction Error",
                                                           "Fatal error while trying to extract graph. "
                                                           "Close the app and try again."])
 
@@ -811,8 +733,8 @@ class MainController(QObject):
         except Exception as err:
             self.wait_flag = False
             logging.exception("GT Computation Error: %s", err, extra={'user': 'SGT Logs'})
-            self.worker_task.inProgressSignal.emit(-1, "Fatal error occurred! Close the app and try again.")
-            self.worker_task.taskFinishedSignal.emit(False, ["GT Computation Error",
+            self._handle_progress_update(-1, "Fatal error occurred! Close the app and try again.")
+            self._handle_finished(False, ["GT Computation Error",
                                                           "Fatal error while trying calculate GT parameters. "
                                                           "Close the app and try again."])
 
@@ -845,8 +767,8 @@ class MainController(QObject):
         except Exception as err:
             self.wait_flag = False
             logging.exception("GT Computation Error: %s", err, extra={'user': 'SGT Logs'})
-            self.worker_task.inProgressSignal.emit(-1, "Fatal error occurred! Close the app and try again.")
-            self.worker_task.taskFinishedSignal.emit(False, ["GT Computation Error",
+            self._handle_progress_update(-1, "Fatal error occurred! Close the app and try again.")
+            self._handle_finished(False, ["GT Computation Error",
                                                           "Fatal error while trying calculate GT parameters. "
                                                           "Close the app and try again."])
 
@@ -956,8 +878,12 @@ class MainController(QObject):
         Verify and validate multiple image paths, use each to create an SGT object, then load the last one in view.
         """
 
-        img_dir_path = self.verify_path(img_dir_path)
-        if not img_dir_path:
+        success, result = verify_path(img_dir_path)
+        if success:
+            img_dir_path = result
+        else:
+            logging.info(result, extra={'user': 'SGT Logs'})
+            self.showAlertSignal.emit("File/Directory Error", result)
             return False
 
         files = os.listdir(img_dir_path)
@@ -982,8 +908,12 @@ class MainController(QObject):
         """Creates a '.sgtproj' inside the selected directory"""
 
         self.project_open = False
-        dir_path = self.verify_path(dir_path)
-        if not dir_path:
+        success, result = verify_path(dir_path)
+        if success:
+            dir_path = result
+        else:
+            logging.info(result, extra={'user': 'SGT Logs'})
+            self.showAlertSignal.emit("File/Directory Error", result)
             return False
 
         proj_name += '.sgtproj'
@@ -1024,8 +954,12 @@ class MainController(QObject):
             self.wait_flag = True
             self.project_open = False
             # Verify the path
-            sgt_path = self.verify_path(sgt_path)
-            if not sgt_path:
+            success, result = verify_path(sgt_path)
+            if success:
+                sgt_path = result
+            else:
+                logging.info(result, extra={'user': 'SGT Logs'})
+                self.showAlertSignal.emit("File/Directory Error", result)
                 self.wait_flag = False
                 return False
             img_dir, proj_name = os.path.split(str(sgt_path))
