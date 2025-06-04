@@ -1,11 +1,11 @@
-numpy~=2.3.0rc1
+numpy~=2.2.6
 ovito~=3.12.4
 PySide6~=6.9.0
 pillow~=11.2.1
 opencv-python~=4.11.0.86
 gsd~=3.4.2
 matplotlib~=3.10.3
-scipy~=1.16.0rc1
+scipy~=1.15.3
 pandas~=2.2.3
 networkx~=3.5
 scikit-image~=0.25.2
