@@ -5,7 +5,7 @@ StructuralGT
 Overview
 ========
 A python package for the extraction and analysis of graphs from 2D and 3D experimental micrographs. Image processing techniques taken from `StructuralGT <https://github.com/drewvecchio/StructuralGT>`__.
-*StructuralGT* is available as an API based package, or GUI. Use conda-forge or the main GitHub branch for the API version, and the `GUI branch <https://github.com/compass-stc/StructuralGT/tree/DicksonOwuor-GUI>`__ for the GUI version.
+*StructuralGT* is available as an API based package, or GUI. Use `conda-forge <https://anaconda.org/conda-forge/structuralgt>__ or the main GitHub branch for the API version, and the `GUI branch <https://github.com/compass-stc/StructuralGT/tree/DicksonOwuor-GUI>`__ for the GUI version.
 
 Installation guide
 ==================
