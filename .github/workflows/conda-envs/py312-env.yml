@@ -1,0 +1,25 @@
+name: test
+channels:
+  - conda-forge
+
+dependencies:
+    # Base depends
+  - python=3.12
+  - numpy
+  - cython
+  - eigen
+  - igraph
+  - scipy
+  - scikit-image
+  - matplotlib
+  - opencv
+  - Pillow
+  - pandas
+  - gsd
+  - python-igraph
+  - cmake
+  - freud
+  - ipywidgets
+
+    # Testing
+  - pytest
