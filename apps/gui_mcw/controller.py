@@ -1,0 +1,473 @@
+import re
+import os
+import sys
+import json
+import logging
+import numpy as np
+import tempfile
+import shutil
+from ovito import scene
+from ovito.io import import_file
+from ovito.vis import Viewport
+from ovito.gui import create_qwidget
+from typing import TYPE_CHECKING
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QObject, Signal, Slot
+
+if TYPE_CHECKING:
+    # False at run time, only for a type-checker
+    from _typeshed import SupportsWrite
+
+from .image import ImageHandler
+from .table_model import TableModel
+from .qthread_worker import QThreadWorker, WorkerTask
+
+from StructuralGT import __version__
+from StructuralGT.structural import (
+    Size,
+    Clustering,
+    Assortativity,
+    Closeness,
+    Degree,
+)
+
+
+ALLOWED_IMG_EXTENSIONS = ["*.jpg", "*.jpeg", "*.png", "*.tif", "*.tiff"]
+
+
+class MainController(QObject):
+    """Exposes a method to refresh the image in QML"""
+
+    # updateProgressSignal = Signal(int, str)
+    # taskTerminatedSignal = Signal(bool, list)
+    # projectOpenedSignal = Signal(str)
+    # enableRectangularSelectionSignal = Signal(bool)
+    # showCroppingToolSignal = Signal(bool)
+    # showUnCroppingToolSignal = Signal(bool)
+    # performCroppingSignal = Signal(bool)
+
+    showAlertSignal = Signal(str, str)
+    errorSignal = Signal(str)
+    changeImageSignal = Signal()
+    imageChangedSignal = Signal()
+    taskFinishedSignal = Signal(bool, object)  # success/fail (True/False), result (object)
+
+    def __init__(self, qml_app: QApplication):
+        super().__init__()
+        self.qml_app = qml_app
+
+        # Default binary filter options
+        self.options = {
+            "Thresh_method": 0,
+            "gamma": 1.001,
+            "md_filter": 0,
+            "g_blur": 0,
+            "autolvl": 0,
+            "fg_color": 0,
+            "laplacian": 0,
+            "scharr": 0,
+            "sobel": 0,
+            "lowpass": 0,
+            "asize": 3,
+            "bsize": 1,
+            "wsize": 1,
+            "thresh": 128.0,
+        }
+
+        # Create network objects
+        self.images = []
+        self.selected_img_index = 0
+
+        # Create QThreadWorker for long tasks
+        self.wait_flag = False
+        self.worker_task = WorkerTask()
+        self.thread = QThreadWorker(None, None)
+
+        # Create Models
+        self.structPropsModel = TableModel([])
+
+
+    @Slot(result=str)
+    def get_sgt_version(self):
+        """"""
+        # Copyright (C) 2024, the Regents of the University of Michigan.
+        return f"StructuralGT v{__version__}"
+
+    @Slot(result=str)
+    def get_about_details(self):
+        about_app = (
+            f"A software tool that allows graph theory analysis of nano-structures. This is a modified version "
+            "of StructuralGT initially proposed by Drew A. Vecchio, DOI: "
+            "<html><a href='https://pubs.acs.org/doi/10.1021/acsnano.1c04711'>10.1021/acsnano.1c04711</a></html><html><br/><br/></html>"
+            "Contributors:<html><br/></html>"
+            "1. Nicolas Kotov<html><br/></html>"
+            "2. Dickson Owuor<html><br/></html>"
+            "3. Alain Kadar<html><br/><br/></html>"
+            "Documentation:<html><br/></html>"
+            "<html><a href='https://structuralgt.readthedocs.io'>structuralgt.readthedocs.io</a></html><html><br/><br/></html>"
+            f"{self.get_sgt_version()}<html><br/></html>"
+            "Copyright (C) 2018-2025, The Regents of the University of Michigan.<html><br/></html>"
+            "License: GPL GNU v3<html><br/></html>"
+        )
+        return about_app
+
+    @Slot(result=bool)
+    def img_loaded(self):
+        if not self.images:
+            return False
+        return self.images[self.selected_img_index].img_loaded
+
+    @Slot(result=bool)
+    def is_3d(self):
+        return self.images[self.selected_img_index].is_3d
+
+    @Slot(result=str)
+    def display_type(self):
+        return self.images[self.selected_img_index].display_type
+
+    @Slot(str, result=str)
+    def get_file_extensions(self, option):
+        if option == "img":
+            pattern_string = " ".join(ALLOWED_IMG_EXTENSIONS)
+            return f"Image files ({pattern_string})"
+        elif option == "proj":
+            return "Project files (*.sgtproj)"
+        else:
+            return ""
+
+    def verify_path(self, a_path):
+        if not a_path:
+            logging.info(
+                "No folder/file selected.", extra={"user": "SGT Logs"}
+            )
+            self.showAlertSignal.emit(
+                "File/Directory Error", "No folder/file selected."
+            )
+            return False
+
+        # Convert QML "file:///" path format to a proper OS path
+        if a_path.startswith("file:///"):
+            if sys.platform.startswith("win"):
+                # Windows Fix (remove extra '/')
+                a_path = a_path[8:]
+            else:
+                # macOS/Linux (remove "file://")
+                a_path = a_path[7:]
+
+        # Normalize the path
+        a_path = os.path.normpath(a_path)
+
+        if not os.path.exists(a_path):
+            logging.exception(
+                "Path Error: %s", IOError, extra={"user": "SGT Logs"}
+            )
+            self.showAlertSignal.emit(
+                "Path Error",
+                f"File/Folder in {a_path} does not exist. Try again.",
+            )
+            return False
+        return a_path
+
+    def get_selected_img(self):
+        try:
+            return self.images[self.selected_img_index]
+        except IndexError:
+            logging.info(
+                "No Image Error: Please import/add an image.",
+                extra={"user": "SGT Logs"},
+            )
+            self.showAlertSignal.emit(
+                "No Image Error", "No image added! Please import/add an image."
+            )
+            return None
+
+    @Slot(result=int)
+    def get_selected_slice_index(self):
+        return self.images[self.selected_img_index].selected_slice_index
+
+    @Slot(int, result=bool)
+    def set_selected_slice_index(self, index):
+        """Set the selected slice index of the image"""
+        image = self.get_selected_img()
+        if image and 0 <= index < image.network.image.shape[0]:
+            image.selected_slice_index = index
+            self.load_image()
+            return True
+        return False
+
+    @Slot(result=int)
+    def get_number_of_slices(self):
+        return self.images[self.selected_img_index].network.image.shape[0]
+
+    @Slot(result=bool)
+    def load_prev_slice(self):
+        """Load the previous slice of the image"""
+        image = self.get_selected_img()
+        if image and image.selected_slice_index > 0:
+            image.selected_slice_index -= 1
+            self.load_image()
+            return True
+        return False
+    
+    @Slot(result=bool)
+    def load_next_slice(self):
+        """Load the next slice of the image"""
+        image = self.get_selected_img()
+        if image and image.selected_slice_index < image.network.image.shape[0] - 1:
+            image.selected_slice_index += 1
+            self.load_image()
+            return True
+        return False
+
+    def create_img(self, img_path, is_3d=False):
+        """
+        A function that processes a selected image file and creates an analyzer object with default configurations.
+
+        Args:
+            img_path: file path to image
+
+        Returns:
+        """
+
+        img_path = self.verify_path(img_path)
+        if not img_path:
+            return False
+        print(img_path)
+
+        # Try reading the image
+        try:
+            if is_3d:
+                # Create a 3D image object
+                self.images.append(ImageHandler(img_path, is_3d=True))
+            else:
+                # Create a temporary directory for the image
+                prefix = "sgt_"
+                temp_dir = tempfile.TemporaryDirectory(prefix=prefix)
+
+                # Copy the image to the temporary directory
+                temp_img_path = os.path.join(
+                    temp_dir.name, os.path.basename(img_path)
+                )
+                shutil.copy(img_path, temp_img_path)
+
+                print(temp_dir.name)
+
+                # Create a 2d image object
+                self.images.append(ImageHandler(temp_dir))
+            return True
+
+        except Exception as err:
+            logging.exception(
+                "File Error: %s", err, extra={"user": "SGT Logs"}
+            )
+            self.showAlertSignal.emit(
+                "File Error", "Error processing image. Try again."
+            )
+            return False
+
+    @Slot(str, result=bool)
+    def add_2d_image(self, img_path):
+        """Verify and validate an image path, use it to create an Network and load it in view."""
+        is_created = self.create_img(img_path)
+        if is_created:
+            self.load_image()
+            return True
+        return False
+
+    @Slot(str, result=bool)
+    def add_3d_image(self, img_path):
+        """Verify and validate an image path, use it to create an Network and load it in view."""
+        is_created = self.create_img(img_path, is_3d=True)
+        if is_created:
+            self.load_image()
+            return True
+        return False
+
+    @Slot(int)
+    def load_image(self, index=None):
+        """Load the Network data of the selected image."""
+        print("Loading image...")
+        try:
+            if index is not None:
+                if index == self.selected_img_index:
+                    return
+                else:
+                    self.selected_img_index = index
+
+            self.changeImageSignal.emit()
+        except Exception as err:
+            # self.delete_sgt_object()
+            self.selected_img_index = 0
+            logging.exception(
+                "Image Loading Error: %s", err, extra={"user": "SGT Logs"}
+            )
+            self.showAlertSignal.emit(
+                "Image Error", "Error loading image. Try again."
+            )
+
+    @Slot(result=str)
+    def get_pixmap(self):
+        """Returns the URL that QML should use to load the image"""
+        curr_img_view = np.random.randint(0, 4)
+        unique_num = (
+            self.selected_img_index
+            + curr_img_view
+            + np.random.randint(low=21, high=1000)
+        )
+        return "image://imageProvider/" + str(unique_num)
+
+    @Slot(str)
+    def run_binarizer(self, options):
+        """Run the binarizer on the selected image"""
+        if self.wait_flag:
+            logging.info("Please Wait: Another Task Running!", extra={'user': 'SGT Logs'})
+            self.showAlertSignal.emit("Please Wait", "Another Task Running!")
+            return
+
+        image = self.get_selected_img()
+        if image is None:
+            self.wait_flag = False
+            return
+
+        self.wait_flag = True
+        self.options = json.loads(options)
+
+        self.thread = QThreadWorker(
+            self.worker_task.task_run_binarizer,
+            (image, self.options),
+        )
+
+        self.worker_task.taskFinishedSignal.connect(self._on_binarizer_finished)
+        self.worker_task.taskFinishedSignal.connect(self.thread.quit)
+
+        self.thread.start()
+
+    @Slot(bool, object)
+    def _on_binarizer_finished(self, success, result):
+        self.wait_flag = False
+        if success:
+            self.toggle_current_img_view("binary")
+        else:
+            self.showAlertSignal.emit("Binarizer Error", "Error applying binarizer.")
+
+    @Slot()
+    def run_graph_extraction(self):
+        """Run the graph extraction on the selected image"""
+        if self.wait_flag:
+            logging.info("Please Wait: Another Task Running!", extra={'user': 'SGT Logs'})
+            self.showAlertSignal.emit("Please Wait", "Another Task Running!")
+            return
+        
+        image = self.get_selected_img()
+        if image is None:
+            self.wait_flag = False
+            return
+        
+        self.wait_flag = True
+        self.thread = QThreadWorker(
+            self.worker_task.task_run_graph_extraction,
+            (image,),
+        )
+        self.worker_task.taskFinishedSignal.connect(self._on_graph_extraction_finished)
+        self.worker_task.taskFinishedSignal.connect(self.thread.quit)
+        self.thread.start()
+    
+    @Slot(bool, object)
+    def _on_graph_extraction_finished(self, success, result):
+        self.wait_flag = False
+        if success:
+            self.toggle_current_img_view("graph")
+        else:
+            self.showAlertSignal.emit(result[0], result[1])
+
+    @Slot(str, result=bool)
+    def toggle_current_img_view(self, display_type):
+        print(f"Display type: {display_type}")
+        if display_type == self.display_type():
+            return True
+        image = self.get_selected_img()
+        if display_type == "binary" and not image.binary_loaded:
+            self.showAlertSignal.emit(
+                "Images not binarized", 
+                "Please apply a binary filter or wait for it to finish."
+            )
+            return False
+        elif display_type == "graph" and not image.graph_loaded:
+            self.showAlertSignal.emit(
+                "Graph not extracted",
+                "Please extract a graph or wait for it to finish.",
+            )
+            return False
+        else:
+            image.display_type = display_type
+            self.load_image()
+            return True
+        
+
+    def load_graph_simulation(self):
+        """Render and visualize OVITO graph network simulation."""
+        try:
+            # Clear any existing scene
+            for p_line in list(scene.pipelines):
+                p_line.remove_from_scene()
+
+            # Create OVITO data pipeline
+            image = self.get_selected_img()
+            gsd_file = os.path.join(
+                image.img_path.name, "Binarized/network.gsd"
+            ) if not image.is_3d else os.path.join(
+                image.img_path, "Binarized/network.gsd"
+            )
+            pipeline = import_file(gsd_file)
+            pipeline.add_to_scene()
+
+            vp = Viewport(type=Viewport.Type.Perspective, camera_dir=(2, 1, -1))
+            ovito_widget = create_qwidget(vp, parent=self.qml_app.activeWindow())
+            ovito_widget.setMinimumSize(800, 500)
+            vp.zoom_all((800, 500))
+            ovito_widget.show()
+
+        except Exception as e:
+            print("Graph Simulation Error:", e)
+
+
+    def update_struct_models(self):
+        network = self.get_selected_img().network
+        print("Updating structural models...")
+        
+        # Compute diameter and density
+        size_obj = Size()
+        size_obj.compute(network)
+        diameter = size_obj.diameter
+        density = size_obj.density
+
+        # Compute average clustering coefficient
+        clustering_obj = Clustering()
+        clustering_obj.compute(network)
+        average_clustering_coefficient = clustering_obj.average_clustering_coefficient
+
+        # Compute assortativity
+        assortativity_obj = Assortativity()
+        assortativity_obj.compute(network)
+        assortativity = assortativity_obj.assortativity 
+
+        # Compute average closeness
+        closeness_obj = Closeness()
+        closeness_obj.compute(network)
+        average_closeness = closeness_obj.average_closeness
+
+        # Compute average degree
+        degree_obj = Degree()
+        degree_obj.compute(network)
+        average_degree = degree_obj.average_degree
+
+        struct_props = [
+            ["Diameter", f"{diameter:.5f}"],
+            ["Density", f"{density:.5f}"],
+            ["Avg Clustering Coef", f"{average_clustering_coefficient:.5f}"],
+            ["Assortativity", f"{assortativity:.5f}"],
+            ["Avg Closeness", f"{average_closeness:.5f}"],
+            ["Avg Degree", f"{average_degree:.5f}"]
+        ]
+        self.structPropsModel.reset_data(struct_props)
+        print(self.structPropsModel.itemData)
