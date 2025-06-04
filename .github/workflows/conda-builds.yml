@@ -24,6 +24,7 @@ jobs:
           micromamba-version: '2.0.2-2'
           environment-name: test
           environment-file: .github/workflows/conda-envs/py${{ matrix.python }}-conda-lock.yml
+          micromamba-root-path: ${{ github.workspace }}/micromamba
 
       - name: Install package
         shell: bash -l {0}  # conda stetup requires this special shell
