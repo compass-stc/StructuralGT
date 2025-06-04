@@ -19,26 +19,21 @@ else:
 with open('StructuralGT/metadata.json', 'w') as json_file:
     json.dump(metadata, json_file)
 
-if os.getenv("CONDA_PREFIX") is not None:
-    PRE_PREFIX = os.getenv("CONDA_PREFIX")
-elif os.getenv("CONDA_ENVS_PATH") is not None:
-    PRE_PREFIX = os.path.join(os.getenv("CONDA_ENVS_PATH"), "latest")
-else:
-    raise ValueError("Could not identify env prefix")
-#elif os.getenv("MAMBA_ROOT_PREFIX") is not None:
-
-if platform.system() == "Windows":
-    PREFIX = os.path.join(PRE_PREFIX, "Library")
-    extra_obj = os.path.join(PREFIX, "lib", "igraph.lib")
-    freud = "freud-analysis"
-else:
-    PREFIX = PRE_PREFIX
-    extra_obj = "-ligraph"
-    freud = "freud"
-
-
 if metadata['C_FLAG']:
-    assert PREFIX is not None
+    if os.getenv("CONDA_PREFIX") is not None:
+        PRE_PREFIX = os.getenv("CONDA_PREFIX")
+    else:
+        PRE_PREFIX = os.path.join(os.getenv("CONDA_ENVS_PATH"), "latest")
+
+    if platform.system() == "Windows":
+        PREFIX = os.path.join(PRE_PREFIX, "Library")
+        extra_obj = os.path.join(PREFIX, "lib", "igraph.lib")
+        freud = "freud-analysis"
+    else:
+        PREFIX = PRE_PREFIX
+        extra_obj = "-ligraph"
+        freud = "freud"
+
     include_dirs = [
         os.path.join(PREFIX, "include", "igraph"),
         os.path.join(PREFIX, "include", "eigen3"),
