@@ -20,6 +20,7 @@ dependencies = [
 requires-python = ">=3.13"
 authors = [
   {name = "Dickson Owuor", email = "owuordickson@gmail.com"},
+  {name = "Drew A. Vecchio", email = "vecdrew@umich.edu"},
   {name = "Kody Whisnant", email = "kgwhis@umich.edu"},
   {name = "Alain Kadar", email = "alaink@umich.edu"},
   {name = "Nicholas Kotov", email = "kotov@umich.edu"},
