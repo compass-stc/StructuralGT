@@ -45,7 +45,7 @@ StructuralGT
 Before executing ```StructuralGT-cli```, you need to specify these parameters:
 
 * **image file path** or **image directory/folder**: *[required and mutually exclusive]* you can set the file path using ```-f path-to-image``` or set the directory path using ```-d path-to-folder```. If the directory path is set, StructuralGT will compute the GT metrics of all the images simultaneously,
-* **configuration file path**: *[required]* you can set the path to config the file using ```-c path-to-config```. To make it easy, find the file ```sgt_configs.ini``` (in the *''datasets''* folder) and modify it to capture your GT parameters,
+* **configuration file path**: *[required]* you can set the path to config the file using ```-c path-to-config```. To make it easy, find the file ```sgt_configs.ini``` (in the *''root folder''*) and modify it to capture your GT parameters,
 * **type of GT task**: *[required]* you can either 'extract graph' using ```-t 1``` or compute GT metrics using ```-t 2```,
 * **output directory**: *[optional]* you can set the folder where the GT results will be stored using ```-o path-to-folder```,
 * **allow auto-scaling** : *[optional]* allows StructuralGT to automatically scale images to an optimal size for computation. You can disable this using ```-s 0```.

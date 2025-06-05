@@ -16,11 +16,10 @@ from ovito.data import DataCollection, Particles
 from ovito.pipeline import StaticSource, Pipeline
 
 from .sknw_mod import build_sknw
-# from src.StructuralGT import GraphSkeleton
-from src.StructuralGT.utils.progress_update import ProgressUpdate
-from src.StructuralGT.networks.graph_skeleton import GraphSkeleton
-from src.StructuralGT.utils.config_loader import load_gte_configs
-from src.StructuralGT.utils.sgt_utils import write_csv_file, write_gsd_file, plot_to_opencv
+from ..utils.progress_update import ProgressUpdate
+from ..networks.graph_skeleton import GraphSkeleton
+from ..utils.config_loader import load_gte_configs
+from ..utils.sgt_utils import write_csv_file, write_gsd_file, plot_to_opencv
 
 
 class FiberNetworkBuilder(ProgressUpdate):
@@ -29,13 +28,16 @@ class FiberNetworkBuilder(ProgressUpdate):
 
     """
 
-    def __init__(self):
+    def __init__(self, cfg_file=""):
         """
         A class for builds a graph network from microscopy images and stores is as a NetworkX object.
 
+        Args:
+            cfg_file (str): configuration file path
+
         """
         super(FiberNetworkBuilder, self).__init__()
-        self.configs: dict = load_gte_configs()  # graph extraction parameters and options.
+        self.configs: dict = load_gte_configs(cfg_file)  # graph extraction parameters and options.
         self.props: list = []
         self.img_ntwk: MatLike | None = None
         self.nx_3d_graph: nx.Graph | None = None

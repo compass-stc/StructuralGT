@@ -77,7 +77,7 @@ class TreeModel(QAbstractItemModel):
                 self.setup_model_data(item_data['items'], item)
 
     def rowCount(self, parent=QModelIndex()):
-        """ Returns the number of children of the given parent. """
+        """ Returns the children count of the given parent. """
         if not parent.isValid():
             return self._rootItem.child_count()
         return parent.internalPointer().child_count()

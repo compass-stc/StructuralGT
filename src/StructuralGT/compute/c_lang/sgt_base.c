@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include "sgt_base.h"
+//#include "sgt_base.h"
+#include "include/sgt_base.h"
 
 // Function to compute Local Node Connectivity
 void* compute_lnc(void *arg) {

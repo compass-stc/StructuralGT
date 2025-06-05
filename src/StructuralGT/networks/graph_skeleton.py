@@ -4,7 +4,6 @@
 Create a graph skeleton from an image binary
 """
 
-import cv2
 import math
 import numpy as np
 from scipy import ndimage
