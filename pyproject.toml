@@ -9,9 +9,11 @@ dependencies = [
   "numpy",
   "pandas",
   "scipy",
+  "gsd",
+  "igraph",
+  "ovito",
   "matplotlib",
   "networkx",
-  "sknw",
   "scikit-image",
   "opencv-python",
   "pillow",
@@ -28,7 +30,7 @@ authors = [
 maintainers = [
   {name = "Dickson Owuor", email = "owuordickson@gmail.com"}
 ]
-description = "A software tool that allows graph theory analysis of nano-structures."
+description = "A software tool for graph theory analysis of microscopy images."
 readme =  "README.md"
 license = {file = "LICENSE"}
 keywords = ["nano-particles", "nano-structures", "graph-theory"]
