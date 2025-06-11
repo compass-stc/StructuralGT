@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
 //import QtQuick.Dialogs as QuickDialogs
 //import Qt.labs.platform as Platform
@@ -62,7 +63,7 @@ Rectangle {
                     text: ""
                 }
 
-                Button {
+                Basic.Button {
                     id: btnChangeOutDir
                     //text: "Change"
                     icon.source: "../assets/icons/edit_icon.png"

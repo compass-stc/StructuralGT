@@ -55,7 +55,7 @@ Item {
                     id: btnOK
                     text: ""
                     Layout.preferredWidth: 36
-                    Layout.preferredHeight: 24
+                    Layout.preferredHeight: 30
                     Layout.rightMargin: 10
                     visible: false
                     onClicked: {

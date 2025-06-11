@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
 
 // Icons retrieved from Iconfinder.com and used under the CC0 1.0 Universal Public Domain Dedication.
@@ -33,7 +34,7 @@ Rectangle {
             }
 
 
-            Button {
+            Basic.Button {
                 id: btnCancel
                 text: ""
                 Layout.preferredWidth: 28

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
 
 
@@ -43,7 +44,7 @@ Item {
                     anchors.fill: parent
 
                     // Expand/Collapse Button
-                    Button {
+                    Basic.Button {
                         Layout.leftMargin: 10
                         visible: hasChildren
                         text: expanded ? "▼" : "▶"
@@ -114,7 +115,7 @@ Item {
                                 id: btnRemoveOk
                                 text: ""
                                 Layout.preferredWidth: 36
-                                Layout.preferredHeight: 24
+                                Layout.preferredHeight: 30
                                 Layout.rightMargin: 10
                                 onFocusChanged: {btnRemoveOk.visible = true;}
                                 onClicked: {
@@ -141,18 +142,18 @@ Item {
                     }
 
                 }
-            }
 
-            function updateChild(child_id, val) {
-                let row_count = gteTreeModel.rowCount();
-                for (let row = 0; row < row_count; row++) {
-                    let parentIndex = gteTreeModel.index(row, 0);
-                    let rows = gteTreeModel.rowCount(parentIndex);
-                    for (let r = 0; r < rows; r++) {
-                        let childIndex = gteTreeModel.index(r, 0, parentIndex);
-                        let item_id = gteTreeModel.data(childIndex, idRole);
-                        if (child_id === item_id) {
-                            gteTreeModel.setData(childIndex, val, Qt.EditRole);
+                function updateChild(child_id, val) {
+                    let row_count = gteTreeModel.rowCount();
+                    for (let row = 0; row < row_count; row++) {
+                        let parentIndex = gteTreeModel.index(row, 0);
+                        let rows = gteTreeModel.rowCount(parentIndex);
+                        for (let r = 0; r < rows; r++) {
+                            let childIndex = gteTreeModel.index(r, 0, parentIndex);
+                            let item_id = gteTreeModel.data(childIndex, idRole);
+                            if (child_id === item_id) {
+                                gteTreeModel.setData(childIndex, val, Qt.EditRole);
+                            }
                         }
                     }
                 }

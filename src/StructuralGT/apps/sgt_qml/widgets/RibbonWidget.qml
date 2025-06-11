@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
 //import Qt5Compat.GraphicalEffects
 import "../widgets"
@@ -41,10 +42,10 @@ Rectangle {
         RowLayout {
             Layout.leftMargin: 5
 
-            Button {
+            Basic.Button {
                 id: btnHideLeftPane
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
                 text: ""
                 property bool hidePane: true
                 icon.source: hidePane ? "../assets/icons/hide_panel.png" : "../assets/icons/show_panel.png"
@@ -73,14 +74,14 @@ Rectangle {
 
         RowLayout {
 
-            Button {
+            Basic.Button {
                 id: btnRescale
                 Layout.preferredWidth: 32
                 Layout.preferredHeight: 32
                 text: ""
                 icon.source: "../assets/icons/rescale_icon.png" // Path to your icon
-                icon.width: 20 // Adjust as needed
-                icon.height: 20
+                icon.width: 24 // Adjust as needed
+                icon.height: 24
                 background: Rectangle { color: "transparent" }
                 ToolTip.text: "Re-scale large images"
                 ToolTip.visible: btnRescale.hovered
@@ -140,10 +141,10 @@ Rectangle {
                 }
             }
 
-            Button {
+            Basic.Button {
                 id: btnBrightness
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
                 text: ""
                 icon.source: "../assets/icons/brightness_icon.png" // Path to your icon
                 icon.width: 24 // Adjust as needed
@@ -156,7 +157,7 @@ Rectangle {
 
                 Popup {
                     id: drpDownBrightness
-                    width: 250
+                    width: 260
                     height: 100
                     modal: false
                     focus: true
@@ -178,7 +179,7 @@ Rectangle {
 
             }
 
-            Button {
+            Basic.Button {
                 id: btnSelect
                 text: ""
                 Layout.preferredWidth: 32
@@ -191,19 +192,19 @@ Rectangle {
 
                 Rectangle {
                     id: btnSelectBorder
-                    width: 20
-                    height: 20
+                    width: 18
+                    height: 18
                     //width: parent.width
                     //height: parent.height
                     anchors.centerIn: parent
-                    radius: 4
+                    radius: 2
                     color: "transparent"
-                    border.width: 2
+                    border.width: 1
                     border.color: "black"
                 }
             }
 
-            Button {
+            Basic.Button {
                 id: btnCrop
                 text: ""
                 Layout.preferredWidth: 32
@@ -218,11 +219,11 @@ Rectangle {
                 onClicked: mainController.perform_cropping(true)
             }
 
-            Button {
+            Basic.Button {
                 id: btnUndo
                 text: ""
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
                 icon.source: "../assets/icons/undo_icon.png" // Path to your icon
                 icon.width: 24 // Adjust as needed
                 icon.height: 24
@@ -262,14 +263,14 @@ Rectangle {
                 onCurrentIndexChanged: mainController.toggle_current_img_view(valueAt(currentIndex))
             }
 
-            Button {
+            Basic.Button {
                 id: btnShowGraph
                 text: ""
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
                 icon.source: "../assets/icons/graph_icon.png" // Path to your icon
-                icon.width: 24 // Adjust as needed
-                icon.height: 24
+                icon.width: 28 // Adjust as needed
+                icon.height: 28
                 background: Rectangle { color: "transparent"}
                 ToolTip.text: "Show graph"
                 ToolTip.visible: btnShowGraph.hovered

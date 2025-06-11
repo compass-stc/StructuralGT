@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
 //import QtQuick.Dialogs as QuickDialogs
 //import Qt.labs.platform as Platform
@@ -36,7 +37,7 @@ ColumnLayout {
 
                 ColumnLayout {
 
-                    Button {
+                    Basic.Button {
                         id: btnCreateProject
                         Layout.preferredWidth: 180
                         Layout.preferredHeight: 48
@@ -59,7 +60,7 @@ ColumnLayout {
                         }
                     }
 
-                    Button {
+                    Basic.Button {
                         id: btnOpenProject
                         Layout.preferredWidth: 180
                         Layout.preferredHeight: 48
@@ -344,7 +345,7 @@ ColumnLayout {
             RowLayout {
                 anchors.fill: parent
 
-                Button {
+                Basic.Button {
                     id: btnZoomIn
                     text: "+"
                     Layout.preferredHeight: 24
@@ -358,7 +359,7 @@ ColumnLayout {
                     onClicked: zoomFactor = Math.min(zoomFactor + 0.1, 3.0) // Max zoom = 3x
                 }
 
-                Button {
+                Basic.Button {
                     id: btnZoomOut
                     text: "-"
                     Layout.preferredHeight: 24
@@ -398,7 +399,7 @@ ColumnLayout {
         RowLayout {
             anchors.fill: parent
 
-            Button {
+            Basic.Button {
                 id: btnPrevious
                 text: ""
                 icon.source: "../assets/icons/back_icon.png" // Path to your icon
@@ -416,7 +417,7 @@ ColumnLayout {
                 Layout.alignment: Qt.AlignCenter
             }
 
-            Button {
+            Basic.Button {
                 id: btnNext
                 text: ""
                 icon.source: "../assets/icons/next_icon.png" // Path to your icon

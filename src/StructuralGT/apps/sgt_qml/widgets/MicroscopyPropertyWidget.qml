@@ -49,7 +49,7 @@ Item {
                     id: btnOK
                     text: ""
                     Layout.preferredWidth: 40
-                    Layout.preferredHeight: 28
+                    Layout.preferredHeight: 30
                     Layout.rightMargin: 10
                     visible: false
                     onClicked: {

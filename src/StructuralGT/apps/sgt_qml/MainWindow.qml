@@ -233,7 +233,7 @@ ApplicationWindow {
         anchors.centerIn: parent
         title: "Control Brightness/Contrast"
         modal: true
-        width: 250
+        width: 260
         height: 150
 
         ColumnLayout {
