@@ -166,7 +166,7 @@ ApplicationWindow {
             RowLayout {
                 spacing: 10
                 //Layout.topMargin: 10
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
 
                 Button {
                     Layout.preferredWidth: 54
@@ -238,12 +238,13 @@ ApplicationWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            BrightnessControlWidget {}
+            BrightnessControlWidget {
+            }
 
             RowLayout {
                 spacing: 10
                 //Layout.topMargin: 10
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
 
                 Button {
                     Layout.preferredWidth: 54
@@ -298,13 +299,15 @@ ApplicationWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            RescaleControlWidget{ id: rescaleControls }
+            RescaleControlWidget {
+                id: rescaleControls
+            }
             //rescaleControls.lblScale.visible: false
 
             RowLayout {
                 spacing: 10
                 //Layout.topMargin: 10
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
 
                 Button {
                     Layout.preferredWidth: 54
@@ -374,7 +377,7 @@ ApplicationWindow {
 
             RowLayout {
                 spacing: 10
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
 
                 Button {
                     Layout.preferredWidth: 54
@@ -441,7 +444,7 @@ ApplicationWindow {
             RowLayout {
                 spacing: 10
                 //Layout.topMargin: 10
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
 
                 Button {
                     Layout.preferredWidth: 54
@@ -501,7 +504,7 @@ ApplicationWindow {
             RowLayout {
                 spacing: 10
                 //Layout.topMargin: 10
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
 
                 Button {
                     Layout.preferredWidth: 54
@@ -546,22 +549,26 @@ ApplicationWindow {
 
     Dialog {
         id: dialogRunAnalyzer
-        //parent: mainWindow
         anchors.centerIn: parent
         title: "Select Graph Computations"
         modal: true
-        width: 240
+        width: 264
         height: 540
 
         ColumnLayout {
             anchors.fill: parent
-            GTWidget {
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true  // Ensures contents are clipped to the scroll view bounds
+
+                GTWidget {}
             }
 
             RowLayout {
                 spacing: 10
-                //Layout.topMargin: 10
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
 
                 Button {
                     Layout.preferredWidth: 54
@@ -604,27 +611,31 @@ ApplicationWindow {
                     }
                 }
             }
-
         }
     }
 
     Dialog {
         id: dialogRunMultiAnalyzer
-        //parent: mainWindow
         anchors.centerIn: parent
         title: "Select Graph Computations"
         modal: true
-        width: 240
+        width: 264
         height: 540
 
         ColumnLayout {
             anchors.fill: parent
-            GTWidget {
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true  // Ensures contents are clipped to the scroll view bounds
+
+                GTWidget {}
             }
 
             RowLayout {
                 spacing: 10
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
 
                 Button {
                     Layout.preferredWidth: 54

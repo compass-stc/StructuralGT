@@ -3,28 +3,29 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 Item {
-    id: microscopyProps
-    Layout.preferredHeight: 100
-    Layout.preferredWidth: parent.width - 75
+    id: microscopyProps  // used for external access
+    Layout.preferredHeight: 150
+    Layout.preferredWidth: parent.width
     enabled: mainController.display_image();
 
-    property int txtWidthSize: 70
-    property int lblWidthSize: 80
+    property int txtWidthSize: 80
+    property int lblWidthSize: 100
     property int valueRole: Qt.UserRole + 4
 
     ColumnLayout {
         id: microscopyPropsLayout
+        //spacing: 10
 
         Repeater {
             model: microscopyPropsModel
             delegate: RowLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignLeft
                 visible: model.visible === 1
 
                 Label {
                     id: label
                     wrapMode: Text.Wrap
-                    color: "#bc2222"
-                    font.pointSize: 10
                     Layout.preferredWidth: lblWidthSize
                     Layout.leftMargin: 10
                     text: model.text
@@ -33,9 +34,9 @@ Item {
                 TextField {
                     id: txtField
                     objectName: model.id
-                    color: "#bc2222"
-                    font.pointSize: 10
-                    Layout.preferredWidth: txtWidthSize
+                    Layout.fillWidth: false
+                    Layout.minimumWidth: txtWidthSize
+                    //Layout.rightMargin: 10
                     text: model.value
                     onActiveFocusChanged: {
                         if (focus) {
@@ -76,5 +77,31 @@ Item {
                 }
             }
         }
+
+
+        Label {
+            id: lblMicroscopyRequired
+            Layout.fillWidth: true
+            Layout.topMargin: 20
+            Layout.leftMargin: 20
+            wrapMode: Text.Wrap
+            text: "*Required for calculation of Ohms Centrality"
+            color: "#bc2222"
+            font.pixelSize: 10
+            visible: mainController.display_image();
+        }
+
     }
+
+    Connections {
+        target: mainController
+
+        function onImageChangedSignal() {
+            // Force refresh
+            microscopyProps.enabled = mainController.display_image();
+            lblMicroscopyRequired.visible = mainController.display_image();
+        }
+
+    }
+
 }

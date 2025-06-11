@@ -280,7 +280,7 @@ Rectangle {
                 Popup {
                     id: drpDownGraph
                     width: 250
-                    height: 420
+                    height: 400
                     modal: true
                     focus: false
                     x: -225
@@ -299,7 +299,7 @@ Rectangle {
             
                         RowLayout {
                             spacing: 10
-                            Layout.alignment: Qt.AlignHCenter
+                            Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
             
                             Button {
                                 Layout.preferredWidth: 54

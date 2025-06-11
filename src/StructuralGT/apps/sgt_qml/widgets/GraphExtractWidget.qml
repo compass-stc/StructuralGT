@@ -6,7 +6,6 @@ import QtQuick.Layouts
 
 Item {
     id: gteTreeControl
-    height: 300
     width: parent.width
     enabled: mainController.display_image()
 

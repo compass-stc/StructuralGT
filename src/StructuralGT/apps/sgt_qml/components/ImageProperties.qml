@@ -64,7 +64,7 @@ Rectangle {
             GraphPropertyWidget{}
 
 
-            Rectangle {
+            /*Rectangle {
                 height: 1
                 color: "#d0d0d0"
                 Layout.fillWidth: true
@@ -82,7 +82,7 @@ Rectangle {
                 Layout.alignment: Qt.AlignHCenter
             }
 
-            MicroscopyPropertyWidget{}
+            MicroscopyPropertyWidgetv1{}*/
         }
     }
 
