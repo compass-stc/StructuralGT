@@ -34,7 +34,7 @@ from .utils.sgt_utils import write_csv_file, write_gsd_file, plot_to_opencv
 
 
 # Project Details
-__version__ = "3.3.2"
+__version__ = "3.3.5"
 __title__ = f"StructuralGT (v{__version__})"
 __author__ = "Dickson Owuor"
 __credits__ = "The Regents of the University of Michigan"
