@@ -247,7 +247,7 @@ class FiberNetworkBuilder(ProgressUpdate):
             ["Node Count", str(graph.number_of_nodes())],
             ["Graph Count", str(len(connected_components))],
             ["Sub-graph Count", str(num_graphs)],
-            ["Giant-to-Entire graph ratio", f"{round((connect_ratio * 100), 3)}%"]]
+            ["Giant graph ratio", f"{round((connect_ratio * 100), 3)}%"]]
         return props
 
     def get_weight_type(self):
