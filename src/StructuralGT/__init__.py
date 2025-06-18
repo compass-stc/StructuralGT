@@ -22,20 +22,9 @@ of the GNU General Public License along with this program.  If not, see <https:/
         Contact email: owuordickson@gmail.com
 """
 
-# MODULES
-from .compute.graph_analyzer import GraphAnalyzer, COMPUTING_DEVICE
-from .imaging.base_image import BaseImage
-from .imaging.image_processor import ImageProcessor, ALLOWED_IMG_EXTENSIONS
-from .networks.fiber_network import FiberNetworkBuilder
-from .networks.graph_skeleton import GraphSkeleton
-from .utils.progress_update import ProgressUpdate
-from .utils.config_loader import load_gtc_configs, load_gte_configs, load_img_configs
-from .utils.sgt_utils import write_csv_file, write_gsd_file, plot_to_opencv
-
 
 # Project Details
-__version__ = "3.3.5"
+__version__ = "3.3.6"
 __title__ = f"StructuralGT (v{__version__})"
 __author__ = "Dickson Owuor"
 __credits__ = "The Regents of the University of Michigan"
-

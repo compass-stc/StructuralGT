@@ -159,14 +159,33 @@ class GraphSkeleton:
     def _estimate_edge_width(self, graph_edge_coords: MatLike):
         """Estimates the edge width of a graph edge."""
 
-        # 1. Estimate orthogonal and mid-point
+        def find_orthogonal(u, v):
+            # Inputs:
+            # u, v: two coordinates (x, y) or (x, y, z)
+            vec = u - v  # find the vector between u and v
+
+            if np.linalg.norm(vec) == 0:
+                n = np.array([0, ] * len(u), dtype=np.float16)
+            else:
+                # make n a unit vector along u,v
+                n = vec / np.linalg.norm(vec)
+
+            hl = np.linalg.norm(vec) / 2  # find the half-length of the vector u,v
+            ortho_arr = np.random.randn(len(u))  # take a random vector
+            ortho_arr -= ortho_arr.dot(n) * n  # make it orthogonal to vector u,v
+            ortho_arr /= np.linalg.norm(ortho_arr)  # make it a unit vector
+
+            # Returns the coordinates of the vector u,v midpoint; the orthogonal unit vector
+            return (v + n * hl), ortho_arr
+
+            # 1. Estimate orthogonal and mid-point
         end_index = len(graph_edge_coords) - 1
         pt1 = graph_edge_coords[0]
         pt2 = graph_edge_coords[end_index]
         # mid_index = int(len(graph_edge_coords) / 2)
         # mid_pt = graph_edge_coords[mid_index]
 
-        mid_pt, ortho = GraphSkeleton.find_orthogonal(pt1, pt2)
+        mid_pt, ortho = find_orthogonal(pt1, pt2)
         # mid: the midpoint of a trace of an edge
         # ortho: an orthogonal unit vector
         mid_pt = mid_pt.astype(int)
@@ -355,71 +374,50 @@ class GraphSkeleton:
         return temp_skeleton
 
     @staticmethod
-    def find_orthogonal(u, v):
-        # Inputs:
-        # u, v: two coordinates (x, y) or (x, y, z)
-        vec = u - v  # find the vector between u and v
-
-        if np.linalg.norm(vec) == 0:
-            n = np.array([0,] * len(u), dtype=np.float16)
-        else:
-            # make n a unit vector along u,v
-            n = vec / np.linalg.norm(vec)
-
-        hl = np.linalg.norm(vec) / 2        # find the half-length of the vector u,v
-        ortho = np.random.randn(len(u))     # take a random vector
-        ortho -= ortho.dot(n) * n           # make it orthogonal to vector u,v
-        ortho /= np.linalg.norm(ortho)      # make it a unit vector
-
-        # Returns the coordinates of the vector u,v midpoint; the orthogonal unit vector
-        return (v + n * hl), ortho
-
-    @staticmethod
-    def boundary_check(coord, w, h, d=None):
-        """
-
-        Args:
-            coord: the coordinate (x,y) to check; no (x,y,z) compatibility yet.
-            w: width of the image to set the boundaries.
-            h: the height of the image to set the boundaries.
-            d: the depth of the image to set the boundaries.
-        Returns:
-
-        """
-        oob = 0  # Generate a boolean check for out-of-boundary
-        # Check if coordinate is within the boundary
-        if d is None:
-            if coord[0] < 0 or coord[1] < 0 or coord[-2] > (w - 1) or coord[-1] > (h - 1):
-                oob = 1
-        else:
-            # if sum(coord < 0) > 0 or sum(coord > [w - 1, h - 1, d - 1]) > 0:
-            if sum(coord < 0) > 0 or coord[-3] > (d - 1) or coord[-2] > (w - 1) or coord[-1] > (h - 1):
-                oob = 1
-
-        # returns the boolean oob (1 if there is a boundary error); coordinates (reset to (1,1) if boundary error)
-        return oob
-
-    @staticmethod
     def point_check(img_bin: MatLike, pt_check):
         """Checks and verifies that a point is on a graph edge."""
+
+        def boundary_check(coord, w, h, d=None):
+            """
+
+            Args:
+                coord: the coordinate (x,y) to check; no (x,y,z) compatibility yet.
+                w: width of the image to set the boundaries.
+                h: the height of the image to set the boundaries.
+                d: the depth of the image to set the boundaries.
+            Returns:
+
+            """
+            out_of_bounds = 0  # Generate a boolean check for out-of-boundary
+            # Check if coordinate is within the boundary
+            if d is None:
+                if coord[0] < 0 or coord[1] < 0 or coord[-2] > (w - 1) or coord[-1] > (h - 1):
+                    out_of_bounds = 1
+            else:
+                # if sum(coord < 0) > 0 or sum(coord > [w - 1, h - 1, d - 1]) > 0:
+                if sum(coord < 0) > 0 or coord[-3] > (d - 1) or coord[-2] > (w - 1) or coord[-1] > (h - 1):
+                    out_of_bounds = 1
+
+            # returns the boolean oob (1 if there is a boundary error); coordinates (resets to (1,1) if boundary error)
+            return out_of_bounds
 
         # Check if the image is 2D
         if len(img_bin.shape) == 2:
             is_2d = True
-            h, w = img_bin.shape  # finds dimensions of img_bin for boundary check
-            d = 0
+            height, width = img_bin.shape  # finds dimensions of img_bin for boundary check
+            depth = 0
         else:
             is_2d = False
-            d, h, w = img_bin.shape
+            depth, height, width = img_bin.shape
 
         try:
             if is_2d:
                 # Checks if the point in fiber is out-of-bounds (oob) or black space (img_bin(x,y) = 0)
-                oob = GraphSkeleton.boundary_check(pt_check, w, h)
+                oob = boundary_check(pt_check, width, height)
                 not_in_edge = True if (oob == 1) else True if (img_bin[pt_check[-2], pt_check[-1]] == 0) else False
             else:
                 # Checks if the point in fiber is out-of-bounds (oob) or black space (img_bin(d,x,y) = 0)
-                oob = GraphSkeleton.boundary_check(pt_check, w, h, d=d)
+                oob = boundary_check(pt_check, width, height, d=depth)
                 not_in_edge = True if (oob == 1) else True if (img_bin[pt_check[-3], pt_check[-2], pt_check[-1]] == 0) else False
         except IndexError:
             not_in_edge = True

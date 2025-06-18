@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Controls.Basic as Basic
 import QtQuick.Dialogs as QuickDialogs
 import Qt.labs.platform as Platform
 import "widgets"
@@ -11,6 +12,7 @@ ApplicationWindow {
     height: 800
     visible: true
     title: "Structural GT"
+    font.family: "Arial"  // or Qt.application.font.family
 
     menuBar: MenuBarWidget {
     }
@@ -23,7 +25,7 @@ ApplicationWindow {
         rows: 2
         columns: 2
 
-        // First row, first column (spanning 2 columns)
+        // First row, first column (spanning 2 columns) - Ribbon
         Rectangle {
             Layout.row: 0
             Layout.column: 0
@@ -39,7 +41,7 @@ ApplicationWindow {
             }
         }
 
-        // Second row, first column
+        // Second row, first column - Left Navigation Pane
         Rectangle {
             id: recLeftPane
             Layout.row: 1
@@ -55,9 +57,9 @@ ApplicationWindow {
             }
         }
 
-        // Second row, second column
+        // Second row, second column - Center Content
         Rectangle {
-            id: recRightPane
+            id: recCenterContent
             Layout.row: 1
             Layout.column: 1
             Layout.rightMargin: 10
@@ -66,8 +68,13 @@ ApplicationWindow {
             Layout.preferredWidth: parent.width - 300
             Layout.fillWidth: true
             Layout.fillHeight: true
-            RightContent {
+            CenterMainContent {
             }
+        }
+
+        // Logging Panel View on the Right side
+        RightLoggingPanel {
+            id: loggingWindowPanel
         }
     }
 
@@ -563,6 +570,9 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 clip: true  // Ensures contents are clipped to the scroll view bounds
 
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff // Disable horizontal scrolling
+                ScrollBar.vertical.policy: ScrollBar.AsNeeded // Enable vertical scrolling only when needed
+
                 GTWidget {}
             }
 
@@ -629,6 +639,9 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true  // Ensures contents are clipped to the scroll view bounds
+
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff // Disable horizontal scrolling
+                ScrollBar.vertical.policy: ScrollBar.AsNeeded // Enable vertical scrolling only when needed
 
                 GTWidget {}
             }

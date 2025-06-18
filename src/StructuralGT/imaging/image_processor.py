@@ -385,19 +385,105 @@ class ImageProcessor(ProgressUpdate):
             self.update_status([-1, f"Graph Extraction Error: {err}"])
             return
 
-    def build_patch_graphs(self):
-        """Extracts graphs from smaller patches of selected images."""
+    def build_graph_from_patches(self, num_square_filters: int, patch_count_per_filter: int, patch_padding: tuple = (0, 0)):
+        """
+        Extracts graphs from smaller square patches of selected images.
+
+        Given `num_square_filters` (k), the method generates k square filters/windows, each of sizes NxN—where N is
+        a distinct value computed or estimated for each filter.
+
+        For every NxN window, it randomly selects `patch_count_per_filter` (m) patches (aligned with the window)
+        from across the entire image.
+
+        :param num_square_filters: Number of square filters to generate.
+        :param patch_count_per_filter: Number of patches per filter.
+        :param patch_padding: Padding around each patch.
+
+        """
         # Get the selected batch
         sel_batch = self.get_selected_batch()
-        # sel_batch.current_view = 'graph'
         graph_configs = sel_batch.graph_obj.configs
-
-        # Get binary image
         img_obj = sel_batch.images[0]  # ONLY works for 2D
+
+        def estimate_filter_width(parent_width, num):
+            """
+            Applies a non-linear function to compute the width-size of a filter based on its index location.
+            :param parent_width: Width of parent image.
+            :param num: Index of filter.
+            """
+            # return int(parent_width / ((2*num) + 4))
+            # est_w = int((parent_width * np.exp(-0.3 * num) / 4))  # Exponential decay
+            est_w = int((parent_width - 10) * (1 - (num/num_square_filters)))
+            return max(50, est_w)  # Avoid too small sizes
+
+        def estimate_patches_count(total_patches_count):
+            """
+            The method computes the best approximate number of patches in a 2D layout that
+            will be equal to total_patches_count: total_n = num_rows * num_patches_per_row
+
+            :param total_patches_count: Total number of patches given by the user
+            :return: row_count, patches_count_per_row
+            """
+            for row_count in range(isqrt(total_patches_count), 0, -1):
+                if total_patches_count % row_count == 0:
+                    num_patches_per_row = total_patches_count // row_count
+                    return row_count, num_patches_per_row
+            return 1, total_patches_count
+
+        def extract_cnn_patches(img: MatLike, num_filters: int, num_patches: int, padding: tuple):
+            """
+            Perform a convolution operation that breaks down an image into smaller square mini-images.
+            Extract all patches from the image based on filter size, stride, and padding, similar to
+            CNN convolution but without applying the filter.
+
+            :param img: OpenCV image.
+            :param num_filters: Number of convolution filters.
+            :param num_patches: Number of patches to extract per filter window size.
+            :param padding: Padding value (pad_y, pad_x).
+            :return: List of convolved images.
+            """
+            if img is None:
+                return []
+
+            # Initialize Parameters
+            lst_img_seg = []
+
+            # Pad the image
+            pad_h, pad_w = padding
+            img_padded = np.pad(img, ((pad_h, pad_h), (pad_w, pad_w)), mode='constant')
+            h, w = img.shape[:2]
+            orig_img_width = h if h < w else w
+            num_rows, num_cols = estimate_patches_count(num_patches)
+
+            for k in range(num_filters):
+                temp_w = estimate_filter_width(orig_img_width, k)
+                k_h, k_w = (temp_w, temp_w)
+                stride_h = int((h + (2 * pad_h) - temp_w) / (num_rows - 1)) if num_rows > 1 else int(
+                    (h + (2 * pad_h) - temp_w))
+                stride_w = int((w + (2 * pad_w) - temp_w) / (num_cols - 1)) if num_cols > 1 else int(
+                    (w + (2 * pad_w) - temp_w))
+
+                img_scaling = BaseImage.ScalingFilter(
+                    image_patches=[],
+                    # graph_patches=[],
+                    filter_size=(k_h, k_w),
+                    stride=(stride_h, stride_w)
+                )
+
+                # Sliding-window to extract patches
+                for y in range(0, h - k_h + 1, stride_h):
+                    for x in range(0, w - k_w + 1, stride_w):
+                        patch = img_padded[y:y + k_h, x:x + k_w]
+                        img_scaling.image_patches.append(patch)
+                lst_img_seg.append(img_scaling)
+
+                # Stop loop if filter size is too small
+                if temp_w <= 50:
+                    break
+            return lst_img_seg
+
         if len(img_obj.image_segments) <= 0:
-            filter_count = 10
-            window_count = 20
-            img_obj.image_segments = ImageProcessor.extract_cnn_patches(img_obj.img_bin, num_filters=filter_count, num_patches=window_count)
+            img_obj.image_segments = extract_cnn_patches(img_obj.img_bin, num_square_filters, patch_count_per_filter, patch_padding)
 
         seg_count = len(img_obj.image_segments)
         graph_groups = defaultdict(list)
@@ -408,20 +494,11 @@ class ImageProcessor(ProgressUpdate):
                 graph_patch.configs = graph_configs
                 success = graph_patch.extract_graph(img_patch, is_img_2d=True)
                 if success:
-                    h, w = img_patch.shape
-                    graph_groups[(h, w)].append(graph_patch.nx_3d_graph)
+                    height, width = img_patch.shape
+                    graph_groups[(height, width)].append(graph_patch.nx_3d_graph)
                 else:
                     self.update_status([101, f"Filter {img_patch.shape} graph extraction failed!"])
-            # -------------------------------------------------
-            # TO BE DELETED
-            #    fig, ax = plt.subplots()
-            #    im = ax.imshow(img_patch, cmap='gray')
-            #    ax.axis('off')
-            # print(f"Patch Count: {len(scale_filter.image_patches)}, Stride: {scale_filter.stride}, Filter Size: {scale_filter.filter_size}")
-            # --------------------------------------------------
-        # --------------------------------------------------
-        # plt.show()
-        # --------------------------------------------------
+
         return graph_groups
 
     def get_filenames(self, image_path: str = None):
@@ -585,86 +662,84 @@ class ImageProcessor(ProgressUpdate):
         if sel_batch.graph_obj.skel_obj.skeleton is not None:
             write_gsd_file(gsd_file, sel_batch.graph_obj.skel_obj.skeleton)"""
 
-    @staticmethod
-    def get_scaling_options(orig_size: float, auto_scale: bool):
-        """"""
-        orig_size = int(orig_size)
-        if orig_size > 2048:
-            recommended_size = 1024
-            scaling_options = [1024, 2048, int(orig_size * 0.25), int(orig_size * 0.5), int(orig_size * 0.75),
-                               orig_size]
-        elif orig_size > 1024:
-            recommended_size = 1024
-            scaling_options = [1024, int(orig_size * 0.25), int(orig_size * 0.5), int(orig_size * 0.75), orig_size]
-        else:
-            recommended_size = orig_size
-            scaling_options = [int(orig_size * 0.25), int(orig_size * 0.5), int(orig_size * 0.75), orig_size]
-
-        # Remove duplicates and arrange in ascending order
-        scaling_options = sorted(list(set(scaling_options)))
-        scaling_data = []
-        for val in scaling_options:
-            data = {"text": f"{val} px", "value": 0, "dataValue": val}
-            if val == orig_size:
-                data["text"] = f"{data['text']}*"
-
-            if val == recommended_size:
-                data["text"] = f"{data['text']} (recommended)"
-                data["value"] = 1 if auto_scale else 0
-            scaling_data.append(data)
-        return scaling_data
-
-    @staticmethod
-    def rescale_img(image_data, scale_options):
-        """Downsample or up-sample image to a specified pixel size."""
-
-        scale_factor = 1
-        img_2d, img_3d = None, None
-
-        if image_data is None:
-            return None, scale_factor
-
-        scale_size = 0
-        for scale_item in scale_options:
-            try:
-                scale_size = scale_item["dataValue"] if scale_item["value"] == 1 else scale_size
-            except KeyError:
-                continue
-
-        if scale_size <= 0:
-            return None, scale_factor
-
-        # if type(image_data) is np.ndarray:
-        has_alpha, _ = BaseImage.check_alpha_channel(image_data)
-        if (len(image_data.shape) == 2) or has_alpha:
-            # If the image has shape (h, w) or shape (h, w, a), where 'a' - alpha channel which is less than 4
-            img_2d, scale_factor = BaseImage.resize_img(scale_size, image_data)
-            return img_2d, scale_factor
-
-        # if type(image_data) is list:
-        if (len(image_data.shape) >= 3) and (not has_alpha):
-            # If the image has shape (d, h, w) and third is not alpha channel
-            images = image_data
-            img_3d = []
-            for img in images:
-                img_small, scale_factor = BaseImage.resize_img(scale_size, img)
-                img_3d.append(img_small)
-        return np.array(img_3d), scale_factor
-
     # MODIFIED TO EXCLUDE 3D IMAGES (TO BE REVISITED LATER)
     @staticmethod
     def create_img_batch_groups(img_groups: defaultdict, cfg_file: str, auto_scale: bool):
         """"""
+
+        def get_scaling_options(orig_size: float):
+            """"""
+            orig_size = int(orig_size)
+            if orig_size > 2048:
+                recommended_size = 1024
+                scaling_options = [1024, 2048, int(orig_size * 0.25), int(orig_size * 0.5), int(orig_size * 0.75),
+                                   orig_size]
+            elif orig_size > 1024:
+                recommended_size = 1024
+                scaling_options = [1024, int(orig_size * 0.25), int(orig_size * 0.5), int(orig_size * 0.75), orig_size]
+            else:
+                recommended_size = orig_size
+                scaling_options = [int(orig_size * 0.25), int(orig_size * 0.5), int(orig_size * 0.75), orig_size]
+
+            # Remove duplicates and arrange in ascending order
+            scaling_options = sorted(list(set(scaling_options)))
+            scaling_data = []
+            for val in scaling_options:
+                data = {"text": f"{val} px", "value": 0, "dataValue": val}
+                if val == orig_size:
+                    data["text"] = f"{data['text']}*"
+
+                if val == recommended_size:
+                    data["text"] = f"{data['text']} (recommended)"
+                    data["value"] = 1 if auto_scale else 0
+                scaling_data.append(data)
+            return scaling_data
+
+        def rescale_img(image_data, scale_options):
+            """Downsample or up-sample image to a specified pixel size."""
+
+            scale_factor = 1
+            img_2d, img_3d = None, None
+
+            if image_data is None:
+                return None, scale_factor
+
+            scale_size = 0
+            for scale_item in scale_options:
+                try:
+                    scale_size = scale_item["dataValue"] if scale_item["value"] == 1 else scale_size
+                except KeyError:
+                    continue
+
+            if scale_size <= 0:
+                return None, scale_factor
+
+            # if type(image_data) is np.ndarray:
+            has_alpha, _ = BaseImage.check_alpha_channel(image_data)
+            if (len(image_data.shape) == 2) or has_alpha:
+                # If the image has shape (h, w) or shape (h, w, a), where 'a' - alpha channel which is less than 4
+                img_2d, scale_factor = BaseImage.resize_img(scale_size, image_data)
+                return img_2d, scale_factor
+
+            # if type(image_data) is list:
+            if (len(image_data.shape) >= 3) and (not has_alpha):
+                # If the image has shape (d, h, w) and third is not alpha channel
+                img_3d = []
+                for img in image_data:
+                    img_small, scale_factor = BaseImage.resize_img(scale_size, img)
+                    img_3d.append(img_small)
+            return np.array(img_3d), scale_factor
+
         img_info_list = []
         for (h, w), images in img_groups.items():
             images_small = []
-            scale_factor = 1
+            scaling_factor = 1
             scaling_opts = []
             images = np.array(images)
             max_size = max(h, w)
             if max_size > 0 and auto_scale:
-                scaling_opts = ImageProcessor.get_scaling_options(max_size, auto_scale)
-                images_small, scale_factor = ImageProcessor.rescale_img(images, scaling_opts)
+                scaling_opts = get_scaling_options(max_size)
+                images_small, scaling_factor = rescale_img(images, scaling_opts)
 
             # Convert back to numpy arrays
             images = images_small if len(images_small) > 0 else images
@@ -675,7 +750,7 @@ class ImageProcessor(ProgressUpdate):
                 is_2d=True,
                 shape=(h, w),
                 props=[],
-                scale_factor=scale_factor,
+                scale_factor=scaling_factor,
                 scaling_options=scaling_opts,
                 selected_images=set(range(len(images))),
                 current_view='original',  # 'original', 'binary', 'processed', 'graph'
@@ -684,64 +759,6 @@ class ImageProcessor(ProgressUpdate):
             img_info_list.append(img_batch)
             break  # REMOVE TO ALLOW 3D
         return img_info_list
-
-    @staticmethod
-    def extract_cnn_patches(img: MatLike, num_filters: int = 5, num_patches: int = 6, padding: tuple = (0, 0)):
-        """
-        Perform a convolution operation that breaks down an image into smaller square mini-images.
-        Extract all patches from the image based on filter size, stride, and padding, similar to
-        CNN convolution but without applying the filter.
-
-        :param img: OpenCV image.
-        :param num_filters: Number of convolution filters.
-        :param num_patches: Number of patches to extract per filter window size.
-        :param padding: Padding value (pad_y, pad_x).
-        :return: List of convolved images.
-        """
-        if img is None:
-            return []
-
-        # Initialize Parameters
-        lst_img_seg = []
-
-        # Pad the image
-        pad_h, pad_w = padding
-        img_padded = np.pad(img, ((pad_h, pad_h), (pad_w, pad_w)), mode='constant')
-        h, w = img.shape[:2]
-        dim = h if h > w else w
-
-        # Get the best 2D layout
-        def factor_closest(n):
-            for j in range(isqrt(n), 0, -1):
-                if n % j == 0:
-                    return j, n // j
-            return 1, n
-
-        num_h, num_w = factor_closest(num_patches)
-
-        for i in range(num_filters):
-            # temp_dim = int(dim / ((2*i) + 4))  # Find a better non-linear relationship
-            temp_dim = max(3, int((dim * np.exp(-0.3 * i) / 4)))  # Avoid too small sizes
-            k_h, k_w = (temp_dim, temp_dim)
-            stride_h = int((h + (2 * pad_h) - temp_dim) / (num_h - 1)) if num_h > 1 else int(
-                (h + (2 * pad_h) - temp_dim))
-            stride_w = int((w + (2 * pad_w) - temp_dim) / (num_w - 1)) if num_w > 1 else int(
-                (w + (2 * pad_w) - temp_dim))
-
-            img_scaling = BaseImage.ScalingFilter(
-                image_patches=[],
-                # graph_patches=[],
-                filter_size=(k_h, k_w),
-                stride=(stride_h, stride_w)
-            )
-
-            # Sliding-window to extract patches
-            for y in range(0, h - k_h + 1, stride_h):
-                for x in range(0, w - k_w + 1, stride_w):
-                    patch = img_padded[y:y + k_h, x:x + k_w]
-                    img_scaling.image_patches.append(patch)
-            lst_img_seg.append(img_scaling)
-        return lst_img_seg
 
     @classmethod
     def create_imp_object(cls, img_path: str, out_path: str = "", config_file: str = "", allow_auto_scale: bool = True):

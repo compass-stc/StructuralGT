@@ -23,10 +23,9 @@ from .imagegrid_model import ImageGridModel
 from .qthread_worker import QThreadWorker, WorkerTask
 
 from ... import __version__
-from ... import ALLOWED_IMG_EXTENSIONS, COMPUTING_DEVICE
 from ...utils.sgt_utils import img_to_base64, verify_path
-from ...imaging.image_processor import ImageProcessor, FiberNetworkBuilder
-from ...compute.graph_analyzer import GraphAnalyzer
+from ...imaging.image_processor import ImageProcessor, FiberNetworkBuilder, ALLOWED_IMG_EXTENSIONS
+from ...compute.graph_analyzer import GraphAnalyzer#, COMPUTING_DEVICE
 
 
 class MainController(QObject):
@@ -65,6 +64,7 @@ class MainController(QObject):
         self.imgThumbnailModel = TableModel([])
         self.imagePropsModel = TableModel([])
         self.graphPropsModel = TableModel([])
+        self.graphComputeModel = TableModel([])
         self.microscopyPropsModel = CheckBoxModel([])
 
         self.gteTreeModel = TreeModel([])
@@ -141,6 +141,7 @@ class MainController(QObject):
 
             self.imagePropsModel.reset_data(sel_img_batch.props)
             self.graphPropsModel.reset_data(graph_obj.props)
+            self.graphComputeModel.reset_data(sgt_obj.props)
         except Exception as err:
             logging.exception("Fatal Error: %s", err, extra={'user': 'SGT Logs'})
             self.showAlertSignal.emit("Fatal Error", "Error re-loading image configurations! Close app and try again.")
@@ -322,8 +323,9 @@ class MainController(QObject):
 
         if 0 <= progress_val <= 100:
             self.updateProgressSignal.emit(progress_val, msg)
-            logging.info(f"{progress_val} %: {msg}", extra={'user': 'SGT Logs'})
+            logging.info(f"{progress_val}%: {msg}", extra={'user': 'SGT Logs'})
         elif progress_val > 100:
+            self.updateProgressSignal.emit(progress_val, msg)
             logging.info(f"{msg}", extra={'user': 'SGT Logs'})
         else:
             logging.exception("Error: %s", msg, extra={'user': 'SGT Logs'})
@@ -361,11 +363,17 @@ class MainController(QObject):
                 self.taskTerminatedSignal.emit(success_val, [])
             elif type(result) is GraphAnalyzer:
                 self._handle_progress_update(100, "GT PDF successfully generated!")
+                # Update graph properties
+                self.update_graph_models(self.get_selected_sgt_obj())
+                # Send task termination signal to QML
                 self.taskTerminatedSignal.emit(True, ["GT calculations completed", "The image's GT parameters have been "
                                                                                 "calculated. Check out generated PDF in "
                                                                                 "'Output Dir'."])
             elif type(result) is dict:
                 self._handle_progress_update(100, "All GT PDF successfully generated!")
+                # Update graph properties
+                self.update_graph_models(self.get_selected_sgt_obj())
+                # Send task termination signal to QML
                 self.taskTerminatedSignal.emit(True, ["All GT calculations completed", "GT parameters of all "
                                                                                     "images have been calculated. Check "
                                                                                     "out all the generated PDFs in "
@@ -377,24 +385,42 @@ class MainController(QObject):
     def get_sgt_version(self):
         """"""
         # Copyright (C) 2024, the Regents of the University of Michigan.
-        return f"StructuralGT v{__version__}, Computing: {COMPUTING_DEVICE}"
+        # return f"StructuralGT v{__version__}, Computing: {COMPUTING_DEVICE}"
+        return f"v{__version__}"
 
     @Slot(result=str)
     def get_about_details(self):
         about_app = (
-            f"A software tool that allows graph theory analysis of nano-structures. This is a modified version "
-            "of StructuralGT initially proposed by Drew A. Vecchio, DOI: "
-            "<html><a href='https://pubs.acs.org/doi/10.1021/acsnano.1c04711'>10.1021/acsnano.1c04711</a></html><html><br/><br/></html>"
-            "Contributors:<html><br/></html>"
-            "1. Nicolas Kotov<html><br/></html>"
-            "2. Dickson Owuor<html><br/></html>"
-            "3. Alain Kadar<html><br/><br/></html>"
-            "Documentation:<html><br/></html>"
-            "<html><a href='https://structural-gt.readthedocs.io'>structural-gt.readthedocs.io</a></html><html><br/><br/></html>"
-            f"{self.get_sgt_version()}<html><br/></html>"
-            "Copyright (C) 2018-2025, The Regents of the University of Michigan.<html><br/></html>"
-            "License: GPL GNU v3<html><br/></html>")
+            f"<html>"
+            f"<p>"
+            f"A software tool for performing Graph Theory analysis on microscopy images. This is a modified version "
+            "of StructuralGT initially proposed by Drew A. Vecchio,<br>"
+            "<b>DOI:</b> <a href='https://pubs.acs.org/doi/10.1021/acsnano.1c04711'>10.1021/acsnano.1c04711</a>"
+            "</p><p>"
+            "<b>Contributors:</b><ol>"
+            "<li>Nicolas Kotov</li>"
+            "<li>Dickson Owuor</li>"
+            "<li>Alain Kadar</li>"
+            "</ol></p><p>"
+            "<b>Documentation:</b> <a href='https://structural-gt.readthedocs.io'>structural-gt.readthedocs.io</a>"
+            "<br>"
+            f"<b> Version: </b> {self.get_sgt_version()}<br>"
+            "<b>License:</b> GPL GNU v3<br>"
+            "Copyright (C) 2018-2025, The Regents of the University of Michigan.<br>"
+            "</p>"
+            "</html>")
         return about_app
+
+    @Slot(result=str)
+    def check_for_updates(self):
+        # current_version = float(__version__)
+        # new_version = float(https://github.com/owuordickson/structural-gt/blob/main/src/StructuralGT/__init__.py __version__)
+        updates_available = False
+        if updates_available:
+            msg = "<html>New version available! <br>Download via this <a href='https://forms.gle/oG9Gk2qbmxooK63D7'>link</a></html>"
+        else:
+            msg = "<html>No updates available.</html>"
+        return msg
 
     @Slot(str, result=str)
     def get_file_extensions(self, option):

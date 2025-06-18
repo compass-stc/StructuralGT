@@ -33,6 +33,7 @@ class MainWindow(QObject):
         self.ui_engine.rootContext().setContextProperty("imgThumbnailModel", controller.imgThumbnailModel)
         self.ui_engine.rootContext().setContextProperty("imagePropsModel", controller.imagePropsModel)
         self.ui_engine.rootContext().setContextProperty("graphPropsModel", controller.graphPropsModel)
+        self.ui_engine.rootContext().setContextProperty("graphComputeModel", controller.graphComputeModel)
         self.ui_engine.rootContext().setContextProperty("microscopyPropsModel", controller.microscopyPropsModel)
 
         self.ui_engine.rootContext().setContextProperty("gteTreeModel", controller.gteTreeModel)

@@ -12,7 +12,6 @@ MenuBar {
         MenuSeparator{}
         MenuItem { text: "&Quit"; onTriggered: Qt.quit(); }
     }
-
     Menu {
         title: "File"
         MenuItem { text: "Add image"; onTriggered: imageFileDialog.open() }
@@ -72,6 +71,7 @@ MenuBar {
     Menu {
         title: "Help"
         MenuItem { id:mnuHelp; text: "Structural GT Help"; enabled: true; onTriggered: dialogAbout.open() }
+        MenuItem { id:mnuLogs; text: "View Logs"; enabled: true; onTriggered: loggingWindowPanel.visible = true }
     }
 
     function export_graph_data (row) {
@@ -95,7 +95,6 @@ MenuBar {
         mainController.save_img_files();
     }
     
-    
 
     function save_project () {
 
@@ -110,6 +109,7 @@ MenuBar {
         }
 
     }
+
 
     Connections {
         target: mainController

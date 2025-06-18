@@ -39,7 +39,6 @@ def strict_read_config_file(config_path, update_func=None):
         return False
 
 
-
 def read_config_file(config_path):
     """Read the contents of the 'configs.ini' file"""
     config = configparser.ConfigParser()
@@ -65,8 +64,8 @@ def load_img_configs(cfg_path: str = ""):
     """Image Detection settings"""
 
     options_img: dict[str, dict[str, Union[int, float]]] = {
-        "threshold_type": {"id": "threshold_type", "type": "binary-filter", "text": "", "visible": 1, "value": 1 },
-        "global_threshold_value": {"id": "global_threshold_value", "type": "binary-filter", "text": "", "visible": 1, "value": 127 },
+        "threshold_type": {"id": "threshold_type", "type": "binary-filter", "text": "", "visible": 1, "value": 0 },
+        "global_threshold_value": {"id": "global_threshold_value", "type": "binary-filter", "text": "", "visible": 1, "value": 128 },
         "adaptive_local_threshold_value": {"id": "adaptive_local_threshold_value", "type": "binary-filter", "text": "", "visible": 1, "value": 11 },
         "otsu": {"id": "otsu", "type": "binary-filter", "text": "", "visible": 0, "value": 0},
         "apply_dark_foreground": {"id": "apply_dark_foreground", "type": "binary-filter", "text": "", "visible": 1, "value": 0},
@@ -89,8 +88,8 @@ def load_img_configs(cfg_path: str = ""):
         "brightness_level": {"id": "brightness_level", "type": "image-control", "text": "Brightness", "value": 0 },
         "contrast_level": {"id": "contrast_level", "type": "image-control", "text": "Contrast", "value": 0 },
 
-        "scale_value_nanometers": {"id": "scale_value_nanometers", "type": "image-property", "text": "Scalebar (nm)", "visible": 1, "value": 1.0 },
-        "scalebar_pixel_count": {"id": "scalebar_pixel_count", "type": "image-property", "text": "Scalebar Pixel Count", "visible": 1, "value": 0 },
+        "scale_value_nanometers": {"id": "scale_value_nanometers", "type": "image-property", "text": "Scalebar (nm)", "visible": 1, "value": 0.0 },
+        "scalebar_pixel_count": {"id": "scalebar_pixel_count", "type": "image-property", "text": "Scalebar Pixel Count", "visible": 1, "value": 1 },
         "resistivity": {"id": "resistivity", "type": "image-property", "text": "Resistivity (<html>&Omega;</html>m)", "visible": 1, "value": 1.0 },
         "pixel_width": {"id": "pixel_width", "type": "image-property", "text": "", "visible": 0, "value": 1.0},  # * (10**-9)  # 1 nanometer
 
@@ -153,7 +152,7 @@ def load_gte_configs(cfg_path: str = ""):
                         ]},
         "merge_nearby_nodes": {"id": "merge_nearby_nodes", "type": "graph-extraction", "text": "Merge Nearby Nodes", "value": 1},
         "prune_dangling_edges": {"id": "prune_dangling_edges", "type": "graph-extraction", "text": "Prune Dangling Edges", "value": 1},
-        "remove_disconnected_segments": {"id": "remove_disconnected_segments", "type": "graph-extraction", "text": "Remove Disconnected Segments", "value": 1, "items": [{"id": "remove_object_size", "text": "", "value": 500}]},
+        "remove_disconnected_segments": {"id": "remove_disconnected_segments", "type": "graph-extraction", "text": "Remove Disconn. Segments", "value": 1, "items": [{"id": "remove_object_size", "text": "", "value": 500}]},
         "remove_self_loops": {"id": "remove_self_loops", "type": "graph-extraction", "text": "Remove Self Loops", "value": 1},
         "display_node_id": {"id": "display_node_id", "type": "graph-extraction", "text": "Display Node ID", "value": 0},
 
@@ -208,7 +207,7 @@ def load_gtc_configs(cfg_path: str = ""):
         "display_closeness_centrality_histogram": {"id": "display_closeness_centrality_histogram", "text": "Closeness Centrality", "value": 1},
         "display_eigenvector_centrality_histogram": {"id": "display_eigenvector_centrality_histogram", "text": "Eigenvector Centrality", "value": 1},
         "display_ohms_histogram": {"id": "display_ohms_histogram", "text": "Ohms Centrality", "value": 0},
-        "display_scaling_scatter_plot": {"id": "display_scaling_scatter_plot", "text": "Scaling Scatter Plot", "value": 0},
+        "compute_scaling_behavior": {"id": "compute_scaling_behavior", "text": "Scaling Behavior", "value": 0},
         "display_edge_angle_centrality_histogram": {"id": "display_edge_angle_centrality_histogram", "text": "Edge Angle Centrality", "value": 0},
         #"compute_lang": {"id": "compute_lang", "text": "Programming Language", "value": 'Py'}
     }
@@ -226,7 +225,7 @@ def load_gtc_configs(cfg_path: str = ""):
         options_gtc["display_eigenvector_centrality_histogram"]["value"] = int(config.get('sgt-settings', 'display_eigenvector_centrality_histogram'))
         options_gtc["display_edge_angle_centrality_histogram"]["value"] = int(config.get('sgt-settings', 'display_edge_angle_centrality_histogram'))
         options_gtc["display_ohms_histogram"]["value"] = int(config.get('sgt-settings', 'display_ohms_histogram'))
-        options_gtc["display_scaling_scatter_plot"]["value"] = int(config.get('sgt-settings', 'display_scaling_scatter_plot'))
+        options_gtc["compute_scaling_behavior"]["value"] = int(config.get('sgt-settings', 'compute_scaling_behavior'))
         options_gtc["compute_avg_node_connectivity"]["value"] = int(config.get('sgt-settings', 'compute_avg_node_connectivity'))
         options_gtc["compute_graph_density"]["value"] = int(config.get('sgt-settings', 'compute_graph_density'))
         options_gtc["compute_global_efficiency"]["value"] = int(config.get('sgt-settings', 'compute_global_efficiency'))

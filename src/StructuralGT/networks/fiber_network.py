@@ -114,7 +114,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         if opt_gte is None:
             return False
 
-        self.update_status([58, "Build graph skeleton from binary image..."])
+        self.update_status([51, "Build graph skeleton from binary image..."])
         graph_skel = GraphSkeleton(image_bin, opt_gte, is_2d=is_img_2d, progress_func=self.update_status)
         self.skel_obj = graph_skel
         img_skel = graph_skel.skeleton
@@ -187,7 +187,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         else:
             fig = plt.Figure()
             ax = fig.add_axes((0, 0, 1, 1))  # span the whole figure
-        FiberNetworkBuilder.plot_graph_edges(ax, image_2d, nx_graph, is_graph_2d=is_img_2d, color='yellow')
+        FiberNetworkBuilder.plot_graph_edges(ax, image_2d, nx_graph, is_graph_2d=is_img_2d, color='cyan')
         if plot_nodes:
             FiberNetworkBuilder.plot_graph_nodes(ax, nx_graph, is_graph_2d=is_img_2d, display_node_id=show_node_id)
         return fig
