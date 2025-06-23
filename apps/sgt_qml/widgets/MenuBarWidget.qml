@@ -60,15 +60,10 @@ MenuBar {
 
     //     MenuItem {id:mnuImgFilter; text: "Image Filters"; enabled: false; onTriggered: dialogImgFilters.open() }
     // }
-    // Menu {
-    //     id: mnuAnalyze
-    //     title: "Analyze"
-    //     enabled: true
-    //     Menu { title: "GT Parameters"
-    //         MenuItem {id:mnuSoloAnalze; text: "Current Image"; enabled: false; onTriggered: dialogRunAnalyzer.open() }
-    //         MenuItem {id:mnuMultiAnalyze; text: "All Images"; enabled: false; onTriggered: dialogRunMultiAnalyzer.open() }
-    //     }
-    // }
+    Menu {
+        title: "Properties"
+        MenuItem { id:mnuProperties; text: "Graph Properties"; enabled: false; onTriggered: dialogProperties.open() }
+    }
     Menu {
         title: "Help"
         MenuItem { id:mnuHelp; text: "Structural GT Help"; enabled: true; onTriggered: dialogAbout.open() }
@@ -111,27 +106,33 @@ MenuBar {
 
     // }
 
-    // Connections {
-    //     target: mainController
+    Connections {
+        target: mainController
 
-    //     function onImageChangedSignal() {
-    //         // Force refresh
-    //         mnuSaveProjAs.enabled = mainController.display_image();
+        function onImageChangedSignal() {
+            mnuProperties.enabled = mainController.graph_loaded() ? true : false;
 
-    //         mnuExportEdge.enabled = graphPropsModel.rowCount() > 0 ? true : false;
-    //         mnuExportAdj.enabled = graphPropsModel.rowCount() > 0 ? true : false;
-    //         mnuExportGexf.enabled = graphPropsModel.rowCount() > 0 ? true : false;
-    //         mnuExportGSD.enabled = graphPropsModel.rowCount() > 0 ? true : false;
-    //         mnuExportAll.enabled = graphPropsModel.rowCount() > 0 ? true : false;
 
-    //         //mnuRescaleImgCtrl.enabled = mainController.display_image();  HAS ERRORS
-    //         mnuBrightnessImgCtrl.enabled = mainController.display_image();
-    //         mnuContrastImgCtrl.enabled = mainController.display_image();
-    //         mnuBinImgFilter.enabled = mainController.display_image();
-    //         mnuImgFilter.enabled = mainController.display_image();
-    //         mnuSoloAnalze.enabled = mainController.display_image();
-    //         mnuMultiAnalyze.enabled = mainController.display_image();
-    //     }
-    // }
+
+            // Force refresh
+            // mnuSaveProjAs.enabled = mainController.display_image();
+
+            // mnuExportEdge.enabled = graphPropsModel.rowCount() > 0 ? true : false;
+            // mnuExportAdj.enabled = graphPropsModel.rowCount() > 0 ? true : false;
+            // mnuExportGexf.enabled = graphPropsModel.rowCount() > 0 ? true : false;
+            // mnuExportGSD.enabled = graphPropsModel.rowCount() > 0 ? true : false;
+            // mnuExportAll.enabled = graphPropsModel.rowCount() > 0 ? true : false;
+
+            // //mnuRescaleImgCtrl.enabled = mainController.display_image();  HAS ERRORS
+            // mnuBrightnessImgCtrl.enabled = mainController.display_image();
+            // mnuContrastImgCtrl.enabled = mainController.display_image();
+            // mnuBinImgFilter.enabled = mainController.display_image();
+            // mnuImgFilter.enabled = mainController.display_image();
+            // mnuSoloAnalze.enabled = mainController.display_image();
+            // mnuMultiAnalyze.enabled = mainController.display_image();
+
+
+        }
+    }
 }
 

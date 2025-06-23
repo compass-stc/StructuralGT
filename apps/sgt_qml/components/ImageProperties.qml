@@ -37,9 +37,9 @@ Rectangle {
                 id: lblNoImageProps
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 20
-                text: "No properties to show!"
+                text: "No image properties to show!"
                 color: "#808080"
-                visible: imagePropsModel.rowCount() > 0 ? false : true
+                visible: true
             }
 
             ImagePropertyWidget{}
@@ -66,9 +66,9 @@ Rectangle {
                 id: lblNoGraphProps
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 20
-                text: "No properties to show!"
+                text: "No graph properties to show!"
                 color: "#808080"
-                visible: graphPropsModel.rowCount() > 0 ? false : true
+                visible: true
             }
             GraphPropertyWidget{}
 
@@ -79,14 +79,10 @@ Rectangle {
         target: mainController
 
         function onImageChangedSignal() {
-            lblNoImageProps.visible = imagePropsModel.rowCount() > 0 ? false : true;
-            lblNoGraphProps.visible = graphPropsModel.rowCount() > 0 ? false : true;
+            lblNoImageProps.visible = mainController.img_loaded() ? false : true;
+            lblNoGraphProps.visible = mainController.graph_loaded() ? false : true;
         }
 
-        function onTaskTerminatedSignal(success_val, msg_data){
-            lblNoImageProps.visible = imagePropsModel.rowCount() > 0 ? false : true;
-            lblNoGraphProps.visible = graphPropsModel.rowCount() > 0 ? false : true;
-        }
 
     }
 

@@ -37,4 +37,13 @@ class ImageHandler:
             "thresh": 128.0,
         }
 
-        self.properties = {}
+        self.properties = {
+            "Diameter": None,
+            "Density": None,
+            "Average Clustering Coefficient": None,
+            "Assortativity": None,
+            "Average Closeness": None,
+            "Average Degree": None,
+            "Nematic Order Parameter": None,
+            "Effective Resistance": None
+        }

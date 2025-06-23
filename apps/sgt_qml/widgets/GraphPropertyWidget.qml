@@ -10,6 +10,7 @@ Item {
     Layout.fillWidth: true
     Layout.leftMargin: 5
     Layout.rightMargin: 5
+    visible: false
 
     property int numRows: 10  // graphPropsModel.rowCount()
     property int tblRowHeight: 25
@@ -68,9 +69,10 @@ Item {
     Connections {
         target: mainController
 
-        /*function onImageChangedSignal(){
-            tblViewGraphProps.height = graphPropsModel.rowCount() * tblRowHeight;
-        }*/
+        function onImageChangedSignal(){
+            graphPropsTbl.visible = mainController.graph_loaded() ? true : false;
+            mainController.update_graph_model();
+        }
 
     }
 }

@@ -128,9 +128,15 @@ class MainController(QObject):
 
     @Slot(result=bool)
     def img_loaded(self):
-        if not self.images:
-            return False
-        return self.get_selected_image().img_loaded
+        if self.images:
+            return self.get_selected_image().img_loaded
+        return False
+    
+    @Slot(result=bool)
+    def graph_loaded(self):
+        if self.images:
+            return self.get_selected_image().graph_loaded
+        return False
 
     @Slot(result=bool)
     def is_3d(self):
@@ -383,11 +389,42 @@ class MainController(QObject):
         except Exception as e:
             print("Graph Simulation Error:", e)
 
-    def update_img_model(self):
-        pass
+    @Slot()
+    def update_image_model(self):
+        """Update the image properties model with the selected image's properties."""
+        image = self.get_selected_image()
 
+        if image.is_3d:
+            image_props = [
+                ["Name", f"{image.img_path}"],
+                ["Depth x Height x Width", f"{image.network.image.shape[0]} x {image.network.image.shape[1]} x {image.network.image.shape[2]}"],
+                ["Dimensions", "3D"]
+            ]
+        else:
+            image_props = [
+                ["Name", f"{image.img_path.name}"],
+                ["Height x Width", f"{image.network.image.shape[0]} x {image.network.image.shape[1]}"],
+                ["Dimensions", "2D"]
+            ]
+
+        self.imagePropsModel.reset_data(image_props)
+
+    @Slot()
     def update_graph_model(self):
-        pass
+        """Update the graph properties model with the selected image's graph properties."""
+        image = self.get_selected_image()
+
+        if image.graph_loaded:
+            graph_props = [
+                ["Edge Count", f"{114514}"],
+                ["Node Count", f"{114514}"],
+            ]
+
+            for key, value in image.properties.items():
+                if value:
+                    graph_props.append([key, f"{value:.5f}"])
+
+            self.graphPropsModel.reset_data(graph_props)
 
 
     # def update_struct_models(self):

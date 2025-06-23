@@ -135,6 +135,69 @@ ApplicationWindow {
         }
     }
 
+    // Graph Properties Dialog
+    Dialog {
+        id: dialogProperties
+        anchors.centerIn: parent
+        title: "Select Graph Properties"
+        modal: true
+        width: 240
+        height: 512
+
+        ColumnLayout {
+            anchors.fill: parent
+            
+
+            RowLayout {
+                spacing: 10
+                //Layout.topMargin: 10
+                Layout.alignment: Qt.AlignHCenter
+
+                Button {
+                    Layout.preferredWidth: 54
+                    Layout.preferredHeight: 30
+                    text: ""
+                    onClicked: dialogProperties.close()
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 5
+                        color: "#bc0000"
+
+                        Label {
+                            text: "Cancel"
+                            color: "#ffffff"
+                            anchors.centerIn: parent
+                        }
+                    }
+                }
+
+                Button {
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 30
+                    text: ""
+                    onClicked: {
+                        mainController.update_graph_model();
+                        dialogProperties.close();
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 5
+                        color: "#22bc55"
+
+                        Label {
+                            text: "OK"
+                            color: "#ffffff"
+                            anchors.centerIn: parent
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
     Connections {
         target: mainController
 

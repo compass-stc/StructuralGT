@@ -10,9 +10,10 @@ Item {
     Layout.fillWidth: true
     Layout.leftMargin: 5
     Layout.rightMargin: 5
+    visible: false
 
-    property int numRows: 10  // imagePropsModel.rowCount()
-    property int tblRowHeight: 25
+    property int numRows: 3  // imagePropsModel.rowCount()
+    property int tblRowHeight: 33
 
     ColumnLayout {
         //anchors.fill: parent
@@ -23,7 +24,7 @@ Item {
             width: 290
             model: imagePropsModel
 
-            property int tblRowHeight: 30
+            property int tblRowHeight: 33
 
             delegate: Rectangle {
                 implicitWidth: column === 0 ? (tblImgProps.width * 0.36) : (tblImgProps.width * 0.64) //imagePropsModel.columnCount
@@ -72,10 +73,11 @@ Item {
 
     Connections {
         target: mainController
+            function onImageChangedSignal() {
+                imgPropsTbl.visible = mainController.img_loaded() ? true : false;
+                mainController.update_image_model();
+            }
 
-        /*function onImageChangedSignal(){
-            tblImgProps.height = imagePropsModel.rowCount() * tblRowHeight;
-        }*/
 
     }
 }
