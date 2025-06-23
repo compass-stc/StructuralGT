@@ -23,17 +23,8 @@ from .table_model import TableModel
 from .qthread_worker import QThreadWorker, WorkerTask
 
 from StructuralGT import __version__
-from StructuralGT.structural import (
-    Size,
-    Clustering,
-    Assortativity,
-    Closeness,
-    Degree,
-)
-
 
 ALLOWED_IMG_EXTENSIONS = ["*.jpg", "*.jpeg", "*.png", "*.tif", "*.tiff"]
-
 
 class MainController(QObject):
     """Exposes a method to refresh the image in QML"""
@@ -416,8 +407,8 @@ class MainController(QObject):
 
         if image.graph_loaded:
             graph_props = [
-                ["Edge Count", f"{114514}"],
-                ["Node Count", f"{114514}"],
+                ["Edge Count", "???"],
+                ["Node Count", "???"],
             ]
 
             for key, value in image.properties.items():
@@ -426,48 +417,39 @@ class MainController(QObject):
 
             self.graphPropsModel.reset_data(graph_props)
 
+    @Slot(str)
+    def run_graph_analysis(self, options):
+        """Compute selected graph properties of the selected image."""
+        if self.wait_flag:
+            logging.info("Please Wait: Another Task Running!", extra={'user': 'SGT Logs'})
+            self.showAlertSignal.emit("Please Wait", "Another Task Running!")
+            return
 
-    # def update_struct_models(self):
-    #     network = self.get_selected_img().network
-    #     print("Updating structural models...")
-        
-    #     # Compute diameter and density
-    #     size_obj = Size()
-    #     size_obj.compute(network)
-    #     diameter = size_obj.diameter
-    #     density = size_obj.density
+        image = self.get_selected_image()
+        if image is None:
+            self.wait_flag = False
+            return
 
-    #     # Compute average clustering coefficient
-    #     clustering_obj = Clustering()
-    #     clustering_obj.compute(network)
-    #     average_clustering_coefficient = clustering_obj.average_clustering_coefficient
+        self.wait_flag = True
+        options = json.loads(options)
 
-    #     # Compute assortativity
-    #     assortativity_obj = Assortativity()
-    #     assortativity_obj.compute(network)
-    #     assortativity = assortativity_obj.assortativity 
+        self.thread = QThreadWorker(
+            self.worker_task.task_run_graph_analysis,
+            (image,options),
+        )
 
-    #     # Compute average closeness
-    #     closeness_obj = Closeness()
-    #     closeness_obj.compute(network)
-    #     average_closeness = closeness_obj.average_closeness
+        self.worker_task.taskFinishedSignal.connect(self._on_graph_analysis_finished)
+        self.worker_task.taskFinishedSignal.connect(self.thread.quit)
 
-    #     # Compute average degree
-    #     degree_obj = Degree()
-    #     degree_obj.compute(network)
-    #     average_degree = degree_obj.average_degree
+        self.thread.start()
 
-    #     struct_props = [
-    #         ["Diameter", f"{diameter:.5f}"],
-    #         ["Density", f"{density:.5f}"],
-    #         ["Avg Clustering Coef", f"{average_clustering_coefficient:.5f}"],
-    #         ["Assortativity", f"{assortativity:.5f}"],
-    #         ["Avg Closeness", f"{average_closeness:.5f}"],
-    #         ["Avg Degree", f"{average_degree:.5f}"]
-    #     ]
-    #     self.structPropsModel.reset_data(struct_props)
-    #     print(self.structPropsModel.itemData)
-
+    @Slot(bool, object)
+    def _on_graph_analysis_finished(self, success, result):
+        self.wait_flag = False
+        if success:
+            self.update_graph_model()
+        else:
+            self.showAlertSignal.emit("Graph Analysis Failed", "Error computing graph properties.")
 
     @Slot(result=str)
     def get_sgt_version(self):

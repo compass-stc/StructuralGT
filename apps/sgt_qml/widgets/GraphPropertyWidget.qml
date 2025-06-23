@@ -13,7 +13,7 @@ Item {
     visible: false
 
     property int numRows: 10  // graphPropsModel.rowCount()
-    property int tblRowHeight: 25
+    property int tblRowHeight: 33
 
     ColumnLayout {
         //anchors.fill: parent

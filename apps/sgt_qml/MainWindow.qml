@@ -142,11 +142,109 @@ ApplicationWindow {
         title: "Select Graph Properties"
         modal: true
         width: 240
-        height: 512
+        height: 520
 
         ColumnLayout {
             anchors.fill: parent
             
+            ColumnLayout {
+                Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
+                Layout.margins: 10
+
+                CheckBox {
+                    id: chkDiameter
+                    text: "Diameter"
+                    checked: true
+                }
+
+                CheckBox {
+                    id: chkDensity
+                    text: "Density"
+                    checked: true
+                }
+
+                CheckBox {
+                    id: chkAvgClusteringCoeff
+                    text: "Average Clustering Coefficient"
+                    checked: true
+                }
+                
+                CheckBox {
+                    id: chkAssortativity
+                    text: "Assortativity"
+                    checked: true
+                }
+
+                CheckBox {
+                    id: chkAvgCloseness
+                    text: "Average Closeness"
+                    checked: true
+                }
+
+                CheckBox {
+                    id: chkAvgDegree
+                    text: "Average Degree"
+                    checked: true
+                }
+
+                CheckBox {
+                    id: chkNematicOrderParam
+                    text: "Nematic Order Parameter"
+                    checked: true
+                }
+
+                CheckBox {
+                    id: chkEffectiveResistance
+                    text: "Effective Resistance"
+                    checked: false
+                }
+
+                ColumnLayout {
+                    visible: chkEffectiveResistance.checked
+                    spacing: 8
+                    Layout.leftMargin: 20
+
+                    // X direction
+                    RowLayout {
+                        spacing: 6
+                        Label { text: "x"; Layout.preferredWidth: 10; color: "blue"; font.pixelSize: 12 }
+                        TextField { id: inputX0; placeholderText: "x0"; Layout.preferredWidth: 60 }
+                        TextField { id: inputX1; placeholderText: "x1"; Layout.preferredWidth: 60 }
+                    }
+
+                    // Y direction
+                    RowLayout {
+                        spacing: 6
+                        Label { text: "y"; Layout.preferredWidth: 10; color: "blue"; font.pixelSize: 12 }
+                        TextField { id: inputY0; placeholderText: "y0"; Layout.preferredWidth: 60 }
+                        TextField { id: inputY1; placeholderText: "y1"; Layout.preferredWidth: 60 }
+                    }
+
+                    // Z direction
+                    RowLayout {
+                        spacing: 6
+                        enabled: false // TODO: Enable when 3D images are supported
+                        Label { text: "z"; Layout.preferredWidth: 10; color: "blue"; font.pixelSize: 12 }
+                        TextField { id: inputZ0; placeholderText: "z0"; Layout.preferredWidth: 60 }
+                        TextField { id: inputZ1; placeholderText: "z1"; Layout.preferredWidth: 60 }
+                    }
+
+                    // R_j value
+                    RowLayout {
+                        spacing: 6
+                        Label { text: "R_j"; Layout.preferredWidth: 20; color: "blue"; font.pixelSize: 12 }
+                        TextField { id: inputRj; placeholderText: "e.g. 1.0"; Layout.preferredWidth: 100 }
+                    }
+
+                    // Axis value
+                    RowLayout {
+                        spacing: 6
+                        Label { text: "Axis"; Layout.preferredWidth: 20; color: "blue"; font.pixelSize: 12 }
+                        TextField { id: inputAxis; placeholderText: "e.g. 0.0"; Layout.preferredWidth: 100 }
+                    }
+                }
+            }
+
 
             RowLayout {
                 spacing: 10
@@ -173,11 +271,30 @@ ApplicationWindow {
                 }
 
                 Button {
-                    Layout.preferredWidth: 40
+                    Layout.preferredWidth: 54
                     Layout.preferredHeight: 30
                     text: ""
                     onClicked: {
-                        mainController.update_graph_model();
+                        var options = {
+                            "Diameter": chkDiameter.checked,
+                            "Density": chkDensity.checked,
+                            "Average Clustering Coefficient": chkAvgClusteringCoeff.checked,
+                            "Assortativity": chkAssortativity.checked,
+                            "Average Closeness": chkAvgCloseness.checked,
+                            "Average Degree": chkAvgDegree.checked,
+                            "Nematic Order Parameter": chkNematicOrderParam.checked,
+                            "Effective Resistance": {
+                                "x0": inputX0.text,
+                                "x1": inputX1.text,
+                                "y0": inputY0.text,
+                                "y1": inputY1.text,
+                                "z0": inputZ0.text,
+                                "z1": inputZ1.text,
+                                "R_j": inputRj.text,
+                                "axis": inputAxis.text
+                            }
+                        };
+                        mainController.run_graph_analysis(JSON.stringify(options));
                         dialogProperties.close();
                     }
 
@@ -187,7 +304,7 @@ ApplicationWindow {
                         color: "#22bc55"
 
                         Label {
-                            text: "OK"
+                            text: "Compute"
                             color: "#ffffff"
                             anchors.centerIn: parent
                         }
