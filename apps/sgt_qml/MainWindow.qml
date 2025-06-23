@@ -142,7 +142,7 @@ ApplicationWindow {
         title: "Select Graph Properties"
         modal: true
         width: 240
-        height: 520
+        height: 540
 
         ColumnLayout {
             anchors.fill: parent
@@ -220,10 +220,11 @@ ApplicationWindow {
                         TextField { id: inputY1; placeholderText: "y1"; Layout.preferredWidth: 60 }
                     }
 
-                    // Z direction
                     RowLayout {
+                        id: rowZ
                         spacing: 6
-                        enabled: false // TODO: Enable when 3D images are supported
+                        enabled: false
+
                         Label { text: "z"; Layout.preferredWidth: 10; color: "blue"; font.pixelSize: 12 }
                         TextField { id: inputZ0; placeholderText: "z0"; Layout.preferredWidth: 60 }
                         TextField { id: inputZ1; placeholderText: "z1"; Layout.preferredWidth: 60 }
@@ -242,6 +243,14 @@ ApplicationWindow {
                         Label { text: "Axis"; Layout.preferredWidth: 20; color: "blue"; font.pixelSize: 12 }
                         TextField { id: inputAxis; placeholderText: "e.g. 0.0"; Layout.preferredWidth: 100 }
                     }
+
+                    Connections {
+                        target: mainController
+                        onImageChangedSignal: {
+                            rowZ.enabled = mainController.is_3d();
+                        }
+                    }
+
                 }
             }
 
