@@ -70,20 +70,6 @@ class MainController(QObject):
         self.graphPropsModel = TableModel([])
 
 
-    @Slot(result=bool)
-    def img_loaded(self):
-        if not self.images:
-            return False
-        return self.images[self.selected_img_index].img_loaded
-
-    @Slot(result=bool)
-    def is_3d(self):
-        return self.images[self.selected_img_index].is_3d
-
-    @Slot(result=str)
-    def display_type(self):
-        return self.images[self.selected_img_index].display_type
-
     @Slot(str, result=str)
     def get_file_extensions(self, option):
         if option == "img":
@@ -140,10 +126,30 @@ class MainController(QObject):
             )
             return None
 
+    @Slot(result=bool)
+    def img_loaded(self):
+        if not self.images:
+            return False
+        return self.get_selected_image().img_loaded
+
+    @Slot(result=bool)
+    def is_3d(self):
+        return self.get_selected_image().is_3d
+    
+    @Slot(result=str)
+    def display_type(self):
+        return self.get_selected_image().display_type
+
+
     @Slot(result=int)
     def get_selected_slice_index(self):
         """Get the selected slice index of the selected image."""
-        return self.images[self.selected_img_index].selected_slice_index
+        return self.get_selected_image().selected_slice_index
+
+    @Slot(result=int)
+    def get_number_of_slices(self):
+        """Get the number of slices of the selected image."""
+        return self.get_selected_image().network.image.shape[0]
 
     @Slot(int, result=bool)
     def set_selected_slice_index(self, index):
@@ -154,11 +160,6 @@ class MainController(QObject):
             self.load_image()
             return True
         return False
-
-    @Slot(result=int)
-    def get_number_of_slices(self):
-        """Get the number of slices of the selected image."""
-        return self.images[self.selected_img_index].network.image.shape[0]
 
     @Slot(result=bool)
     def load_prev_slice(self):
@@ -381,6 +382,12 @@ class MainController(QObject):
 
         except Exception as e:
             print("Graph Simulation Error:", e)
+
+    def update_img_model(self):
+        pass
+
+    def update_graph_model(self):
+        pass
 
 
     # def update_struct_models(self):
