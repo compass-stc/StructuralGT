@@ -128,8 +128,6 @@ class WorkerTask (QObject):
 
                 image.properties["Effective Resistance"] = electronic_obj.effective_resistance
 
-
-
             self.taskFinishedSignal.emit(True, image)
         except Exception as err:
             logging.exception("Graph Analysis Error: %s", err, extra={'user': 'SGT Logs'})

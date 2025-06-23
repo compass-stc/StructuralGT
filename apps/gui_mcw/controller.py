@@ -451,6 +451,9 @@ class MainController(QObject):
         else:
             self.showAlertSignal.emit("Graph Analysis Failed", "Error computing graph properties.")
 
+    
+
+
     @Slot(result=str)
     def get_sgt_version(self):
         """"""

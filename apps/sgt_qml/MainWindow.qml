@@ -282,8 +282,11 @@ ApplicationWindow {
                             "Assortativity": chkAssortativity.checked,
                             "Average Closeness": chkAvgCloseness.checked,
                             "Average Degree": chkAvgDegree.checked,
-                            "Nematic Order Parameter": chkNematicOrderParam.checked,
-                            "Effective Resistance": {
+                            "Nematic Order Parameter": chkNematicOrderParam.checked
+                        };
+
+                        if (chkEffectiveResistance.checked) {
+                            options["Effective Resistance"] = {
                                 "x0": inputX0.text,
                                 "x1": inputX1.text,
                                 "y0": inputY0.text,
@@ -292,8 +295,11 @@ ApplicationWindow {
                                 "z1": inputZ1.text,
                                 "R_j": inputRj.text,
                                 "axis": inputAxis.text
-                            }
-                        };
+                            };
+                        } else {
+                            options["Effective Resistance"] = null;
+                        }
+                        
                         mainController.run_graph_analysis(JSON.stringify(options));
                         dialogProperties.close();
                     }
