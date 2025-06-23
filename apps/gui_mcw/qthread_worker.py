@@ -20,9 +20,9 @@ class WorkerTask (QObject):
     def __init__(self):
         super().__init__()
 
-    def task_run_binarizer(self, image, options):
+    def task_run_binarizer(self, image):
         try:
-            image.network.binarize(options=options)
+            image.network.binarize(options=image.options)
             image.binary_loaded = True
             self.taskFinishedSignal.emit(True, image)
         except Exception as err:

@@ -12,11 +12,11 @@ ApplicationWindow {
     visible: true
     title: "Structural GT"
 
-    menuBar: MenuBarWidget {
-    }
+    // TODO: Add File, Tools, Analyze in menu bar
+    menuBar: MenuBarWidget {}
 
-    footer: StatusBarWidget {
-    }
+    // TODO: Add progress bar and status messages
+    footer: StatusBarWidget {}
 
     GridLayout {
         anchors.fill: parent
@@ -35,8 +35,7 @@ ApplicationWindow {
             Layout.preferredWidth: parent.width
             Layout.fillWidth: true
             Layout.fillHeight: true
-            RibbonWidget {
-            }
+            RibbonWidget {}
         }
 
         // Second row, first column
@@ -50,8 +49,7 @@ ApplicationWindow {
             Layout.preferredWidth: 300
             Layout.fillWidth: true
             Layout.fillHeight: true
-            LeftContent {
-            }
+            LeftContent {}
         }
 
         // Second row, second column
@@ -64,8 +62,7 @@ ApplicationWindow {
             Layout.preferredWidth: parent.width - 300
             Layout.fillWidth: true
             Layout.fillHeight: true
-            RightContent {
-            }
+            RightContent {}
         }
     }
 
@@ -124,7 +121,7 @@ ApplicationWindow {
         id: imageFolderDialog
         title: "Select a Folder"
         onAccepted: {
-            mainController.add_3d_image(imageFolderDialog.folder);
+            mainController.add_image(imageFolderDialog.folder, true);
         }
     }
 
@@ -134,7 +131,7 @@ ApplicationWindow {
         title: "Open file"
         nameFilters: [mainController.get_file_extensions("img")]
         onAccepted: {
-            mainController.add_2d_image(imageFileDialog.selectedFile);
+            mainController.add_image(imageFileDialog.selectedFile, false);
         }
     }
 

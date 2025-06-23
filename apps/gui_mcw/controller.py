@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     # False at run time, only for a type-checker
     from _typeshed import SupportsWrite
 
-from .image import ImageHandler
+from .image_handler import ImageHandler
 from .table_model import TableModel
 from .qthread_worker import QThreadWorker, WorkerTask
 
@@ -56,24 +56,6 @@ class MainController(QObject):
         super().__init__()
         self.qml_app = qml_app
 
-        # Default binary filter options
-        self.options = {
-            "Thresh_method": 0,
-            "gamma": 1.001,
-            "md_filter": 0,
-            "g_blur": 0,
-            "autolvl": 0,
-            "fg_color": 0,
-            "laplacian": 0,
-            "scharr": 0,
-            "sobel": 0,
-            "lowpass": 0,
-            "asize": 3,
-            "bsize": 1,
-            "wsize": 1,
-            "thresh": 128.0,
-        }
-
         # Create network objects
         self.images = []
         self.selected_img_index = 0
@@ -84,32 +66,9 @@ class MainController(QObject):
         self.thread = QThreadWorker(None, None)
 
         # Create Models
-        self.structPropsModel = TableModel([])
+        self.imagePropsModel = TableModel([])
+        self.graphPropsModel = TableModel([])
 
-
-    @Slot(result=str)
-    def get_sgt_version(self):
-        """"""
-        # Copyright (C) 2024, the Regents of the University of Michigan.
-        return f"StructuralGT v{__version__}"
-
-    @Slot(result=str)
-    def get_about_details(self):
-        about_app = (
-            f"A software tool that allows graph theory analysis of nano-structures. This is a modified version "
-            "of StructuralGT initially proposed by Drew A. Vecchio, DOI: "
-            "<html><a href='https://pubs.acs.org/doi/10.1021/acsnano.1c04711'>10.1021/acsnano.1c04711</a></html><html><br/><br/></html>"
-            "Contributors:<html><br/></html>"
-            "1. Nicolas Kotov<html><br/></html>"
-            "2. Dickson Owuor<html><br/></html>"
-            "3. Alain Kadar<html><br/><br/></html>"
-            "Documentation:<html><br/></html>"
-            "<html><a href='https://structuralgt.readthedocs.io'>structuralgt.readthedocs.io</a></html><html><br/><br/></html>"
-            f"{self.get_sgt_version()}<html><br/></html>"
-            "Copyright (C) 2018-2025, The Regents of the University of Michigan.<html><br/></html>"
-            "License: GPL GNU v3<html><br/></html>"
-        )
-        return about_app
 
     @Slot(result=bool)
     def img_loaded(self):
@@ -168,7 +127,7 @@ class MainController(QObject):
             return False
         return a_path
 
-    def get_selected_img(self):
+    def get_selected_image(self):
         try:
             return self.images[self.selected_img_index]
         except IndexError:
@@ -183,12 +142,13 @@ class MainController(QObject):
 
     @Slot(result=int)
     def get_selected_slice_index(self):
+        """Get the selected slice index of the selected image."""
         return self.images[self.selected_img_index].selected_slice_index
 
     @Slot(int, result=bool)
     def set_selected_slice_index(self, index):
-        """Set the selected slice index of the image"""
-        image = self.get_selected_img()
+        """Set the selected slice index of the selected image."""
+        image = self.get_selected_image()
         if image and 0 <= index < image.network.image.shape[0]:
             image.selected_slice_index = index
             self.load_image()
@@ -197,12 +157,13 @@ class MainController(QObject):
 
     @Slot(result=int)
     def get_number_of_slices(self):
+        """Get the number of slices of the selected image."""
         return self.images[self.selected_img_index].network.image.shape[0]
 
     @Slot(result=bool)
     def load_prev_slice(self):
-        """Load the previous slice of the image"""
-        image = self.get_selected_img()
+        """Load the previous slice of the selected image."""
+        image = self.get_selected_image()
         if image and image.selected_slice_index > 0:
             image.selected_slice_index -= 1
             self.load_image()
@@ -211,15 +172,15 @@ class MainController(QObject):
     
     @Slot(result=bool)
     def load_next_slice(self):
-        """Load the next slice of the image"""
-        image = self.get_selected_img()
+        """Load the next slice of the selected image."""
+        image = self.get_selected_image()
         if image and image.selected_slice_index < image.network.image.shape[0] - 1:
             image.selected_slice_index += 1
             self.load_image()
             return True
         return False
 
-    def create_img(self, img_path, is_3d=False):
+    def create_image(self, img_path, is_3d=False):
         """
         A function that processes a selected image file and creates an analyzer object with default configurations.
 
@@ -265,19 +226,10 @@ class MainController(QObject):
             )
             return False
 
-    @Slot(str, result=bool)
-    def add_2d_image(self, img_path):
+    @Slot(str, bool, result=bool)
+    def add_image(self, img_path, is_3d):
         """Verify and validate an image path, use it to create an Network and load it in view."""
-        is_created = self.create_img(img_path)
-        if is_created:
-            self.load_image()
-            return True
-        return False
-
-    @Slot(str, result=bool)
-    def add_3d_image(self, img_path):
-        """Verify and validate an image path, use it to create an Network and load it in view."""
-        is_created = self.create_img(img_path, is_3d=True)
+        is_created = self.create_image(img_path, is_3d)
         if is_created:
             self.load_image()
             return True
@@ -324,17 +276,17 @@ class MainController(QObject):
             self.showAlertSignal.emit("Please Wait", "Another Task Running!")
             return
 
-        image = self.get_selected_img()
+        image = self.get_selected_image()
         if image is None:
             self.wait_flag = False
             return
 
         self.wait_flag = True
-        self.options = json.loads(options)
+        image.options = json.loads(options)
 
         self.thread = QThreadWorker(
             self.worker_task.task_run_binarizer,
-            (image, self.options),
+            (image,),
         )
 
         self.worker_task.taskFinishedSignal.connect(self._on_binarizer_finished)
@@ -358,7 +310,7 @@ class MainController(QObject):
             self.showAlertSignal.emit("Please Wait", "Another Task Running!")
             return
         
-        image = self.get_selected_img()
+        image = self.get_selected_image()
         if image is None:
             self.wait_flag = False
             return
@@ -385,7 +337,7 @@ class MainController(QObject):
         print(f"Display type: {display_type}")
         if display_type == self.display_type():
             return True
-        image = self.get_selected_img()
+        image = self.get_selected_image()
         if display_type == "binary" and not image.binary_loaded:
             self.showAlertSignal.emit(
                 "Images not binarized", 
@@ -412,7 +364,7 @@ class MainController(QObject):
                 p_line.remove_from_scene()
 
             # Create OVITO data pipeline
-            image = self.get_selected_img()
+            image = self.get_selected_image()
             gsd_file = os.path.join(
                 image.img_path.name, "Binarized/network.gsd"
             ) if not image.is_3d else os.path.join(
@@ -431,43 +383,68 @@ class MainController(QObject):
             print("Graph Simulation Error:", e)
 
 
-    def update_struct_models(self):
-        network = self.get_selected_img().network
-        print("Updating structural models...")
+    # def update_struct_models(self):
+    #     network = self.get_selected_img().network
+    #     print("Updating structural models...")
         
-        # Compute diameter and density
-        size_obj = Size()
-        size_obj.compute(network)
-        diameter = size_obj.diameter
-        density = size_obj.density
+    #     # Compute diameter and density
+    #     size_obj = Size()
+    #     size_obj.compute(network)
+    #     diameter = size_obj.diameter
+    #     density = size_obj.density
 
-        # Compute average clustering coefficient
-        clustering_obj = Clustering()
-        clustering_obj.compute(network)
-        average_clustering_coefficient = clustering_obj.average_clustering_coefficient
+    #     # Compute average clustering coefficient
+    #     clustering_obj = Clustering()
+    #     clustering_obj.compute(network)
+    #     average_clustering_coefficient = clustering_obj.average_clustering_coefficient
 
-        # Compute assortativity
-        assortativity_obj = Assortativity()
-        assortativity_obj.compute(network)
-        assortativity = assortativity_obj.assortativity 
+    #     # Compute assortativity
+    #     assortativity_obj = Assortativity()
+    #     assortativity_obj.compute(network)
+    #     assortativity = assortativity_obj.assortativity 
 
-        # Compute average closeness
-        closeness_obj = Closeness()
-        closeness_obj.compute(network)
-        average_closeness = closeness_obj.average_closeness
+    #     # Compute average closeness
+    #     closeness_obj = Closeness()
+    #     closeness_obj.compute(network)
+    #     average_closeness = closeness_obj.average_closeness
 
-        # Compute average degree
-        degree_obj = Degree()
-        degree_obj.compute(network)
-        average_degree = degree_obj.average_degree
+    #     # Compute average degree
+    #     degree_obj = Degree()
+    #     degree_obj.compute(network)
+    #     average_degree = degree_obj.average_degree
 
-        struct_props = [
-            ["Diameter", f"{diameter:.5f}"],
-            ["Density", f"{density:.5f}"],
-            ["Avg Clustering Coef", f"{average_clustering_coefficient:.5f}"],
-            ["Assortativity", f"{assortativity:.5f}"],
-            ["Avg Closeness", f"{average_closeness:.5f}"],
-            ["Avg Degree", f"{average_degree:.5f}"]
-        ]
-        self.structPropsModel.reset_data(struct_props)
-        print(self.structPropsModel.itemData)
+    #     struct_props = [
+    #         ["Diameter", f"{diameter:.5f}"],
+    #         ["Density", f"{density:.5f}"],
+    #         ["Avg Clustering Coef", f"{average_clustering_coefficient:.5f}"],
+    #         ["Assortativity", f"{assortativity:.5f}"],
+    #         ["Avg Closeness", f"{average_closeness:.5f}"],
+    #         ["Avg Degree", f"{average_degree:.5f}"]
+    #     ]
+    #     self.structPropsModel.reset_data(struct_props)
+    #     print(self.structPropsModel.itemData)
+
+
+    @Slot(result=str)
+    def get_sgt_version(self):
+        """"""
+        # Copyright (C) 2024, the Regents of the University of Michigan.
+        return f"StructuralGT v{__version__}"
+
+    @Slot(result=str)
+    def get_about_details(self):
+        about_app = (
+            f"A software tool that allows graph theory analysis of nano-structures. This is a modified version "
+            "of StructuralGT initially proposed by Drew A. Vecchio, DOI: "
+            "<html><a href='https://pubs.acs.org/doi/10.1021/acsnano.1c04711'>10.1021/acsnano.1c04711</a></html><html><br/><br/></html>"
+            "Contributors:<html><br/></html>"
+            "1. Nicolas Kotov<html><br/></html>"
+            "2. Dickson Owuor<html><br/></html>"
+            "3. Alain Kadar<html><br/><br/></html>"
+            "Documentation:<html><br/></html>"
+            "<html><a href='https://structuralgt.readthedocs.io'>structuralgt.readthedocs.io</a></html><html><br/><br/></html>"
+            f"{self.get_sgt_version()}<html><br/></html>"
+            "Copyright (C) 2018-2025, The Regents of the University of Michigan.<html><br/></html>"
+            "License: GPL GNU v3<html><br/></html>"
+        )
+        return about_app

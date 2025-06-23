@@ -25,7 +25,9 @@ Rectangle {
             id: stackLayout
             Layout.fillWidth: true
             currentIndex: tabBar.currentIndex
+            // TODO: Add image management
             ImgNav{}
+            // TODO: Add image properties
             ImageProperties{}
             ImageFilters{}
         }

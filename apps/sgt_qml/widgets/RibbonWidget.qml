@@ -81,7 +81,6 @@ Rectangle {
             icon.source: "../assets/icons/graph_icon.png" // Path to your icon
             icon.width: 24 // Adjust as needed
             icon.height: 24
-            background: Rectangle { color: "transparent" }
             ToolTip.text: "Show graph"
             ToolTip.visible: btnShowGraph.hovered
             enabled: mainController.img_loaded()

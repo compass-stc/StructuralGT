@@ -28,7 +28,8 @@ class MainWindow(QObject):
         # Set Models in QML Context
         self.ui_engine.rootContext().setContextProperty("mainController", controller)
         self.ui_engine.addImageProvider("imageProvider", self.image_provider)
-        self.ui_engine.rootContext().setContextProperty("structPropsModel", controller.structPropsModel)
+        self.ui_engine.rootContext().setContextProperty("imagePropsModel", controller.imagePropsModel)
+        self.ui_engine.rootContext().setContextProperty("graphPropsModel", controller.graphPropsModel)
 
         # Load UI
         qml_dir = os.path.dirname(os.path.abspath(__file__))

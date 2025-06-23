@@ -68,8 +68,7 @@ Rectangle {
                     icon.source: "../assets/icons/edit_icon.png"
                     icon.width: 21
                     icon.height: 21
-                    background: Rectangle { color: "transparent"}
-                    enabled: mainController.display_image();
+                    enabled: mainController.img_loaded();
                     onClicked: outFolderDialog.open()
                 }
             }
@@ -78,7 +77,7 @@ Rectangle {
                 id: btnImportImages
                 Layout.alignment: Qt.AlignHCenter
                 text: "Import image(s)"
-                enabled: mainController.display_image();
+                enabled: mainController.img_loaded();
                 onClicked: imageFileDialog.open()
             }
 

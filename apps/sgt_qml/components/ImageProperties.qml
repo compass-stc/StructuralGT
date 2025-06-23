@@ -25,7 +25,7 @@ Rectangle {
             Layout.preferredWidth: parent.width // Fills the available width
 
             Text {
-                text: "Structural Properties"
+                text: "Image Properties"
                 font.pixelSize: 12
                 font.bold: true
                 Layout.topMargin: 10
@@ -33,16 +33,16 @@ Rectangle {
                 Layout.alignment: Qt.AlignHCenter
             }
 
-            StructuralPropertyWidget{}
-
             Label {
-                id: lblNoStructProps
+                id: lblNoImageProps
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 20
                 text: "No properties to show!"
                 color: "#808080"
-                visible: true
+                visible: imagePropsModel.rowCount() > 0 ? false : true
             }
+
+            ImagePropertyWidget{}
 
             Rectangle {
                 height: 1
@@ -54,7 +54,7 @@ Rectangle {
                 Layout.rightMargin: 20
             }
             Text {
-                text: "Electronic Properties"
+                text: "Graph Properties"
                 font.pixelSize: 12
                 font.bold: true
                 Layout.topMargin: 10
@@ -62,28 +62,16 @@ Rectangle {
                 Layout.alignment: Qt.AlignHCenter
             }
 
-            // ElectronicPropertyWidget{}
-
-
-            Rectangle {
-                height: 1
-                color: "#d0d0d0"
-                Layout.fillWidth: true
+            Label {
+                id: lblNoGraphProps
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 20
-                Layout.leftMargin: 20
-                Layout.rightMargin: 20
+                text: "No properties to show!"
+                color: "#808080"
+                visible: graphPropsModel.rowCount() > 0 ? false : true
             }
-            Text {
-                text: "Geometric Properties"
-                font.pixelSize: 12
-                font.bold: true
-                Layout.topMargin: 10
-                Layout.bottomMargin: 5
-                Layout.alignment: Qt.AlignHCenter
-            }
+            GraphPropertyWidget{}
 
-            // GeometricPropertyWidget{}
         }
     }
 
@@ -91,7 +79,13 @@ Rectangle {
         target: mainController
 
         function onImageChangedSignal() {
-            lblNoStructProps.visible = structPropsModel.rowCount() > 0 ? false : true;
+            lblNoImageProps.visible = imagePropsModel.rowCount() > 0 ? false : true;
+            lblNoGraphProps.visible = graphPropsModel.rowCount() > 0 ? false : true;
+        }
+
+        function onTaskTerminatedSignal(success_val, msg_data){
+            lblNoImageProps.visible = imagePropsModel.rowCount() > 0 ? false : true;
+            lblNoGraphProps.visible = graphPropsModel.rowCount() > 0 ? false : true;
         }
 
     }

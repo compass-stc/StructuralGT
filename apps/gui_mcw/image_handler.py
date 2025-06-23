@@ -19,6 +19,24 @@ class ImageHandler:
 
         self._selected_slice_index = 0
 
+        self.options = {
+            "Thresh_method": 0,
+            "gamma": 1.001,
+            "md_filter": 0,
+            "g_blur": 0,
+            "autolvl": 0,
+            "fg_color": 0,
+            "laplacian": 0,
+            "scharr": 0,
+            "sobel": 0,
+            "lowpass": 0,
+            "asize": 3,
+            "bsize": 1,
+            "wsize": 1,
+            "thresh": 128.0,
+        }
+
+
     @property
     def img_path(self):
         return self._img_path

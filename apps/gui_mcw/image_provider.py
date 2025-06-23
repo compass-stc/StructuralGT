@@ -17,7 +17,7 @@ class ImageProvider(QQuickImageProvider):
         print("ImageProvider: handle_change_image called")
         if len(self.img_controller.images) > 0:
             img_cv = None # img_cv must be a numpy array
-            image = self.img_controller.get_selected_img()
+            image = self.img_controller.get_selected_image()
 
             if image.display_type == "original":
                 img_cv = image.network.image
@@ -46,8 +46,9 @@ class ImageProvider(QQuickImageProvider):
 
                     buf = canvas.buffer_rgba()
                     img_cv = np.asarray(buf, dtype=np.uint8).reshape((height, width, 4))
+
+                    self.img_controller.load_graph_simulation()
                 
-                self.img_controller.update_struct_models()
 
             if img_cv is not None:
                 # Create Pixmap image
