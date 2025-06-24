@@ -42,7 +42,6 @@ class MainController(QObject):
     errorSignal = Signal(str)
     changeImageSignal = Signal()
     imageChangedSignal = Signal()
-    imageListChangedSignal = Signal()
     taskFinishedSignal = Signal(bool, object)  # success/fail (True/False), result (object)
 
     def __init__(self, qml_app: QApplication):
@@ -240,7 +239,6 @@ class MainController(QObject):
                 for i, image in enumerate(self.images)]
             )
 
-            self.imageListChangedSignal.emit()
             self.load_image()
             return True
         return False
@@ -259,7 +257,6 @@ class MainController(QObject):
             [{"id": i, "name": str(image.img_path.name if not image.is_3d else os.path.basename(image.img_path))}
                 for i, image in enumerate(self.images)]
         )
-        self.imageListChangedSignal.emit()
 
         # Load the first image or reset if no images left
         self.load_image()
