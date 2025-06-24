@@ -30,6 +30,7 @@ class MainWindow(QObject):
         self.ui_engine.addImageProvider("imageProvider", self.image_provider)
         self.ui_engine.rootContext().setContextProperty("imagePropsModel", controller.imagePropsModel)
         self.ui_engine.rootContext().setContextProperty("graphPropsModel", controller.graphPropsModel)
+        self.ui_engine.rootContext().setContextProperty("imageListModel", controller.imageListModel)
 
         # Load UI
         qml_dir = os.path.dirname(os.path.abspath(__file__))

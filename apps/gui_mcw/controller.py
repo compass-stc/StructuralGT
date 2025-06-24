@@ -20,11 +20,12 @@ if TYPE_CHECKING:
 
 from .image_handler import ImageHandler
 from .table_model import TableModel
+from .list_model import ListModel
 from .qthread_worker import QThreadWorker, WorkerTask
 
 from StructuralGT import __version__
 
-ALLOWED_IMG_EXTENSIONS = ["*.jpg", "*.jpeg", "*.png", "*.tif", "*.tiff"]
+ALLOWED_IMG_EXTENSIONS = ["*.jpg", "*.jpeg", "*.tif", "*.tiff"]
 
 class MainController(QObject):
     """Exposes a method to refresh the image in QML"""
@@ -41,6 +42,7 @@ class MainController(QObject):
     errorSignal = Signal(str)
     changeImageSignal = Signal()
     imageChangedSignal = Signal()
+    imageListChangedSignal = Signal()
     taskFinishedSignal = Signal(bool, object)  # success/fail (True/False), result (object)
 
     def __init__(self, qml_app: QApplication):
@@ -59,7 +61,7 @@ class MainController(QObject):
         # Create Models
         self.imagePropsModel = TableModel([])
         self.graphPropsModel = TableModel([])
-
+        self.imageListModel = ListModel([])
 
     @Slot(str, result=str)
     def get_file_extensions(self, option):
@@ -122,7 +124,7 @@ class MainController(QObject):
         if self.images:
             return self.get_selected_image().img_loaded
         return False
-    
+
     @Slot(result=bool)
     def graph_loaded(self):
         if self.images:
@@ -132,15 +134,18 @@ class MainController(QObject):
     @Slot(result=bool)
     def is_3d(self):
         return self.get_selected_image().is_3d
-    
+
     @Slot(result=str)
     def display_type(self):
+        if not self.images:
+            return ""
         return self.get_selected_image().display_type
-
 
     @Slot(result=int)
     def get_selected_slice_index(self):
         """Get the selected slice index of the selected image."""
+        if not self.images:
+            return -1
         return self.get_selected_image().selected_slice_index
 
     @Slot(result=int)
@@ -167,7 +172,7 @@ class MainController(QObject):
             self.load_image()
             return True
         return False
-    
+
     @Slot(result=bool)
     def load_next_slice(self):
         """Load the next slice of the selected image."""
@@ -229,9 +234,36 @@ class MainController(QObject):
         """Verify and validate an image path, use it to create an Network and load it in view."""
         is_created = self.create_image(img_path, is_3d)
         if is_created:
+            
+            self.imageListModel.reset_data(
+                [{"id": i, "name": str(image.img_path.name if not image.is_3d else os.path.basename(image.img_path))}
+                for i, image in enumerate(self.images)]
+            )
+
+            self.imageListChangedSignal.emit()
             self.load_image()
             return True
         return False
+
+    @Slot(int, result=bool)
+    def delete_image(self, index):
+        """Delete an image from the list of images."""
+        # Remove the image from the list
+        del self.images[index]
+        self.selected_img_index = 0 if not self.images else min(
+            self.selected_img_index, len(self.images) - 1
+        )
+
+        # Reset the models
+        self.imageListModel.reset_data(
+            [{"id": i, "name": str(image.img_path.name if not image.is_3d else os.path.basename(image.img_path))}
+                for i, image in enumerate(self.images)]
+        )
+        self.imageListChangedSignal.emit()
+
+        # Load the first image or reset if no images left
+        self.load_image()
+        return True
 
     @Slot(int)
     def load_image(self, index=None):
@@ -280,7 +312,8 @@ class MainController(QObject):
             return
 
         self.wait_flag = True
-        image.options = json.loads(options)
+        if options:
+            image.options = json.loads(options)
 
         self.thread = QThreadWorker(
             self.worker_task.task_run_binarizer,
@@ -307,12 +340,12 @@ class MainController(QObject):
             logging.info("Please Wait: Another Task Running!", extra={'user': 'SGT Logs'})
             self.showAlertSignal.emit("Please Wait", "Another Task Running!")
             return
-        
+
         image = self.get_selected_image()
         if image is None:
             self.wait_flag = False
             return
-        
+
         self.wait_flag = True
         self.thread = QThreadWorker(
             self.worker_task.task_run_graph_extraction,
@@ -321,7 +354,7 @@ class MainController(QObject):
         self.worker_task.taskFinishedSignal.connect(self._on_graph_extraction_finished)
         self.worker_task.taskFinishedSignal.connect(self.thread.quit)
         self.thread.start()
-    
+
     @Slot(bool, object)
     def _on_graph_extraction_finished(self, success, result):
         self.wait_flag = False
@@ -333,26 +366,22 @@ class MainController(QObject):
     @Slot(str, result=bool)
     def toggle_current_img_view(self, display_type):
         print(f"Display type: {display_type}")
-        if display_type == self.display_type():
-            return True
+
         image = self.get_selected_image()
+
         if display_type == "binary" and not image.binary_loaded:
-            self.showAlertSignal.emit(
-                "Images not binarized", 
-                "Please apply a binary filter or wait for it to finish."
-            )
+            # Use the default options
+            self.run_binarizer(options=None)
             return False
         elif display_type == "graph" and not image.graph_loaded:
-            self.showAlertSignal.emit(
-                "Graph not extracted",
-                "Please extract a graph or wait for it to finish.",
-            )
+            self.run_graph_extraction()
             return False
+        elif image.display_type == display_type:
+            return True
         else:
             image.display_type = display_type
             self.load_image()
             return True
-        
 
     def load_graph_simulation(self):
         """Render and visualize OVITO graph network simulation."""
@@ -385,6 +414,9 @@ class MainController(QObject):
         """Update the image properties model with the selected image's properties."""
         image = self.get_selected_image()
 
+        if image is None:
+            return
+
         if image.is_3d:
             image_props = [
                 ["Name", f"{image.img_path}"],
@@ -404,6 +436,9 @@ class MainController(QObject):
     def update_graph_model(self):
         """Update the graph properties model with the selected image's graph properties."""
         image = self.get_selected_image()
+
+        if image is None:
+            return
 
         if image.graph_loaded:
             graph_props = [
@@ -450,9 +485,6 @@ class MainController(QObject):
             self.update_graph_model()
         else:
             self.showAlertSignal.emit("Graph Analysis Failed", "Error computing graph properties.")
-
-    
-
 
     @Slot(result=str)
     def get_sgt_version(self):

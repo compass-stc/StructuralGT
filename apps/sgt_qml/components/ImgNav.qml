@@ -1,8 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-//import QtQuick.Dialogs as QuickDialogs
-//import Qt.labs.platform as Platform
+import Qt.labs.platform
 import "../widgets"
 
 Rectangle {
@@ -11,115 +10,111 @@ Rectangle {
     Layout.fillWidth: true
     Layout.fillHeight: true
 
-    ScrollView {
-        id: scrollViewProjNav
+    ColumnLayout {
         anchors.fill: parent
-        clip: true
+        spacing: 10
 
-        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff // Disable horizontal scrolling
-        ScrollBar.vertical.policy: ScrollBar.AsNeeded // Enable vertical scrolling only when needed
-
-        contentHeight: colImgProjNavLayout.implicitHeight
-
-        ColumnLayout {
-            id: colImgProjNavLayout
-            width: scrollViewProjNav.width // Ensures it never exceeds parent width
-            Layout.preferredWidth: parent.width // Fills the available width
-
-            RowLayout {
-                id: rowLayoutProject
-                Layout.topMargin: 10
-                Layout.leftMargin: 10
-                Layout.bottomMargin: 5
-                visible: mainController.is_project_open()
-
-                Label {
-                    text: "Project Name:"
-                    font.bold: true
-                }
-
-                Label {
-                    id: lblProjectName
-                    Layout.minimumWidth: 175
-                    Layout.fillWidth: true
-                    text: ""
-                }
-            }
-
-            RowLayout {
-                Layout.leftMargin: 10
-                Layout.bottomMargin: 5
-
-                Label {
-                    text: "Output Dir:"
-                    font.bold: true
-                }
-
-                TextField {
-                    id: txtOutputDir
-                    Layout.minimumWidth: 175
-                    Layout.fillWidth: true
-                    text: ""
-                }
-
-                Button {
-                    id: btnChangeOutDir
-                    //text: "Change"
-                    icon.source: "../assets/icons/edit_icon.png"
-                    icon.width: 21
-                    icon.height: 21
-                    enabled: mainController.img_loaded();
-                    onClicked: outFolderDialog.open()
-                }
-            }
+        RowLayout {
+            spacing: 10
+            Layout.preferredHeight: 40
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignHCenter
 
             Button {
-                id: btnImportImages
-                Layout.alignment: Qt.AlignHCenter
-                text: "Import image(s)"
-                enabled: mainController.img_loaded();
+                id: btnAddImage
+                Layout.preferredWidth: 80
+                Layout.preferredHeight: 30
+                text: "Add 2D"
                 onClicked: imageFileDialog.open()
             }
 
-            Rectangle {
-                height: 1
-                color: "#d0d0d0"
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: 5
-                Layout.leftMargin: 20
-                Layout.rightMargin: 20
+            Button {
+                id: btnAddImageFolder
+                Layout.preferredWidth: 80
+                Layout.preferredHeight: 30
+                text: "Add 3D"
+                onClicked: imageFolderDialog.open()
             }
-            Text {
-                text: "Image List"
-                font.pixelSize: 12
-                font.bold: true
-                Layout.topMargin: 5
-                Layout.bottomMargin: 5
-                Layout.alignment: Qt.AlignHCenter
-                visible: true
-            }
-
-            // ProjectWidget {}
         }
-    }
 
+        ScrollView {
+            id: scrollViewImgNav
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.alignment: Qt.AlignHCenter
+            clip: true
+            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+            ListView {
+                id: imageListView
+                anchors.fill: parent
+                model: imageListModel
+                delegate: Item {
+                    width: imageListView.width
+                    height: 50
+
+                    Rectangle {
+                        width: parent.width * 0.75
+                        height: 40
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        color: imageListView.currentIndex === index ? "#d0eaff" : "#ffffff"
+                        border.color: "#cccccc"
+
+                        RowLayout {
+                            anchors.fill: parent
+                            spacing: 10
+                            Label {
+                                leftPadding: 10
+                                text: model.id + ": " + model.name
+                                font.pixelSize: 14
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            onClicked: {
+                                if (mouse.button === Qt.RightButton) {
+                                    contextMenu.open()
+                                } else {
+                                    imageListView.currentIndex = index
+                                    mainController.load_image(model.id)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Menu {
+            id: contextMenu
+            MenuItem {
+                text: "Delete"
+                onTriggered: {
+                    mainController.delete_image(imageListView.currentIndex)
+                }
+            }
+        }
+
+        FileDialog {
+            id: imageFileDialog
+            title: "Choose a 2D image"
+            onAccepted: mainController.add_image(file, false)
+        }
+
+        FolderDialog {
+            id: imageFolderDialog
+            title: "Choose folder for 3D image"
+            onAccepted: mainController.add_image(folder, true)
+        }
+
+        property int contextMenuRow: -1
+    }
 
     Connections {
         target: mainController
-
-        function onImageChangedSignal() {
-            // Force refresh
-            txtOutputDir.text = mainController.get_output_dir();
-            btnChangeOutDir.enabled = mainController.display_image();
-            btnImportImages.enabled = mainController.display_image() || mainController.is_project_open();
-        }
-
-        function onProjectOpenedSignal(name) {
-            lblProjectName.text = name;
-            rowLayoutProject.visible = mainController.is_project_open();
-            btnImportImages.enabled = mainController.display_image() || mainController.is_project_open();
-        }
+        
     }
-
 }

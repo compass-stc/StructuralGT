@@ -16,7 +16,7 @@ Rectangle {
             id: tabBar
             currentIndex: 0
             Layout.fillWidth: true
-            // TabButton { text: "Images" }
+            TabButton { text: "Images" }
             TabButton { text: "Properties" }
             TabButton { text: "Filters" }
         }
@@ -25,8 +25,7 @@ Rectangle {
             id: stackLayout
             Layout.fillWidth: true
             currentIndex: tabBar.currentIndex
-            // TODO: Add image management
-            // ImgNav{}
+            ImgNav{}
             ImageProperties{}
             ImageFilters{}
         }

@@ -58,7 +58,9 @@ class ImageProvider(QQuickImageProvider):
             image.img_loaded = True
             self.img_controller.imageChangedSignal.emit()
         else:
-            image.img_loaded = False
+            print("ImageProvider: No images available to display.")
+            self.pixmap = QPixmap()
+            self.img_controller.imageChangedSignal.emit()
 
     def requestPixmap(self, img_id, requested_size, size):
         return self.pixmap
