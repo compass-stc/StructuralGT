@@ -16,13 +16,13 @@ Rectangle {
 
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff // Disable horizontal scrolling
         ScrollBar.vertical.policy: ScrollBar.AsNeeded // Enable vertical scrolling only when needed
-
-        contentHeight: colImgPropsLayout.implicitHeight
+        //contentHeight: colImgPropsLayout.implicitHeight
 
         ColumnLayout {
             id: colImgPropsLayout
             width: scrollViewImgProps.width // Ensures it never exceeds parent width
             Layout.preferredWidth: parent.width // Fills the available width
+            implicitHeight: colImgPropsLayout.implicitHeight
 
             Text {
                 text: "Image Properties"
@@ -64,7 +64,7 @@ Rectangle {
             GraphPropertyWidget{}
 
 
-            /*Rectangle {
+            Rectangle {
                 height: 1
                 color: "#d0d0d0"
                 Layout.fillWidth: true
@@ -74,7 +74,7 @@ Rectangle {
                 Layout.rightMargin: 20
             }
             Text {
-                text: "Microscopy Properties"
+                text: "Computation Metrics"
                 font.pixelSize: 12
                 font.bold: true
                 Layout.topMargin: 10
@@ -82,7 +82,15 @@ Rectangle {
                 Layout.alignment: Qt.AlignHCenter
             }
 
-            MicroscopyPropertyWidgetv1{}*/
+            Label {
+                id: lblNoGraphParams
+                Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: 20
+                text: "No metrics to show!"
+                color: "#808080"
+                visible: graphComputeModel.rowCount() > 0 ? false : true
+            }
+            GraphComputeWidget{}
         }
     }
 
@@ -91,10 +99,12 @@ Rectangle {
 
         function onImageChangedSignal() {
             lblNoGraphProps.visible = graphPropsModel.rowCount() > 0 ? false : true;
+            lblNoGraphParams.visible = graphComputeModel.rowCount() > 0 ? false : true;
         }
 
         function onTaskTerminatedSignal(success_val, msg_data){
             lblNoGraphProps.visible = graphPropsModel.rowCount() > 0 ? false : true;
+            lblNoGraphParams.visible = graphComputeModel.rowCount() > 0 ? false : true;
         }
 
     }

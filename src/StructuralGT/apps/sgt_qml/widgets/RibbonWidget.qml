@@ -44,7 +44,7 @@ Rectangle {
 
             Basic.Button {
                 id: btnHideLeftPane
-                Layout.preferredWidth: 36
+                Layout.preferredWidth: 40
                 Layout.preferredHeight: 36
                 text: ""
                 property bool hidePane: true
@@ -76,12 +76,12 @@ Rectangle {
 
             Basic.Button {
                 id: btnRescale
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
                 text: ""
                 icon.source: "../assets/icons/rescale_icon.png" // Path to your icon
-                icon.width: 24 // Adjust as needed
-                icon.height: 24
+                icon.width: 20 // Adjust as needed
+                icon.height: 20
                 background: Rectangle { color: "transparent" }
                 ToolTip.text: "Re-scale large images"
                 ToolTip.visible: btnRescale.hovered
@@ -147,8 +147,8 @@ Rectangle {
                 Layout.preferredHeight: 36
                 text: ""
                 icon.source: "../assets/icons/brightness_icon.png" // Path to your icon
-                icon.width: 24 // Adjust as needed
-                icon.height: 24
+                icon.width: 21 // Adjust as needed
+                icon.height: 21
                 background: Rectangle { color: "transparent" }
                 ToolTip.text: "Adjust brightness/contrast"
                 ToolTip.visible: btnBrightness.hovered
@@ -207,11 +207,11 @@ Rectangle {
             Basic.Button {
                 id: btnCrop
                 text: ""
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
                 icon.source: "../assets/icons/crop_icon.png" // Path to your icon
-                icon.width: 24 // Adjust as needed
-                icon.height: 24
+                icon.width: 21 // Adjust as needed
+                icon.height: 21
                 background: Rectangle { color: "transparent"}
                 ToolTip.text: "Crop to selection"
                 ToolTip.visible: btnCrop.hovered
@@ -269,8 +269,8 @@ Rectangle {
                 Layout.preferredWidth: 36
                 Layout.preferredHeight: 36
                 icon.source: "../assets/icons/graph_icon.png" // Path to your icon
-                icon.width: 28 // Adjust as needed
-                icon.height: 28
+                icon.width: 24 // Adjust as needed
+                icon.height: 24
                 background: Rectangle { color: "transparent"}
                 ToolTip.text: "Show graph"
                 ToolTip.visible: btnShowGraph.hovered

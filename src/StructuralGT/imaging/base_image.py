@@ -65,11 +65,25 @@ class BaseImage:
 
     def get_pixel_width(self):
         """Compute pixel dimension in nanometers to estimate and update the width of graph edges."""
+
+        def compute_pixel_width(scalebar_val: float, scalebar_pixel_count: int):
+            """
+            Compute the width of a single pixel in nanometers.
+
+            :param scalebar_val: Unit value of the scale in nanometers.
+            :param scalebar_pixel_count: Pixel count of the scalebar width.
+            :return: Width of a single pixel in nanometers.
+            """
+
+            val_in_meters = scalebar_val / 1e9
+            pixel_width = val_in_meters / scalebar_pixel_count
+            return pixel_width
+
         opt_img = self.configs
         pixel_count = int(opt_img["scalebar_pixel_count"]["value"])
         scale_val = float(opt_img["scale_value_nanometers"]["value"])
         if (scale_val > 0) and (pixel_count > 0):
-            px_width = BaseImage.compute_pixel_width(scale_val, pixel_count)
+            px_width = compute_pixel_width(scale_val, pixel_count)
             opt_img["pixel_width"]["value"] = px_width / self.scale_factor
 
     def apply_img_crop(self, x: int, y: int, crop_width: int, crop_height: int, actual_w: int, actual_h: int):
@@ -98,16 +112,66 @@ class BaseImage:
         :return: None
         """
 
+        opt_img = self.configs
         if image is None:
             return None
+
+        def control_brightness(img: MatLike):
+            """
+            Apply contrast and brightness filters to the image
+
+            param img: OpenCV image
+            :return:
+            """
+
+            brightness_val = opt_img["brightness_level"]["value"]
+            contrast_val = opt_img["contrast_level"]["value"]
+            brightness = ((brightness_val / 100) * 127)
+            contrast = ((contrast_val / 100) * 127)
+
+            # img = np.int16(img)
+            # img = img * (contrast / 127 + 1) - contrast + brightness
+            # img = np.clip(img, 0, 255)
+            # img = np.uint8(img)
+
+            if brightness != 0:
+                if brightness > 0:
+                    shadow = brightness
+                    max_val = 255
+                else:
+                    shadow = 0
+                    max_val = 255 + brightness
+                alpha_b = (max_val - shadow) / 255
+                gamma_b = shadow
+                img = cv2.addWeighted(img, alpha_b, img, 0, gamma_b)
+
+            if contrast != 0:
+                alpha_c = float(131 * (contrast + 127)) / (127 * (131 - contrast))
+                gamma_c = 127 * (1 - alpha_c)
+                img = cv2.addWeighted(img, alpha_c, img, 0, gamma_c)
+
+            # text string in the image.
+            # cv2.putText(new_img, 'B:{},C:{}'.format(brightness, contrast), (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
+            # 1, (0, 0, 255), 2)
+            return img
+
+        def apply_filter(filter_type: str, img: MatLike, fil_grad_x, fil_grad_y):
+            """"""
+            if filter_type == 'scharr' or filter_type == 'sobel':
+                abs_grad_x = cv2.convertScaleAbs(fil_grad_x)
+                abs_grad_y = cv2.convertScaleAbs(fil_grad_y)
+                fil_dst = cv2.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
+                fil_abs_dst = cv2.convertScaleAbs(fil_dst)
+                result_img = cv2.addWeighted(img, 0.75, fil_abs_dst, 0.25, 0)
+                return cv2.convertScaleAbs(result_img)
+            return img
 
         alpha_channel, _ = BaseImage.check_alpha_channel(image)
         if alpha_channel:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        opt_img = self.configs
-        filtered_img = BaseImage.control_brightness(image, opt_img["brightness_level"]["value"],
-                                                    opt_img["contrast_level"]["value"])
+        # Apply brightness/contrast
+        filtered_img = control_brightness(image)
 
         if float(opt_img["apply_gamma"]["dataValue"]) != 1.00:
             inv_gamma = 1.00 / float(opt_img["apply_gamma"]["dataValue"])
@@ -158,7 +222,7 @@ class BaseImage:
             d_depth = cv2.CV_16S
             grad_x = cv2.Scharr(filtered_img, d_depth, 1, 0)
             grad_y = cv2.Scharr(filtered_img, d_depth, 0, 1)
-            filtered_img = BaseImage.apply_filter('scharr', filtered_img, grad_x, grad_y)
+            filtered_img = apply_filter('scharr', filtered_img, grad_x, grad_y)
 
         # applying sobel filter
         if opt_img["apply_sobel_gradient"]["value"] == 1:
@@ -171,7 +235,7 @@ class BaseImage:
             grad_y = cv2.Sobel(filtered_img, d_depth, 0, 1, ksize=int(opt_img["apply_sobel_gradient"]["dataValue"]),
                                scale=scale,
                                delta=delta, borderType=cv2.BORDER_DEFAULT)
-            filtered_img = BaseImage.apply_filter('sobel', filtered_img, grad_x, grad_y)
+            filtered_img = apply_filter('sobel', filtered_img, grad_x, grad_y)
 
         # applying laplacian filter
         if opt_img["apply_laplacian_gradient"]["value"] == 1:
@@ -289,58 +353,6 @@ class BaseImage:
         return run_info
 
     @staticmethod
-    def apply_filter(filter_type: str, img: MatLike, grad_x, grad_y):
-        """"""
-        if filter_type == 'scharr' or filter_type == 'sobel':
-            abs_grad_x = cv2.convertScaleAbs(grad_x)
-            abs_grad_y = cv2.convertScaleAbs(grad_y)
-            dst = cv2.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
-            abs_dst = cv2.convertScaleAbs(dst)
-            filtered_img = cv2.addWeighted(img, 0.75, abs_dst, 0.25, 0)
-            return cv2.convertScaleAbs(filtered_img)
-        return img
-
-    @staticmethod
-    def control_brightness(img: MatLike, brightness_val: int = 0, contrast_val: int = 0):
-        """
-        Apply contrast and brightness filters to the image.
-
-        :param img: OpenCV image.
-        :param brightness_val: Brightness value.
-        :param contrast_val: Contrast value.
-        :return:
-        """
-
-        brightness = ((brightness_val / 100) * 127)
-        contrast = ((contrast_val / 100) * 127)
-
-        # img = np.int16(img)
-        # img = img * (contrast / 127 + 1) - contrast + brightness
-        # img = np.clip(img, 0, 255)
-        # img = np.uint8(img)
-
-        if brightness != 0:
-            if brightness > 0:
-                shadow = brightness
-                max_val = 255
-            else:
-                shadow = 0
-                max_val = 255 + brightness
-            alpha_b = (max_val - shadow) / 255
-            gamma_b = shadow
-            img = cv2.addWeighted(img, alpha_b, img, 0, gamma_b)
-
-        if contrast != 0:
-            alpha_c = float(131 * (contrast + 127)) / (127 * (131 - contrast))
-            gamma_c = 127 * (1 - alpha_c)
-            img = cv2.addWeighted(img, alpha_c, img, 0, gamma_c)
-
-        # text string in the image.
-        # cv2.putText(new_img, 'B:{},C:{}'.format(brightness, contrast), (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
-        # 1, (0, 0, 255), 2)
-        return img
-
-    @staticmethod
     def check_alpha_channel(img: MatLike):
         """
         A function that checks if an image has an Alpha channel or not. Only works for images with up to 4-Dimensions.
@@ -389,17 +401,3 @@ class BaseImage:
         std_size = (std_width, std_height)
         std_img = cv2.resize(image, std_size)
         return std_img, scale_factor
-
-    @staticmethod
-    def compute_pixel_width(scale_val: float, scalebar_pixel_count: int):
-        """
-        Compute the width of a single pixel in nanometers.
-
-        :param scale_val: Unit value of the scale in nanometers.
-        :param scalebar_pixel_count: Pixel count of the scalebar width.
-        :return: Width of a single pixel in nanometers.
-        """
-
-        val_in_meters = scale_val / 1e9
-        pixel_width = val_in_meters / scalebar_pixel_count
-        return pixel_width

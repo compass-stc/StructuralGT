@@ -9,10 +9,9 @@ import sys
 import logging
 from optparse import OptionParser
 
-from .. import ALLOWED_IMG_EXTENSIONS
 from ..utils.sgt_utils import verify_path, AbortException
 from ..utils.config_loader import strict_read_config_file
-from ..imaging.image_processor import ImageProcessor
+from ..imaging.image_processor import ImageProcessor, ALLOWED_IMG_EXTENSIONS
 from ..compute.graph_analyzer import GraphAnalyzer
 
 logger = logging.getLogger("SGT App")

@@ -4,29 +4,25 @@ import QtQuick.Layouts
 
 
 Item {
-    id: imgPropsTbl
+    id: graphComputeTbl
     Layout.preferredHeight: (numRows * tblRowHeight) + 5
     Layout.preferredWidth: parent.width - 10
     Layout.leftMargin: 5
     //Layout.rightMargin: 5
 
-    property int numRows: imagePropsModel.rowCount()
+    property int numRows: graphComputeModel.rowCount()
     property int tblRowHeight: 30
 
     TableView {
-        id: tblImgProps
+        id: tblViewGraphParams
         height: numRows * tblRowHeight
         width: parent.width - 10
-        model: imagePropsModel
-
-        property int tblRowHeight: 30
+        model: graphComputeModel
 
         delegate: Rectangle {
-            implicitWidth: column === 0 ? (tblImgProps.width * 0.4) : (tblImgProps.width * 0.6) //imagePropsModel.columnCount
+            implicitWidth: column === 0 ? (tblViewGraphParams.width * 0.6) : (tblViewGraphParams.width * 0.4)
             implicitHeight: tblRowHeight
             color: row % 2 === 0 ? "#f5f5f5" : "#ffffff" // Alternating colors
-            //border.color: "#d0d0d0"
-            //border.width: 1
 
             Text {
                 text: model.text
@@ -69,10 +65,13 @@ Item {
         target: mainController
 
         function onImageChangedSignal(){
-            //tblImgProps.height = imagePropsModel.rowCount() * tblRowHeight;
-            numRows = imagePropsModel.rowCount();
+            numRows = graphComputeModel.rowCount();
+        }
+
+        function onTaskTerminatedSignal(success_val, msg_data){
+            numRows = graphComputeModel.rowCount();
         }
 
     }
-}
 
+}

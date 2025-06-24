@@ -6,6 +6,7 @@ Builds a graph network from nanoscale microscopy images.
 
 import os
 import igraph
+import itertools
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -40,7 +41,8 @@ class FiberNetworkBuilder(ProgressUpdate):
         self.configs: dict = load_gte_configs(cfg_file)  # graph extraction parameters and options.
         self.props: list = []
         self.img_ntwk: MatLike | None = None
-        self.nx_3d_graph: nx.Graph | None = None
+        self.nx_giant_graph: nx.Graph | None = None
+        self.nx_graph: nx.Graph | None = None
         self.ig_graph: igraph.Graph | None = None
         self.gsd_file: str | None = None
         self.skel_obj: GraphSkeleton | None = None
@@ -72,7 +74,7 @@ class FiberNetworkBuilder(ProgressUpdate):
             return
 
         self.update_status([75, "Verifying graph network..."])
-        if self.nx_3d_graph.number_of_nodes() <= 0:
+        if self.nx_graph.number_of_nodes() <= 0:
             self.update_status([-1, "Problem generating graph (change image/binary filters)"])
             self.abort = True
             return
@@ -94,7 +96,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         Erase the existing data stored in the object.
         :return:
         """
-        self.nx_3d_graph, self.ig_graph, self.img_ntwk = None, None, None
+        self.nx_graph, self.ig_graph, self.img_ntwk = None, None, None
 
     def extract_graph(self, image_bin: MatLike = None, is_img_2d: bool = True, px_size: float = 1.0, rho_val: float = 1.0):
         """
@@ -114,7 +116,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         if opt_gte is None:
             return False
 
-        self.update_status([58, "Build graph skeleton from binary image..."])
+        self.update_status([51, "Build graph skeleton from binary image..."])
         graph_skel = GraphSkeleton(image_bin, opt_gte, is_2d=is_img_2d, progress_func=self.update_status)
         self.skel_obj = graph_skel
         img_skel = graph_skel.skeleton
@@ -128,7 +130,6 @@ class FiberNetworkBuilder(ProgressUpdate):
 
         self.update_status([66, "Assigning weights to graph network..."])
         for (s, e) in nx_graph.edges():
-
             if opt_gte["remove_self_loops"]["value"]:
                 # Removing all instances of edges where the start and end are the same, or "self-loops"
                 if s == e:
@@ -152,7 +153,7 @@ class FiberNetworkBuilder(ProgressUpdate):
             nx_graph[s][e]['angle'] = pix_angle
             nx_graph[s][e]['weight'] = wt
             # print(f"{nx_graph[s][e]}\n")
-        self.nx_3d_graph = nx_graph
+        self.nx_graph = nx_graph
         self.ig_graph = igraph.Graph.from_networkx(nx_graph)
         return True
 
@@ -168,7 +169,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         """
 
         # Fetch the graph and config options
-        nx_graph = self.nx_3d_graph
+        nx_graph = self.nx_graph
         is_img_2d = self.skel_obj.is_2d
         show_node_id = (self.configs["display_node_id"]["value"] == 1)
 
@@ -187,7 +188,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         else:
             fig = plt.Figure()
             ax = fig.add_axes((0, 0, 1, 1))  # span the whole figure
-        FiberNetworkBuilder.plot_graph_edges(ax, image_2d, nx_graph, is_graph_2d=is_img_2d, color='yellow')
+        FiberNetworkBuilder.plot_graph_edges(ax, image_2d, nx_graph, is_graph_2d=is_img_2d)
         if plot_nodes:
             FiberNetworkBuilder.plot_graph_nodes(ax, nx_graph, is_graph_2d=is_img_2d, display_node_id=show_node_id)
         return fig
@@ -227,7 +228,7 @@ class FiberNetworkBuilder(ProgressUpdate):
 
         # 1. Identify the subcomponents (graph segments) that make up the entire NetworkX graph.
         self.update_status([78, "Identifying graph subcomponents..."])
-        graph = self.nx_3d_graph.copy()
+        graph = self.nx_graph.copy()
         connected_components = list(nx.connected_components(graph))
         if not connected_components:  # In case the graph is empty
             connected_components = []
@@ -237,7 +238,8 @@ class FiberNetworkBuilder(ProgressUpdate):
         connect_ratio = giant_graph.number_of_nodes() / graph.number_of_nodes()
 
         # 2. Update with the giant graph
-        self.nx_3d_graph = giant_graph
+        self.nx_giant_graph = giant_graph
+        # self.ig_graph = igraph.Graph.from_networkx(giant_graph)
 
         # 3. Populate graph properties
         self.update_status([80, "Storing graph properties..."])
@@ -247,7 +249,7 @@ class FiberNetworkBuilder(ProgressUpdate):
             ["Node Count", str(graph.number_of_nodes())],
             ["Graph Count", str(len(connected_components))],
             ["Sub-graph Count", str(num_graphs)],
-            ["Giant-to-Entire graph ratio", f"{round((connect_ratio * 100), 3)}%"]]
+            ["Giant graph ratio", f"{round((connect_ratio * 100), 3)}%"]]
         return props
 
     def get_weight_type(self):
@@ -269,7 +271,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         :return:
         """
 
-        nx_graph = self.nx_3d_graph.copy()
+        nx_graph = self.nx_graph.copy()
         opt_gte = self.configs
 
         g_filename = filename + "_graph.gexf"
@@ -281,7 +283,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         adj_file = os.path.join(out_dir, adj_filename)
 
         if opt_gte["export_adj_mat"]["value"] == 1:
-            adj_mat = nx.adjacency_matrix(self.nx_3d_graph).todense()
+            adj_mat = nx.adjacency_matrix(self.nx_graph).todense()
             np.savetxt(str(adj_file), adj_mat, delimiter=",")
 
         if opt_gte["export_edge_list"]["value"] == 1:
@@ -329,7 +331,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         return weight_options
 
     @staticmethod
-    def plot_graph_edges(axis, image: MatLike, nx_graph: nx.Graph, is_graph_2d: bool, transparent: bool = False, line_width: float=1.5, color: str = 'black'):
+    def plot_graph_edges(axis, image: MatLike, nx_graph: nx.Graph, is_graph_2d: bool, transparent: bool = False, line_width: float=1.5):
         """
         Plot graph edges on top of the image.
 
@@ -339,7 +341,6 @@ class FiberNetworkBuilder(ProgressUpdate):
         :param is_graph_2d: whether the generated graph is 2D or 3D
         :param transparent: whether to draw the image with a transparent background
         :param line_width: each edge's line width
-        :param color: each edge's color
         :return:
         """
 
@@ -354,11 +355,22 @@ class FiberNetworkBuilder(ProgressUpdate):
         if transparent:
             axis.imshow(image, cmap='gray', alpha=0)  # Alpha=0 makes image 100% transparent
 
-        # DOES NOT PLOT 3D graphs - node_plot (BUG IN CODE), so we pick the first 2D graph in the stack
-        for (s, e) in nx_graph.edges():
+        color_list = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
+        color_cycle = itertools.cycle(color_list)
+        nx_components = list(nx.connected_components(nx_graph))
+        for component in nx_components:
+            sg = nx_graph.subgraph(component)
+            color = next(color_cycle)
+            # DOES NOT PLOT 3D graphs - node_plot (BUG IN CODE), so we pick the first 2D graph in the stack
+            for (s, e) in sg.edges():
+                # 3D Coordinates are (x, y, z) ... assume that y and z are the same for 2D graphs and x is depth.
+                ge = sg[s][e]['pts']
+                axis.plot(ge[:, coord_1], ge[:, coord_2], color, linewidth=line_width)
+        """for (s, e) in nx_graph.edges():
             # 3D Coordinates are (x, y, z) ... assume that y and z are the same for 2D graphs and x is depth.
             ge = nx_graph[s][e]['pts']
             axis.plot(ge[:, coord_1], ge[:, coord_2], color, linewidth=line_width)
+        """
         return axis
 
     @staticmethod
@@ -370,7 +382,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         :param is_graph_2d: whether the generated graph is 2D or 3D
         :param marker_size: the size of each node
         :param distribution_data: the heatmap distribution data
-        :param display_node_id: indicate the node id on the plot
+        :param display_node_id: indicates the node id on the plot
         :return:
 
         """

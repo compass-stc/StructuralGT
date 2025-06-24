@@ -61,7 +61,7 @@ def get_num_cores():
     num_cores = __get_slurm_cores__()
     if not num_cores:
         num_cores = mp.cpu_count()
-    return num_cores
+    return int(num_cores)
 
 
 def verify_path(a_path):
