@@ -150,8 +150,8 @@ def load_gte_configs(cfg_path: str = ""):
                             {"id": "FIX-CON", "text": "by conductance", "value": 0},
                             {"id": "RES", "text": "by resistance", "value": 0},
                         ]},
-        "merge_nearby_nodes": {"id": "merge_nearby_nodes", "type": "graph-extraction", "text": "Merge Nearby Nodes", "value": 1, "items": [{"id": "merge_node_radius_size", "text": "", "value": 2}]},
-        "prune_dangling_edges": {"id": "prune_dangling_edges", "type": "graph-extraction", "text": "Prune Dangling Edges", "value": 1, "items": [{"id": "prune_max_iteration_count", "text": "", "value": 500}]},
+        "merge_nearby_nodes": {"id": "merge_nearby_nodes", "type": "graph-extraction", "text": "Merge Nearby Nodes", "value": 1},
+        "prune_dangling_edges": {"id": "prune_dangling_edges", "type": "graph-extraction", "text": "Prune Dangling Edges", "value": 1},
         "remove_disconnected_segments": {"id": "remove_disconnected_segments", "type": "graph-extraction", "text": "Remove Disconn. Segments", "value": 1, "items": [{"id": "remove_object_size", "text": "", "value": 500}]},
         "remove_self_loops": {"id": "remove_self_loops", "type": "graph-extraction", "text": "Remove Self Loops", "value": 1},
         "display_node_id": {"id": "display_node_id", "type": "graph-extraction", "text": "Display Node ID", "value": 0},
@@ -170,11 +170,7 @@ def load_gte_configs(cfg_path: str = ""):
     try:
 
         options_gte["merge_nearby_nodes"]["value"] = int(config.get('extraction-settings', 'merge_nearby_nodes'))
-        options_gte["merge_nearby_nodes"]["items"][0]["value"] = int(
-            config.get('extraction-settings', 'merge_node_radius_size'))
         options_gte["prune_dangling_edges"]["value"] = int(config.get('extraction-settings', 'prune_dangling_edges'))
-        options_gte["prune_dangling_edges"]["items"][0]["value"] = int(
-            config.get('extraction-settings', 'prune_max_iteration_count'))
         options_gte["remove_disconnected_segments"]["value"] = int(
             config.get('extraction-settings', 'remove_disconnected_segments'))
         options_gte["remove_disconnected_segments"]["items"][0]["value"] = int(config.get('extraction-settings', 'remove_object_size'))

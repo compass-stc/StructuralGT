@@ -1,14 +1,12 @@
 
 import os
 import sys
-import pickle
 import logging
-import requests
+import pickle
 import numpy as np
-from packaging import version
 from ovito import scene
-from ovito.vis import Viewport
 from ovito.io import import_file
+from ovito.vis import Viewport
 from ovito.gui import create_qwidget
 from typing import TYPE_CHECKING, Optional
 from PySide6.QtWidgets import QApplication
@@ -393,67 +391,35 @@ class MainController(QObject):
     @Slot(result=str)
     def get_about_details(self):
         about_app = (
-            "<html>"
-            "<p>"
-            "A software tool for performing Graph Theory analysis on <br>microscopy images. This is a modified version "
-            "of StructuralGT <br>initially proposed by Drew A. Vecchio,<br>"
+            f"<html>"
+            f"<p>"
+            f"A software tool for performing Graph Theory analysis on microscopy images. This is a modified version "
+            "of StructuralGT initially proposed by Drew A. Vecchio,<br>"
             "<b>DOI:</b> <a href='https://pubs.acs.org/doi/10.1021/acsnano.1c04711'>10.1021/acsnano.1c04711</a>"
             "</p><p>"
-            "<b>Main Contributors:</b><br>"
-            "<table border='0.5' cellspacing='0' cellpadding='4'>"
-            # "<tr><th>Name</th><th>Email</th></tr>"
-            "<tr><td>Dickson Owuor</td><td>owuor@umich.edu</td></tr>"
-            "<tr><td>Nicolas Kotov</td><td>kotov@umich.edu</td></tr>"
-            "<tr><td>Alain Kadar</td><td>alaink@umich.edu</td></tr>"
-            "<tr><td>Xiong Ye Xiao</td><td>xiongyex@usc.edu</td></tr>"
-            "<tr><td>Kotov Lab</td><td></td></tr>"
-            "<tr><td>COMPASS</td><td></td></tr>"
-            "</table></p><p><br><br>"
+            "<b>Contributors:</b><ol>"
+            "<li>Nicolas Kotov</li>"
+            "<li>Dickson Owuor</li>"
+            "<li>Alain Kadar</li>"
+            "</ol></p><p>"
             "<b>Documentation:</b> <a href='https://structural-gt.readthedocs.io'>structural-gt.readthedocs.io</a>"
             "<br>"
             f"<b> Version: </b> {self.get_sgt_version()}<br>"
-            "<b>License:</b> GPL GNU v3"
-            "</p><p>"
-            "Copyright (C) 2018-2025<br>The Regents of the University of Michigan."
+            "<b>License:</b> GPL GNU v3<br>"
+            "Copyright (C) 2018-2025, The Regents of the University of Michigan.<br>"
             "</p>"
             "</html>")
         return about_app
 
     @Slot(result=str)
     def check_for_updates(self):
-        """"""
-        github_url = "https://raw.githubusercontent.com/compass-stc/StructuralGT/refs/heads/DicksonOwuor-GUI/src/StructuralGT/__init__.py"
-
-        try:
-            response = requests.get(github_url, timeout=5)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            msg = f"Error checking for updates: {e}"
-            return msg
-
-        remote_version = None
-        for line in response.text.splitlines():
-            if line.strip().startswith("__install_version__"):
-                try:
-                    remote_version = line.split("=")[1].strip().strip("\"'")
-                    break
-                except IndexError:
-                    msg = "Could not connect to server!"
-                    return msg
-
-        if not remote_version:
-            msg = "Could not find the new version!"
-            return msg
-
-        new_version = version.parse(remote_version)
-        current_version = version.parse(__version__)
-        if new_version > current_version:
-            msg = (
-                "New version available!<br>"
-                "Download via this <a href='https://forms.gle/oG9Gk2qbmxooK63D7'>link</a>"
-            )
+        # current_version = float(__version__)
+        # new_version = float(https://github.com/owuordickson/structural-gt/blob/main/src/StructuralGT/__init__.py __version__)
+        updates_available = False
+        if updates_available:
+            msg = "<html>New version available! <br>Download via this <a href='https://forms.gle/oG9Gk2qbmxooK63D7'>link</a></html>"
         else:
-            msg = "No updates available."
+            msg = "<html>No updates available.</html>"
         return msg
 
     @Slot(str, result=str)

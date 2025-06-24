@@ -495,7 +495,7 @@ class ImageProcessor(ProgressUpdate):
                 success = graph_patch.extract_graph(img_patch, is_img_2d=True)
                 if success:
                     height, width = img_patch.shape
-                    graph_groups[(height, width)].append(graph_patch.nx_graph)
+                    graph_groups[(height, width)].append(graph_patch.nx_3d_graph)
                 else:
                     self.update_status([101, f"Filter {img_patch.shape} graph extraction failed!"])
 

@@ -121,7 +121,7 @@ class GraphAnalyzer(ProgressUpdate):
         graph_obj = sel_batch.graph_obj
 
         # 2. Apply image filters and extract the graph (only if it has not been executed)
-        if graph_obj.nx_graph is None:
+        if graph_obj.nx_3d_graph is None:
             self.ntwk_p.add_listener(self.track_img_progress)
             self.ntwk_p.apply_img_filters()  # Apply image filters
             self.ntwk_p.build_graph_network()  # Extract graph from binary image
@@ -135,7 +135,7 @@ class GraphAnalyzer(ProgressUpdate):
             return
 
         # 3a. Compute Unweighted GT parameters
-        self.output_df = self.compute_gt_metrics(graph_obj.nx_graph)
+        self.output_df = self.compute_gt_metrics(graph_obj.nx_3d_graph)
 
         # 3b. Compute Scaling Scatter Plots
         if self.configs["compute_scaling_behavior"]["value"] == 1:
@@ -383,7 +383,7 @@ class GraphAnalyzer(ProgressUpdate):
 
         self.update_status([70, "Performing weighted analysis..."])
 
-        graph = graph_obj.nx_graph
+        graph = graph_obj.nx_3d_graph
         opt_gtc = self.configs
         wt_type = graph_obj.get_weight_type()
         weight_type = FiberNetworkBuilder.get_weight_options().get(wt_type)
@@ -590,7 +590,7 @@ class GraphAnalyzer(ProgressUpdate):
         r"""Returns the average connectivity of a graph G.
 
         The average connectivity `\bar{\kappa}` of a graph G is the average
-        of local node connectivity over all pairs of the nx_graph nodes.
+        of local node connectivity over all pairs of the nx_3d_graph nodes.
 
         https://networkx.org/documentation/stable/_modules/networkx/algorithms/connectivity/connectivity.html#average_node_connectivity
 
@@ -693,7 +693,7 @@ class GraphAnalyzer(ProgressUpdate):
         """
         self.update_status([101, "Computing graph conductance..."])
         # Make a copy of the graph
-        graph = graph_obj.nx_graph.copy()
+        graph = graph_obj.nx_3d_graph.copy()
         weighted = graph_obj.configs["has_weights"]["value"]
 
         # It is important to notice our graph is (mostly) a directed graph,
@@ -1019,7 +1019,7 @@ class GraphAnalyzer(ProgressUpdate):
             :param line_width: Size of the plot line-width.
             :return: Histogram plot figure.
             """
-            nx_graph = graph_obj.nx_graph
+            nx_graph = graph_obj.nx_3d_graph
             is_2d = graph_obj.skel_obj.is_2d
             font_1 = {'fontsize': 9}
 
@@ -1441,8 +1441,8 @@ class GraphAnalyzer(ProgressUpdate):
                 output = status_msg + "\n" + f"Run-time: {str(end - start)}  seconds\n"
                 output += "Number of cores: " + str(num_cores) + "\n"
                 output += "Results generated for: " + sgt_obj.ntwk_p.img_path + "\n"
-                output += "Node Count: " + str(graph_obj.nx_graph.number_of_nodes()) + "\n"
-                output += "Edge Count: " + str(graph_obj.nx_graph.number_of_edges()) + "\n"
+                output += "Node Count: " + str(graph_obj.nx_3d_graph.number_of_nodes()) + "\n"
+                output += "Edge Count: " + str(graph_obj.nx_3d_graph.number_of_edges()) + "\n"
                 filename, out_dir = sgt_obj.ntwk_p.get_filenames()
                 out_file = os.path.join(out_dir, filename + '-v2_results.txt')
                 write_txt_file(output, out_file)
