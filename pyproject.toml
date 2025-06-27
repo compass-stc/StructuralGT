@@ -25,6 +25,7 @@ authors = [
   {name = "Drew A. Vecchio", email = "vecdrew@umich.edu"},
   {name = "Kody Whisnant", email = "kgwhis@umich.edu"},
   {name = "Alain Kadar", email = "alaink@umich.edu"},
+  {name = "Xiong Ye Xiao", email = "xiongyex@usc.edu"},
   {name = "Nicholas Kotov", email = "kotov@umich.edu"}
 ]
 maintainers = [

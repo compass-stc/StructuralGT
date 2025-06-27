@@ -1,5 +1,5 @@
-include src/StructuralGT/configs/*.ini
-include src/StructuralGT/SGT-c/*.h
+include src/StructuralGT/utils/*.ini
+include src/StructuralGT/compute/c_lang/include/*.h
 include src/StructuralGT/apps/sgt_qml/*.qml
 include src/StructuralGT/apps/sgt_qml/widgets/*.qml
 include src/StructuralGT/apps/sgt_qml/components/*.qml
