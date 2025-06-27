@@ -90,19 +90,31 @@ ApplicationWindow {
         modal: true
         standardButtons: Dialog.Ok
         anchors.centerIn: parent
-        width: 360
-        height: 360
+        width: 348
+        height: 420
 
-        Label {
-            width: parent.width - 20  // Ensures text does not expand indefinitely
-            anchors.horizontalCenter: parent.horizontalCenter
-            property string aboutText: mainController.get_about_details()
-            text: aboutText
-            wrapMode: Text.WordWrap
-            textFormat: Text.RichText  // Enable HTML formatting
-            maximumLineCount: 10  // Optional: Limits lines to avoid excessive height
-            elide: Text.ElideRight   // Optional: Adds "..." if text overflows
-            onLinkActivated: (link) => Qt.openUrlExternally(link)  // Opens links in default browser
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 10
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true  // Ensures contents are clipped to the scroll view bounds
+
+
+                Label {
+                    width: parent.width - 20
+                    //Layout.alignment: Qt.AlignHCenter
+                    property string aboutText: mainController.get_about_details()
+                    text: aboutText
+                    wrapMode: Text.WordWrap
+                    textFormat: Text.RichText  // Enable HTML formatting
+                    //maximumLineCount: 10  // Optional: Limits lines to avoid excessive height
+                    //elide: Text.ElideRight   // Optional: Adds "..." if text overflows
+                    onLinkActivated: (link) => Qt.openUrlExternally(link)  // Opens links in default browser
+                }
+            }
         }
     }
 
@@ -748,6 +760,3 @@ ApplicationWindow {
 
     }
 }
-
-
-//about = A software tool that allows graph theory analysis of nano-structures. This is a modified version of StructuralGT initially proposed by Drew A. Vecchio, DOI: 10.1021/acsnano.1c04711.

@@ -5,6 +5,7 @@ Compute graph theory metrics
 """
 
 import os
+import cv2
 import math
 import time
 import datetime
@@ -17,7 +18,6 @@ import pandas as pd
 import networkx as nx
 import matplotlib.table as tbl
 import matplotlib.pyplot as plt
-from cv2.typing import MatLike
 from collections import defaultdict
 from statistics import stdev, StatisticsError
 from matplotlib.backends.backend_pdf import PdfPages
@@ -121,7 +121,7 @@ class GraphAnalyzer(ProgressUpdate):
         graph_obj = sel_batch.graph_obj
 
         # 2. Apply image filters and extract the graph (only if it has not been executed)
-        if graph_obj.nx_3d_graph is None:
+        if graph_obj.nx_giant_graph is None:
             self.ntwk_p.add_listener(self.track_img_progress)
             self.ntwk_p.apply_img_filters()  # Apply image filters
             self.ntwk_p.build_graph_network()  # Extract graph from binary image
@@ -135,11 +135,11 @@ class GraphAnalyzer(ProgressUpdate):
             return
 
         # 3a. Compute Unweighted GT parameters
-        self.output_df = self.compute_gt_metrics(graph_obj.nx_3d_graph)
+        self.output_df = self.compute_gt_metrics(graph_obj.nx_giant_graph)  # replace with graph_obj.nx_giant_graph
 
         # 3b. Compute Scaling Scatter Plots
-        if self.configs["compute_scaling_behavior"]["value"] == 1:
-            self.scaling_data = self.compute_scaling_data(full_img_df=self.output_df.copy())
+        #if self.configs["compute_scaling_behavior"]["value"] == 1:
+        #    self.scaling_data = self.compute_scaling_data(full_img_df=self.output_df.copy())
 
         if self.abort:
             self.update_status([-1, "Problem encountered while computing un-weighted GT parameters."])
@@ -354,15 +354,15 @@ class GraphAnalyzer(ProgressUpdate):
             data_dict["parameter"].append("Average Ohms centrality")
             data_dict["value"].append(round(np.average(o_distribution), 5))
             data_dict["parameter"].append("Ohms centrality -- avg. area " + r"($m^2$)")
-            data_dict["value"].append(res['avg area'])
+            data_dict["value"].append(round(res['avg area'], 5))
             data_dict["parameter"].append("Ohms centrality -- avg. length (m)")
-            data_dict["value"].append(res['avg length'])
+            data_dict["value"].append(round(res['avg length'], 5))
             data_dict["parameter"].append("Ohms centrality -- avg. width (m)")
-            data_dict["value"].append(res['avg width'])
+            data_dict["value"].append(round(res['avg width'], 5))
             data_dict["parameter"].append("Ohms centrality -- g shape coeff.")
-            data_dict["value"].append(res['g shape'])
+            data_dict["value"].append(round(res['g shape'], 5))
             data_dict["parameter"].append("Ohms centrality -- conductivity (S/m)")
-            data_dict["value"].append(res['conductivity'])
+            data_dict["value"].append(round(res['conductivity'], 5))
 
         return pd.DataFrame(data_dict)
 
@@ -383,7 +383,7 @@ class GraphAnalyzer(ProgressUpdate):
 
         self.update_status([70, "Performing weighted analysis..."])
 
-        graph = graph_obj.nx_3d_graph
+        graph = graph_obj.nx_giant_graph
         opt_gtc = self.configs
         wt_type = graph_obj.get_weight_type()
         weight_type = FiberNetworkBuilder.get_weight_options().get(wt_type)
@@ -582,7 +582,7 @@ class GraphAnalyzer(ProgressUpdate):
             'avg area': avg_area, 'med area': med_area,
             'avg length': avg_len, 'med length': med_len,
             'avg width': avg_width, 'med width': med_width,
-            'g shape': g_shape, 'conductivity': round((1 / rho_dim), 2)}
+            'g shape': g_shape, 'conductivity': (1 / rho_dim)}
 
         return ohms_dict, res
 
@@ -590,7 +590,7 @@ class GraphAnalyzer(ProgressUpdate):
         r"""Returns the average connectivity of a graph G.
 
         The average connectivity `\bar{\kappa}` of a graph G is the average
-        of local node connectivity over all pairs of the nx_3d_graph nodes.
+        of local node connectivity over all pairs of the nx_graph nodes.
 
         https://networkx.org/documentation/stable/_modules/networkx/algorithms/connectivity/connectivity.html#average_node_connectivity
 
@@ -693,7 +693,7 @@ class GraphAnalyzer(ProgressUpdate):
         """
         self.update_status([101, "Computing graph conductance..."])
         # Make a copy of the graph
-        graph = graph_obj.nx_3d_graph.copy()
+        graph = graph_obj.nx_giant_graph.copy()
         weighted = graph_obj.configs["has_weights"]["value"]
 
         # It is important to notice our graph is (mostly) a directed graph,
@@ -788,6 +788,7 @@ class GraphAnalyzer(ProgressUpdate):
         :return: List of results.
         """
 
+        self.update_status([90, "Generating PDF GT Output..."])
         opt_gtc = self.configs
         out_figs = []
 
@@ -796,331 +797,371 @@ class GraphAnalyzer(ProgressUpdate):
         img_3d = [img.img_2d for img in sel_images]
         img_3d = np.asarray(img_3d)
 
-        self.update_status([90, "Generating PDF GT Output..."])
+        def plot_gt_results():
+            """
+            Create a table of weighted and unweighted graph theory results.
+
+            :return: Matplotlib figures of unweighted and weighted graph theory results.
+            """
+
+            opt_gte = graph_obj.configs
+            data = self.output_df
+            w_data = self.weighted_output_df
+
+            plt_fig = plt.Figure(figsize=(8.5, 11), dpi=300)
+            ax = plt_fig.add_subplot(1, 1, 1)
+            ax.set_axis_off()
+            ax.set_title("Unweighted GT parameters")
+            col_width = [2 / 3, 1 / 3]
+            tab_1 = tbl.table(ax, cellText=data.values[:, :], loc='upper center', colWidths=col_width, cellLoc='left')
+            tab_1.scale(1, 1.5)
+
+            if opt_gte["has_weights"]["value"] == 1 and w_data is not None:
+                plt_fig_wt = plt.Figure(figsize=(8.5, 11), dpi=300)
+                ax = plt_fig_wt.add_subplot(1, 1, 1)
+                ax.set_axis_off()
+                ax.set_title("Weighted GT parameters")
+                tab_2 = tbl.table(ax, cellText=w_data.values[:, :], loc='upper center', colWidths=col_width,
+                                  cellLoc='left')
+                tab_2.scale(1, 1.5)
+            else:
+                plt_fig_wt = None
+            return plt_fig, plt_fig_wt
+
+        def plot_bin_images():
+            """
+            Create plot figures of original, processed, and binary image.
+
+            :return:
+            """
+
+            plt_figs = []
+            is_3d = True if len(sel_images) > 1 else False
+
+            for i, img in enumerate(sel_images):
+                opt_img = img.configs
+                raw_img = img.img_2d
+                filtered_img = img.img_mod
+                img_bin = img.img_bin
+
+                img_histogram = cv2.calcHist([filtered_img], [0], None, [256], [0, 256])
+
+                plt_fig = plt.Figure(figsize=(8.5, 8.5), dpi=400)
+                ax_1 = plt_fig.add_subplot(2, 2, 1)
+                ax_2 = plt_fig.add_subplot(2, 2, 2)
+                ax_3 = plt_fig.add_subplot(2, 2, 3)
+                ax_4 = plt_fig.add_subplot(2, 2, 4)
+
+                ax_1.set_title(f"Frame {i}: Original Image") if is_3d else ax_1.set_title(f"Original Image")
+                ax_1.set_axis_off()
+                ax_1.imshow(raw_img, cmap='gray')
+
+                ax_2.set_title(f"Frame {i}: Processed Image") if is_3d else ax_2.set_title(f"Processed Image")
+                ax_2.set_axis_off()
+                ax_2.imshow(filtered_img, cmap='gray')
+
+                ax_3.set_title(f"Frame {i}: Binary Image") if is_3d else ax_3.set_title(f"Binary Image")
+                ax_3.set_axis_off()
+                ax_3.imshow(img_bin, cmap='gray')
+
+                ax_4.set_title(f"Frame {i}: Histogram of Processed Image") if is_3d else ax_4.set_title(
+                    f"Histogram of Processed Image")
+                ax_4.set(yticks=[], xlabel='Pixel values', ylabel='Counts')
+                ax_4.plot(img_histogram)
+                if opt_img["threshold_type"]["value"] == 0:
+                    thresh_arr = np.array(
+                        [[int(opt_img["global_threshold_value"]["value"]),
+                          int(opt_img["global_threshold_value"]["value"])],
+                         [0, max(img_histogram)]], dtype='object')
+                    ax_4.plot(thresh_arr[0], thresh_arr[1], ls='--', color='black')
+                elif opt_img["threshold_type"]["value"] == 2:
+                    otsu_val = opt_img["otsu"]["value"]
+                    thresh_arr = np.array([[otsu_val, otsu_val],
+                                           [0, max(img_histogram)]], dtype='object')
+                    ax_4.plot(thresh_arr[0], thresh_arr[1], ls='--', color='black')
+                plt_figs.append(plt_fig)
+            return plt_figs
+
+        def plot_run_configs():
+            """
+            Create a page (as a figure) that will show the user-selected parameters and options.
+
+            :return: A Matplotlib figure object.
+            """
+
+            plt_fig = plt.Figure(figsize=(8.5, 8.5), dpi=300)
+            ax = plt_fig.add_subplot(1, 1, 1)
+            ax.set_axis_off()
+            ax.set_title("Run Info")
+
+            # similar to the start of the csv file, this is just getting all the relevant settings to display in the PDF
+            _, filename = os.path.split(self.ntwk_p.img_path)
+            now = datetime.datetime.now()
+
+            run_info = ""
+            run_info += filename + "\n"
+            run_info += now.strftime("%Y-%m-%d %H:%M:%S") + "\n----------------------------\n\n"
+
+            # Image Configs
+            sel_img_batch = self.ntwk_p.get_selected_batch()
+            run_info += sel_img_batch.images[0].get_config_info()  # Get configs of first image
+            run_info += "\n\n"
+
+            # Graph Configs
+            run_info += graph_obj.get_config_info()
+            run_info += "\n\n"
+
+            ax.text(0.5, 0.5, run_info, horizontalalignment='center', verticalalignment='center')
+            return plt_fig
+
+        def plot_histograms():
+            """
+            Create plot figures of graph theory histograms selected by the user.
+
+            :return: A list of Matplotlib figures.
+            """
+
+            opt_gte = graph_obj.configs
+            plt_figs = []
+
+            def plot_distribution_histogram(ax: plt.axes, title: str, distribution: list, x_label: str,
+                                            plt_bins: np.ndarray = None, y_label: str = 'Counts'):
+                """
+                Create a histogram from a distribution dataset.
+
+                :param ax: Plot axis.
+                :param title: Title text.
+                :param distribution: Dataset to be plotted.
+                :param x_label: X-label title text.
+                :param plt_bins: Bin dataset.
+                :param y_label: Y-label title text.
+                :return:
+                """
+                font_1 = {'fontsize': 9}
+                if plt_bins is None:
+                    plt_bins = np.linspace(min(distribution), max(distribution), 50)
+                try:
+                    std_val = str(round(stdev(distribution), 3))
+                except StatisticsError:
+                    std_val = "N/A"
+                hist_title = title + std_val
+                ax.set_title(hist_title, fontdict=font_1)
+                ax.set(xlabel=x_label, ylabel=y_label)
+                ax.hist(distribution, bins=plt_bins)
+
+            # Degree and Closeness
+            plt_fig = plt.Figure(figsize=(8.5, 11), dpi=300)
+            if opt_gtc["display_degree_histogram"]["value"] == 1:
+                deg_distribution = self.histogram_data["degree_distribution"]
+                bins = np.arange(0.5, max(deg_distribution) + 1.5, 1)
+                deg_title = r'Degree Distribution: $\sigma$='
+                ax_1 = plt_fig.add_subplot(2, 1, 1)
+                plot_distribution_histogram(ax_1, deg_title, deg_distribution, 'Degree', plt_bins=bins)
+
+            if opt_gtc["display_closeness_centrality_histogram"]["value"] == 1:
+                clo_distribution = self.histogram_data["closeness_distribution"]
+                cc_title = r"Closeness Centrality: $\sigma$="
+                ax_2 = plt_fig.add_subplot(2, 1, 2)
+                plot_distribution_histogram(ax_2, cc_title, clo_distribution, 'Closeness value')
+            plt_figs.append(plt_fig)
+
+            # Betweenness, Clustering, Eigenvector and Ohms
+            plt_fig = plt.Figure(figsize=(8.5, 11), dpi=300)
+            if opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1:
+                bet_distribution = self.histogram_data["betweenness_distribution"]
+                bc_title = r"Betweenness Centrality: $\sigma$="
+                ax_1 = plt_fig.add_subplot(2, 2, 1)
+                plot_distribution_histogram(ax_1, bc_title, bet_distribution, 'Betweenness value')
+
+            if opt_gtc["compute_avg_clustering_coef"]["value"] == 1:
+                cluster_coefs = self.histogram_data["clustering_coefficients"]
+                clu_title = r"Clustering Coefficients: $\sigma$="
+                ax_2 = plt_fig.add_subplot(2, 2, 2)
+                plot_distribution_histogram(ax_2, clu_title, cluster_coefs, 'Clust. Coeff.')
+
+            if opt_gtc["display_ohms_histogram"]["value"] == 1:
+                ohm_distribution = self.histogram_data["ohms_distribution"]
+                oh_title = r"Ohms Centrality: $\sigma$="
+                ax_3 = plt_fig.add_subplot(2, 2, 3)
+                plot_distribution_histogram(ax_3, oh_title, ohm_distribution, 'Ohms value')
+
+            if opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1:
+                eig_distribution = self.histogram_data["eigenvector_distribution"]
+                ec_title = r"Eigenvector Centrality: $\sigma$="
+                ax_4 = plt_fig.add_subplot(2, 2, 4)
+                plot_distribution_histogram(ax_4, ec_title, eig_distribution, 'Eigenvector value')
+            plt_figs.append(plt_fig)
+
+            # weighted histograms
+            if opt_gte["has_weights"]["value"] == 1:
+                wt_type = graph_obj.get_weight_type()
+                weight_type = FiberNetworkBuilder.get_weight_options().get(wt_type)
+
+                # degree, betweenness, closeness and eigenvector
+                plt_fig = plt.Figure(figsize=(8.5, 11), dpi=300)
+                if opt_gtc["display_degree_histogram"]["value"] == 1:
+                    w_deg_distribution = self.histogram_data["weighted_degree_distribution"]
+                    bins = np.arange(0.5, max(w_deg_distribution) + 1.5, 1)
+                    w_deg_title = r"Weighted Degree: $\sigma$="
+                    ax_1 = plt_fig.add_subplot(2, 2, 1)
+                    plot_distribution_histogram(ax_1, w_deg_title, w_deg_distribution, 'Degree', plt_bins=bins)
+
+                if opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1:
+                    w_bet_distribution = self.histogram_data["weighted_betweenness_distribution"]
+                    w_bt_title = weight_type + r"-Weighted Betweenness: $\sigma$="
+                    ax_2 = plt_fig.add_subplot(2, 2, 2)
+                    plot_distribution_histogram(ax_2, w_bt_title, w_bet_distribution, 'Betweenness value')
+
+                if opt_gtc["display_closeness_centrality_histogram"]["value"] == 1:
+                    w_clo_distribution = self.histogram_data["weighted_closeness_distribution"]
+                    w_clo_title = r"Length-Weighted Closeness: $\sigma$="
+                    ax_3 = plt_fig.add_subplot(2, 2, 3)
+                    plot_distribution_histogram(ax_3, w_clo_title, w_clo_distribution, 'Closeness value')
+
+                if opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1:
+                    w_eig_distribution = self.histogram_data["weighted_eigenvector_distribution"]
+                    w_ec_title = weight_type + r"-Weighted Eigenvector Cent.: $\sigma$="
+                    ax_4 = plt_fig.add_subplot(2, 2, 4)
+                    plot_distribution_histogram(ax_4, w_ec_title, w_eig_distribution, 'Eigenvector value')
+                plt_figs.append(plt_fig)
+
+            return plt_figs
+
+        def plot_heatmaps():
+            """
+            Create plot figures of graph theory heatmaps.
+
+            :return: A list of Matplotlib figures.
+            """
+
+            sz = 30
+            lw = 1.5
+            plt_figs = []
+            opt_gte = graph_obj.configs
+            wt_type = graph_obj.get_weight_type()
+            weight_type = FiberNetworkBuilder.get_weight_options().get(wt_type)
+
+            def plot_distribution_heatmap(distribution: list, title: str, size: float, line_width: float):
+                """
+                Create a heatmap from a distribution.
+
+                :param distribution: Dataset to be plotted.
+                :param title: Title of the plot figure.
+                :param size: Size of the scatter items.
+                :param line_width: Size of the plot line-width.
+                :return: Histogram plot figure.
+                """
+                nx_graph = graph_obj.nx_giant_graph
+                fig_grp = FiberNetworkBuilder.plot_graph_edges(img_3d, nx_graph, node_distribution_data=distribution,
+                                                               plot_nodes=True, line_width=line_width,
+                                                               node_marker_size=size)
+
+                plt_fig_inner = fig_grp[0]
+                plt_fig_inner.set_size_inches(8.5, 8.5)
+                plt_fig_inner.set_dpi(400)
+                plt_ax = plt_fig_inner.axes[0]
+                plt_ax.set_title(title, fontdict={'fontsize': 9})
+                plt_ax.set_position([0.05, 0.05, 0.75, 0.75])
+
+                return plt_fig_inner
+
+            if opt_gtc["display_degree_histogram"]["value"] == 1:
+                deg_distribution = self.histogram_data["degree_distribution"]
+                plt_fig = plot_distribution_heatmap(deg_distribution, 'Degree Heatmap', sz, lw)
+                plt_figs.append(plt_fig)
+            if (opt_gtc["display_degree_histogram"]["value"] == 1) and (opt_gte["has_weights"]["value"] == 1):
+                w_deg_distribution = self.histogram_data["weighted_degree_distribution"]
+                plt_title = 'Weighted Degree Heatmap'
+                plt_fig = plot_distribution_heatmap(w_deg_distribution, plt_title, sz, lw)
+                plt_figs.append(plt_fig)
+            if opt_gtc["compute_avg_clustering_coef"]["value"] == 1:
+                cluster_coefs = self.histogram_data["clustering_coefficients"]
+                plt_title = 'Clustering Coefficient Heatmap'
+                plt_fig = plot_distribution_heatmap(cluster_coefs, plt_title, sz, lw)
+                plt_figs.append(plt_fig)
+            if opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1:
+                bet_distribution = self.histogram_data["betweenness_distribution"]
+                plt_title = 'Betweenness Centrality Heatmap'
+                plt_fig = plot_distribution_heatmap(bet_distribution, plt_title, sz, lw)
+                plt_figs.append(plt_fig)
+            if (opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1) and (
+                    opt_gte["has_weights"]["value"] == 1):
+                w_bet_distribution = self.histogram_data["weighted_betweenness_distribution"]
+                plt_title = f'{weight_type}-Weighted Betweenness Centrality Heatmap'
+                plt_fig = plot_distribution_heatmap(w_bet_distribution, plt_title, sz, lw)
+                plt_figs.append(plt_fig)
+            if opt_gtc["display_closeness_centrality_histogram"]["value"] == 1:
+                clo_distribution = self.histogram_data["closeness_distribution"]
+                plt_title = 'Closeness Centrality Heatmap'
+                plt_fig = plot_distribution_heatmap(clo_distribution, plt_title, sz, lw)
+                plt_figs.append(plt_fig)
+            if (opt_gtc["display_closeness_centrality_histogram"]["value"] == 1) and (
+                    opt_gte["has_weights"]["value"] == 1):
+                w_clo_distribution = self.histogram_data["weighted_closeness_distribution"]
+                plt_title = 'Length-Weighted Closeness Centrality Heatmap'
+                plt_fig = plot_distribution_heatmap(w_clo_distribution, plt_title, sz, lw)
+                plt_figs.append(plt_fig)
+            if opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1:
+                eig_distribution = self.histogram_data["eigenvector_distribution"]
+                plt_title = 'Eigenvector Centrality Heatmap'
+                plt_fig = plot_distribution_heatmap(eig_distribution, plt_title, sz, lw)
+                plt_figs.append(plt_fig)
+            if (opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1) and (
+                    opt_gte["has_weights"]["value"] == 1):
+                w_eig_distribution = self.histogram_data["weighted_eigenvector_distribution"]
+                plt_title = f'{weight_type}-Weighted Eigenvector Centrality Heatmap'
+                plt_fig = plot_distribution_heatmap(w_eig_distribution, plt_title, sz, lw)
+                plt_figs.append(plt_fig)
+            if opt_gtc["display_ohms_histogram"]["value"] == 1:
+                ohm_distribution = self.histogram_data["ohms_distribution"]
+                plt_title = 'Ohms Centrality Heatmap'
+                plt_fig = plot_distribution_heatmap(ohm_distribution, plt_title, sz, lw)
+                plt_figs.append(plt_fig)
+            return plt_figs
 
         # 1. plotting the original, processed, and binary image, as well as the histogram of pixel grayscale values
-        figs = self.ntwk_p.plot_images()
+        figs = plot_bin_images()
         for fig in figs:
             out_figs.append(fig)
 
-        # 2. plotting graph nodes
-        fig = graph_obj.plot_2d_graph_network(image_2d_arr=img_3d, plot_nodes=True, a4_size=True)
+        # 2a. plotting graph nodes
+        fig = graph_obj.plot_graph_network(image_arr=img_3d, plot_nodes=True, a4_size=True)
         if fig is not None:
             out_figs.append(fig)
 
-        # 3. plotting graph edges
-        fig = graph_obj.plot_2d_graph_network(image_2d_arr=img_3d, a4_size=True)
+        # 2b. plotting graph edges
+        fig = graph_obj.plot_graph_network(image_arr=img_3d, a4_size=True)
         if fig is not None:
             out_figs.append(fig)
 
-        # 4a. displaying all the GT calculations in Table (on the entire page)
-        fig, fig_wt = self.plot_gt_results(graph_obj)
+        # 3a. displaying all the GT calculations in Table (on the entire page)
+        fig, fig_wt = plot_gt_results()
         out_figs.append(fig)
         if fig_wt:
             out_figs.append(fig_wt)
 
-        # 4b. display scaling GT results in a Table
+        # 3b. display scaling GT results in a Table
         figs = GraphAnalyzer.plot_scaling_behavior(self.scaling_data)
         for fig in figs:
             out_figs.append(fig)
 
-        # 5. displaying histograms
+        # 4. displaying histograms
         self.update_status([92, "Generating histograms..."])
-        figs = self.plot_histograms(graph_obj)
+        figs = plot_histograms()
         for fig in figs:
             out_figs.append(fig)
 
-        # 6. displaying heatmaps
+        # 5. displaying heatmaps
         if opt_gtc["display_heatmaps"]["value"] == 1:
             self.update_status([95, "Generating heatmaps..."])
-            figs = self.plot_2d_heatmaps(graph_obj, image_2d=img_3d[0])
+            figs = plot_heatmaps()
             for fig in figs:
                 out_figs.append(fig)
 
-        # 7. displaying run information
-        fig = self.plot_run_configs(graph_obj)
+        # 6. displaying run information
+        fig = plot_run_configs()
         out_figs.append(fig)
         return out_figs
-
-    def plot_gt_results(self, graph_obj: FiberNetworkBuilder):
-        """
-        Create a table of weighted and unweighted graph theory results.
-
-        :param graph_obj: Graph extractor object.
-
-        :return: Matplotlib figures of unweighted and weighted graph theory results.
-        """
-
-        opt_gte = graph_obj.configs
-        data = self.output_df
-        w_data = self.weighted_output_df
-
-        fig = plt.Figure(figsize=(8.5, 11), dpi=300)
-        ax = fig.add_subplot(1, 1, 1)
-        ax.set_axis_off()
-        ax.set_title("Unweighted GT parameters")
-        col_width = [2 / 3, 1 / 3]
-        tab_1 = tbl.table(ax, cellText=data.values[:, :], loc='upper center', colWidths=col_width, cellLoc='left')
-        tab_1.scale(1, 1.5)
-
-        if opt_gte["has_weights"]["value"] == 1 and w_data is not None:
-            fig_wt = plt.Figure(figsize=(8.5, 11), dpi=300)
-            ax = fig_wt.add_subplot(1, 1, 1)
-            ax.set_axis_off()
-            ax.set_title("Weighted GT parameters")
-            tab_2 = tbl.table(ax, cellText=w_data.values[:, :], loc='upper center', colWidths=col_width, cellLoc='left')
-            tab_2.scale(1, 1.5)
-        else:
-            fig_wt = None
-        return fig, fig_wt
-
-    def plot_histograms(self, graph_obj: FiberNetworkBuilder):
-        """
-        Create plot figures of graph theory histograms selected by the user.
-
-        :param graph_obj: Graph extractor object.
-
-        :return: A list of Matplotlib figures.
-        """
-
-        opt_gte = graph_obj.configs
-        opt_gtc = self.configs
-        figs = []
-
-        def plot_distribution_histogram(ax: plt.axes, title: str, distribution: list, x_label: str,
-                                        plt_bins: np.ndarray = None, y_label: str = 'Counts'):
-            """
-            Create a histogram from a distribution dataset.
-
-            :param ax: Plot axis.
-            :param title: Title text.
-            :param distribution: Dataset to be plotted.
-            :param x_label: X-label title text.
-            :param plt_bins: Bin dataset.
-            :param y_label: Y-label title text.
-            :return:
-            """
-            font_1 = {'fontsize': 9}
-            if plt_bins is None:
-                plt_bins = np.linspace(min(distribution), max(distribution), 50)
-            try:
-                std_val = str(round(stdev(distribution), 3))
-            except StatisticsError:
-                std_val = "N/A"
-            hist_title = title + std_val
-            ax.set_title(hist_title, fontdict=font_1)
-            ax.set(xlabel=x_label, ylabel=y_label)
-            ax.hist(distribution, bins=plt_bins)
-
-        # Degree and Closeness
-        fig = plt.Figure(figsize=(8.5, 11), dpi=300)
-        if opt_gtc["display_degree_histogram"]["value"] == 1:
-            deg_distribution = self.histogram_data["degree_distribution"]
-            bins = np.arange(0.5, max(deg_distribution) + 1.5, 1)
-            deg_title = r'Degree Distribution: $\sigma$='
-            ax_1 = fig.add_subplot(2, 1, 1)
-            plot_distribution_histogram(ax_1, deg_title, deg_distribution, 'Degree', plt_bins=bins)
-
-        if opt_gtc["display_closeness_centrality_histogram"]["value"] == 1:
-            clo_distribution = self.histogram_data["closeness_distribution"]
-            cc_title = r"Closeness Centrality: $\sigma$="
-            ax_2 = fig.add_subplot(2, 1, 2)
-            plot_distribution_histogram(ax_2, cc_title, clo_distribution, 'Closeness value')
-        figs.append(fig)
-
-        # Betweenness, Clustering, Eigenvector and Ohms
-        fig = plt.Figure(figsize=(8.5, 11), dpi=300)
-        if opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1:
-            bet_distribution = self.histogram_data["betweenness_distribution"]
-            bc_title = r"Betweenness Centrality: $\sigma$="
-            ax_1 = fig.add_subplot(2, 2, 1)
-            plot_distribution_histogram(ax_1, bc_title, bet_distribution, 'Betweenness value')
-
-        if opt_gtc["compute_avg_clustering_coef"]["value"] == 1:
-            cluster_coefs = self.histogram_data["clustering_coefficients"]
-            clu_title = r"Clustering Coefficients: $\sigma$="
-            ax_2 = fig.add_subplot(2, 2, 2)
-            plot_distribution_histogram(ax_2, clu_title, cluster_coefs, 'Clust. Coeff.')
-
-        if opt_gtc["display_ohms_histogram"]["value"] == 1:
-            ohm_distribution = self.histogram_data["ohms_distribution"]
-            oh_title = r"Ohms Centrality: $\sigma$="
-            ax_3 = fig.add_subplot(2, 2, 3)
-            plot_distribution_histogram(ax_3, oh_title, ohm_distribution, 'Ohms value')
-
-        if opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1:
-            eig_distribution = self.histogram_data["eigenvector_distribution"]
-            ec_title = r"Eigenvector Centrality: $\sigma$="
-            ax_4 = fig.add_subplot(2, 2, 4)
-            plot_distribution_histogram(ax_4, ec_title, eig_distribution, 'Eigenvector value')
-        figs.append(fig)
-
-        # weighted histograms
-        if opt_gte["has_weights"]["value"] == 1:
-            wt_type = graph_obj.get_weight_type()
-            weight_type = FiberNetworkBuilder.get_weight_options().get(wt_type)
-
-            # degree, betweenness, closeness and eigenvector
-            fig = plt.Figure(figsize=(8.5, 11), dpi=300)
-            if opt_gtc["display_degree_histogram"]["value"] == 1:
-                w_deg_distribution = self.histogram_data["weighted_degree_distribution"]
-                bins = np.arange(0.5, max(w_deg_distribution) + 1.5, 1)
-                w_deg_title = r"Weighted Degree: $\sigma$="
-                ax_1 = fig.add_subplot(2, 2, 1)
-                plot_distribution_histogram(ax_1, w_deg_title, w_deg_distribution, 'Degree', plt_bins=bins)
-
-            if opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1:
-                w_bet_distribution = self.histogram_data["weighted_betweenness_distribution"]
-                w_bt_title = weight_type + r"-Weighted Betweenness: $\sigma$="
-                ax_2 = fig.add_subplot(2, 2, 2)
-                plot_distribution_histogram(ax_2, w_bt_title, w_bet_distribution, 'Betweenness value')
-
-            if opt_gtc["display_closeness_centrality_histogram"]["value"] == 1:
-                w_clo_distribution = self.histogram_data["weighted_closeness_distribution"]
-                w_clo_title = r"Length-Weighted Closeness: $\sigma$="
-                ax_3 = fig.add_subplot(2, 2, 3)
-                plot_distribution_histogram(ax_3, w_clo_title, w_clo_distribution, 'Closeness value')
-
-            if opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1:
-                w_eig_distribution = self.histogram_data["weighted_eigenvector_distribution"]
-                w_ec_title = weight_type + r"-Weighted Eigenvector Cent.: $\sigma$="
-                ax_4 = fig.add_subplot(2, 2, 4)
-                plot_distribution_histogram(ax_4, w_ec_title, w_eig_distribution, 'Eigenvector value')
-            figs.append(fig)
-
-        return figs
-
-    def plot_2d_heatmaps(self, graph_obj: FiberNetworkBuilder, image_2d: MatLike = None):
-        """
-        Create plot figures of graph theory heatmaps.
-
-        :param graph_obj: GraphExtractor object.
-        :param image_2d: Raw 2D images to be superimposed with heatmap.
-
-        :return: A list of Matplotlib figures.
-        """
-
-        opt_gte = graph_obj.configs
-        opt_gtc = self.configs
-
-        sz = 30
-        lw = 1.5
-        figs = []
-        wt_type = graph_obj.get_weight_type()
-        weight_type = FiberNetworkBuilder.get_weight_options().get(wt_type)
-
-        def plot_distribution_heatmap( distribution: list, title: str, size: float, line_width: float):
-            """
-            Create a heatmap from a distribution.
-
-            :param distribution: Dataset to be plotted.
-            :param title: Title of the plot figure.
-            :param size: Size of the scatter items.
-            :param line_width: Size of the plot line-width.
-            :return: Histogram plot figure.
-            """
-            nx_graph = graph_obj.nx_3d_graph
-            is_2d = graph_obj.skel_obj.is_2d
-            font_1 = {'fontsize': 9}
-
-            plt_fig = plt.Figure(figsize=(8.5, 8.5), dpi=400)
-            ax = plt_fig.add_subplot(1, 1, 1)
-            ax.set_title(title, fontdict=font_1)
-
-            FiberNetworkBuilder.plot_graph_edges(ax, image_2d, nx_graph, is_graph_2d=is_2d, line_width=line_width)
-            c_set = FiberNetworkBuilder.plot_graph_nodes(ax, nx_graph, is_graph_2d=is_2d, marker_size=size,
-                                                         distribution_data=distribution)
-
-            plt_fig.colorbar(c_set, ax=ax, orientation='vertical', label='Value')
-            return plt_fig
-
-        if opt_gtc["display_degree_histogram"]["value"] == 1:
-            deg_distribution = self.histogram_data["degree_distribution"]
-            fig = plot_distribution_heatmap(deg_distribution, 'Degree Heatmap', sz, lw)
-            figs.append(fig)
-        if (opt_gtc["display_degree_histogram"]["value"] == 1) and (opt_gte["has_weights"]["value"] == 1):
-            w_deg_distribution = self.histogram_data["weighted_degree_distribution"]
-            plt_title = 'Weighted Degree Heatmap'
-            fig = plot_distribution_heatmap(w_deg_distribution, plt_title, sz, lw)
-            figs.append(fig)
-        if opt_gtc["compute_avg_clustering_coef"]["value"] == 1:
-            cluster_coefs = self.histogram_data["clustering_coefficients"]
-            plt_title = 'Clustering Coefficient Heatmap'
-            fig = plot_distribution_heatmap(cluster_coefs, plt_title, sz, lw)
-            figs.append(fig)
-        if opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1:
-            bet_distribution = self.histogram_data["betweenness_distribution"]
-            plt_title = 'Betweenness Centrality Heatmap'
-            fig = plot_distribution_heatmap(bet_distribution, plt_title, sz, lw)
-            figs.append(fig)
-        if (opt_gtc["display_betweenness_centrality_histogram"]["value"] == 1) and (
-                opt_gte["has_weights"]["value"] == 1):
-            w_bet_distribution = self.histogram_data["weighted_betweenness_distribution"]
-            plt_title = f'{weight_type}-Weighted Betweenness Centrality Heatmap'
-            fig = plot_distribution_heatmap(w_bet_distribution, plt_title, sz, lw)
-            figs.append(fig)
-        if opt_gtc["display_closeness_centrality_histogram"]["value"] == 1:
-            clo_distribution = self.histogram_data["closeness_distribution"]
-            plt_title = 'Closeness Centrality Heatmap'
-            fig = plot_distribution_heatmap(clo_distribution, plt_title, sz, lw)
-            figs.append(fig)
-        if (opt_gtc["display_closeness_centrality_histogram"]["value"] == 1) and (opt_gte["has_weights"]["value"] == 1):
-            w_clo_distribution = self.histogram_data["weighted_closeness_distribution"]
-            plt_title = 'Length-Weighted Closeness Centrality Heatmap'
-            fig = plot_distribution_heatmap(w_clo_distribution, plt_title, sz, lw)
-            figs.append(fig)
-        if opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1:
-            eig_distribution = self.histogram_data["eigenvector_distribution"]
-            plt_title = 'Eigenvector Centrality Heatmap'
-            fig = plot_distribution_heatmap(eig_distribution, plt_title, sz, lw)
-            figs.append(fig)
-        if (opt_gtc["display_eigenvector_centrality_histogram"]["value"] == 1) and (
-                opt_gte["has_weights"]["value"] == 1):
-            w_eig_distribution = self.histogram_data["weighted_eigenvector_distribution"]
-            plt_title = f'{weight_type}-Weighted Eigenvector Centrality Heatmap'
-            fig = plot_distribution_heatmap(w_eig_distribution, plt_title, sz, lw)
-            figs.append(fig)
-        if opt_gtc["display_ohms_histogram"]["value"] == 1:
-            ohm_distribution = self.histogram_data["ohms_distribution"]
-            plt_title = 'Ohms Centrality Heatmap'
-            fig = plot_distribution_heatmap(ohm_distribution, plt_title, sz, lw)
-            figs.append(fig)
-        print("Successfully plotted heatmaps")
-        return figs
-
-    def plot_run_configs(self, graph_obj: FiberNetworkBuilder):
-        """
-        Create a page (as a figure) that will show the user-selected parameters and options.
-
-        :param graph_obj: GraphExtractor object.
-
-        :return: A Matplotlib figure object.
-        """
-
-        fig = plt.Figure(figsize=(8.5, 8.5), dpi=300)
-        ax = fig.add_subplot(1, 1, 1)
-        ax.set_axis_off()
-        ax.set_title("Run Info")
-
-        # similar to the start of the csv file, this is just getting all the relevant settings to display in the PDF
-        _, filename = os.path.split(self.ntwk_p.img_path)
-        now = datetime.datetime.now()
-
-        run_info = ""
-        run_info += filename + "\n"
-        run_info += now.strftime("%Y-%m-%d %H:%M:%S") + "\n----------------------------\n\n"
-
-        # Image Configs
-        sel_img_batch = self.ntwk_p.get_selected_batch()
-        run_info += sel_img_batch.images[0].get_config_info()  # Get configs of first image
-        run_info += "\n\n"
-
-        # Graph Configs
-        run_info += graph_obj.get_config_info()
-        run_info += "\n\n"
-
-        ax.text(0.5, 0.5, run_info, horizontalalignment='center', verticalalignment='center')
-        return fig
 
     @staticmethod
     def plot_scaling_behavior(scaling_data: defaultdict = None):
@@ -1441,8 +1482,8 @@ class GraphAnalyzer(ProgressUpdate):
                 output = status_msg + "\n" + f"Run-time: {str(end - start)}  seconds\n"
                 output += "Number of cores: " + str(num_cores) + "\n"
                 output += "Results generated for: " + sgt_obj.ntwk_p.img_path + "\n"
-                output += "Node Count: " + str(graph_obj.nx_3d_graph.number_of_nodes()) + "\n"
-                output += "Edge Count: " + str(graph_obj.nx_3d_graph.number_of_edges()) + "\n"
+                output += "Node Count: " + str(graph_obj.nx_giant_graph.number_of_nodes()) + "\n"
+                output += "Edge Count: " + str(graph_obj.nx_giant_graph.number_of_edges()) + "\n"
                 filename, out_dir = sgt_obj.ntwk_p.get_filenames()
                 out_file = os.path.join(out_dir, filename + '-v2_results.txt')
                 write_txt_file(output, out_file)

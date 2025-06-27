@@ -53,11 +53,12 @@ Item {
                     }
 
                     Loader {
-                        Layout.fillWidth: model.id !== "remove_object_size"
+                        Layout.fillWidth: (model.id !== "merge_node_radius_size" || model.id !== "prune_max_iteration_count" || model.id !== "remove_object_size")
                         Layout.preferredWidth: 75
                         Layout.leftMargin: hasChildren ? 0 : depth > 0 ? 50 : 10
-                        sourceComponent: model.id === "remove_object_size" ? txtFldComponent :
-                            model.text.startsWith("by") ? rdoComponent : cbxComponent
+                        sourceComponent: (model.id === "merge_node_radius_size" || model.id === "prune_max_iteration_count" || model.id === "remove_object_size")
+                            ? txtFldComponent : model.text.startsWith("by")
+                                ? rdoComponent : cbxComponent
                     }
 
                     Component {
@@ -167,7 +168,6 @@ Item {
 
         function onImageChangedSignal() {
             // Force refresh
-            ////gteTreeView.enabled = mainController.display_image();
             gteTreeControl.enabled = mainController.display_image();
         }
 

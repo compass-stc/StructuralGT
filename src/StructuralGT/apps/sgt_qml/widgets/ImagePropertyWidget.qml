@@ -11,7 +11,7 @@ Item {
     //Layout.rightMargin: 5
 
     property int numRows: imagePropsModel.rowCount()
-    property int tblRowHeight: 25
+    property int tblRowHeight: 30
 
     TableView {
         id: tblImgProps

@@ -81,7 +81,7 @@ MenuBar {
             var index = exportGraphModel.index(i, 0);
             exportGraphModel.setData(index, val, valueRole);
         }
-        mainController.export_graph();
+        mainController.export_graph_to_file();
     }
     
     

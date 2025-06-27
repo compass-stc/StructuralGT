@@ -21,8 +21,6 @@ Rectangle {
             TabButton { text: "Filters" }
         }
 
-
-
         StackLayout {
             id: stackLayout
             //width: parent.width
@@ -38,7 +36,6 @@ Rectangle {
 
 
         }
-
     }
 
     Connections {
@@ -47,7 +44,5 @@ Rectangle {
         function onProjectOpenedSignal(name) {
             tabBar.currentIndex = 0;
         }
-
     }
-
 }

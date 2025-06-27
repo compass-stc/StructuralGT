@@ -6,6 +6,7 @@ Builds a graph network from nanoscale microscopy images.
 
 import os
 import igraph
+import itertools
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -19,7 +20,7 @@ from .sknw_mod import build_sknw
 from ..utils.progress_update import ProgressUpdate
 from ..networks.graph_skeleton import GraphSkeleton
 from ..utils.config_loader import load_gte_configs
-from ..utils.sgt_utils import write_csv_file, write_gsd_file, plot_to_opencv
+from ..utils.sgt_utils import write_csv_file, write_gsd_file
 
 
 class FiberNetworkBuilder(ProgressUpdate):
@@ -40,18 +41,18 @@ class FiberNetworkBuilder(ProgressUpdate):
         self.configs: dict = load_gte_configs(cfg_file)  # graph extraction parameters and options.
         self.props: list = []
         self.img_ntwk: MatLike | None = None
-        self.nx_3d_graph: nx.Graph | None = None
+        self.nx_giant_graph: nx.Graph | None = None
+        self.nx_graph: nx.Graph | None = None
         self.ig_graph: igraph.Graph | None = None
         self.gsd_file: str | None = None
         self.skel_obj: GraphSkeleton | None = None
 
-    def fit_graph(self, save_dir: str, img_bin: MatLike = None, img_2d: MatLike = None, is_img_2d: bool = True, px_width_sz: float = 1.0, rho_val: float = 1.0, image_file: str = "img"):
+    def fit_graph(self, save_dir: str, img_bin: MatLike = None, is_img_2d: bool = True, px_width_sz: float = 1.0, rho_val: float = 1.0, image_file: str = "img"):
         """
         Execute a function that builds a NetworkX graph from the binary image.
 
         :param save_dir: Directory to save the graph to.
         :param img_bin: A binary image for building Graph Skeleton for the NetworkX graph.
-        :param img_2d: The actual 2D image(s) used for plotting the graph network.
         :param is_img_2d: Whether the image is 2D or 3D otherwise.
         :param px_width_sz: Width of a pixel in nanometers.
         :param rho_val: Resistivity coefficient/value of the material.
@@ -72,7 +73,7 @@ class FiberNetworkBuilder(ProgressUpdate):
             return
 
         self.update_status([75, "Verifying graph network..."])
-        if self.nx_3d_graph.number_of_nodes() <= 0:
+        if self.nx_graph.number_of_nodes() <= 0:
             self.update_status([-1, "Problem generating graph (change image/binary filters)"])
             self.abort = True
             return
@@ -85,16 +86,12 @@ class FiberNetworkBuilder(ProgressUpdate):
         self.configs["export_as_gsd"]["value"] = 1
         self.save_graph_to_file(image_file, save_dir)
 
-        self.update_status([95, "Plotting graph network..."])
-        plt_fig = self.plot_2d_graph_network(img_2d)
-        self.img_ntwk = plot_to_opencv(plt_fig)
-
     def reset_graph(self):
         """
         Erase the existing data stored in the object.
         :return:
         """
-        self.nx_3d_graph, self.ig_graph, self.img_ntwk = None, None, None
+        self.nx_graph, self.ig_graph, self.img_ntwk = None, None, None
 
     def extract_graph(self, image_bin: MatLike = None, is_img_2d: bool = True, px_size: float = 1.0, rho_val: float = 1.0):
         """
@@ -128,7 +125,6 @@ class FiberNetworkBuilder(ProgressUpdate):
 
         self.update_status([66, "Assigning weights to graph network..."])
         for (s, e) in nx_graph.edges():
-
             if opt_gte["remove_self_loops"]["value"]:
                 # Removing all instances of edges where the start and end are the same, or "self-loops"
                 if s == e:
@@ -152,44 +148,49 @@ class FiberNetworkBuilder(ProgressUpdate):
             nx_graph[s][e]['angle'] = pix_angle
             nx_graph[s][e]['weight'] = wt
             # print(f"{nx_graph[s][e]}\n")
-        self.nx_3d_graph = nx_graph
+        self.nx_graph = nx_graph
         self.ig_graph = igraph.Graph.from_networkx(nx_graph)
         return True
 
-    def plot_2d_graph_network(self, image_2d_arr: MatLike, plot_nodes: bool = False, a4_size: bool = False):
+    def plot_graph_network(self, image_arr: MatLike, giant_only: bool = False, plot_nodes: bool = False, a4_size: bool = False):
         """
         Creates a plot figure of the graph network. It draws all the edges and nodes of the graph.
 
-        :param image_2d_arr: Slides of 2D images to be used to draw the network.
+        :param image_arr: Slides of 2D images to be used to draw the network.
+        :param giant_only: If True, only the giant graph is identified and drawn.
         :param plot_nodes: Make the graph's node plot figure.
         :param a4_size: Decision if to create an A4 size plot figure.
 
         :return:
         """
 
+        if self.nx_graph is None:
+            return None
+
         # Fetch the graph and config options
-        nx_graph = self.nx_3d_graph
-        is_img_2d = self.skel_obj.is_2d
+        if giant_only:
+            nx_graph = self.nx_giant_graph
+        else:
+            nx_graph = self.nx_graph
         show_node_id = (self.configs["display_node_id"]["value"] == 1)
 
         # Fetch a single 2D image
-        if image_2d_arr is None:
+        if image_arr is None:
             return None
-        else:
-            image_2d = image_2d_arr[0]
 
-        # Create the plot figure
+        # Create the plot figure(s)
+        fig_grp = FiberNetworkBuilder.plot_graph_edges(image_arr, nx_graph, plot_nodes=plot_nodes, show_node_id=show_node_id)
+        fig = fig_grp[0]
         if a4_size:
-            fig = plt.Figure(figsize=(8.5, 11), dpi=400)
-            ax = fig.add_subplot(1, 1, 1)
             plt_title = "Graph Node Plot" if plot_nodes else "Graph Edge Plot"
+            fig.set_size_inches(8.5, 11)
+            fig.set_dpi(400)
+            ax = fig.axes[0]
             ax.set_title(plt_title)
-        else:
-            fig = plt.Figure()
-            ax = fig.add_axes((0, 0, 1, 1))  # span the whole figure
-        FiberNetworkBuilder.plot_graph_edges(ax, image_2d, nx_graph, is_graph_2d=is_img_2d, color='cyan')
-        if plot_nodes:
-            FiberNetworkBuilder.plot_graph_nodes(ax, nx_graph, is_graph_2d=is_img_2d, display_node_id=show_node_id)
+            # This moves the Axes to start: 5% from the left, 5% from the bottom,
+            # and have a width and height: 80% of the figure.
+            # [left, bottom, width, height]
+            ax.set_position([0.05, 0.05, 0.9, 0.9])
         return fig
 
     def get_config_info(self):
@@ -227,7 +228,7 @@ class FiberNetworkBuilder(ProgressUpdate):
 
         # 1. Identify the subcomponents (graph segments) that make up the entire NetworkX graph.
         self.update_status([78, "Identifying graph subcomponents..."])
-        graph = self.nx_3d_graph.copy()
+        graph = self.nx_graph.copy()
         connected_components = list(nx.connected_components(graph))
         if not connected_components:  # In case the graph is empty
             connected_components = []
@@ -237,7 +238,8 @@ class FiberNetworkBuilder(ProgressUpdate):
         connect_ratio = giant_graph.number_of_nodes() / graph.number_of_nodes()
 
         # 2. Update with the giant graph
-        self.nx_3d_graph = giant_graph
+        self.nx_giant_graph = giant_graph
+        # self.ig_graph = igraph.Graph.from_networkx(giant_graph)
 
         # 3. Populate graph properties
         self.update_status([80, "Storing graph properties..."])
@@ -269,7 +271,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         :return:
         """
 
-        nx_graph = self.nx_3d_graph.copy()
+        nx_graph = self.nx_graph.copy()
         opt_gte = self.configs
 
         g_filename = filename + "_graph.gexf"
@@ -281,7 +283,7 @@ class FiberNetworkBuilder(ProgressUpdate):
         adj_file = os.path.join(out_dir, adj_filename)
 
         if opt_gte["export_adj_mat"]["value"] == 1:
-            adj_mat = nx.adjacency_matrix(self.nx_3d_graph).todense()
+            adj_mat = nx.adjacency_matrix(self.nx_graph).todense()
             np.savetxt(str(adj_file), adj_mat, delimiter=",")
 
         if opt_gte["export_edge_list"]["value"] == 1:
@@ -329,74 +331,100 @@ class FiberNetworkBuilder(ProgressUpdate):
         return weight_options
 
     @staticmethod
-    def plot_graph_edges(axis, image: MatLike, nx_graph: nx.Graph, is_graph_2d: bool, transparent: bool = False, line_width: float=1.5, color: str = 'black'):
+    def plot_graph_edges(image: MatLike, nx_graph: nx.Graph, node_distribution_data: list = None, plot_nodes: bool = False, show_node_id: bool = False, transparent: bool = False, line_width: float=1.5, node_marker_size: float = 3):
         """
-        Plot graph edges on top of the image.
+        Plot graph edges on top of the image
 
-        :param axis: Matplotlib axis
         :param image: image to be superimposed with graph edges
         :param nx_graph: a NetworkX graph
-        :param is_graph_2d: whether the generated graph is 2D or 3D
+        :param node_distribution_data: a list of node distribution data for a heatmap plot
+        :param plot_nodes: whether to plot graph nodes or not
+        :param show_node_id: if True, node IDs are displayed on the plot
         :param transparent: whether to draw the image with a transparent background
         :param line_width: each edge's line width
-        :param color: each edge's color
+        :param node_marker_size: the size (diameter) of the node marker
         :return:
         """
 
-        axis.set_axis_off()
-        axis.imshow(image, cmap='gray')
+        def plot_graph_nodes(node_ax):
+            """
+            Plot graph nodes on top of the image.
+            :param node_ax: Matplotlib axes
+            """
 
-        if is_graph_2d:
-            coord_1, coord_2 = 1, 0         # coordinates: (y, x)
-        else:
-            coord_1, coord_2 = 2, 1         # coordinates: (z, y)
+            node_list = list(nx_graph.nodes())
+            gn = np.array([nx_graph.nodes[i]['o'] for i in node_list])
 
-        if transparent:
-            axis.imshow(image, cmap='gray', alpha=0)  # Alpha=0 makes image 100% transparent
+            if show_node_id:
+                i = 0
+                for x, y in zip(gn[:, coord_1], gn[:, coord_2]):
+                    node_ax.annotate(str(i), (x, y), fontsize=5)
+                    i += 1
 
-        # DOES NOT PLOT 3D graphs - node_plot (BUG IN CODE), so we pick the first 2D graph in the stack
-        for (s, e) in nx_graph.edges():
-            # 3D Coordinates are (x, y, z) ... assume that y and z are the same for 2D graphs and x is depth.
-            ge = nx_graph[s][e]['pts']
-            axis.plot(ge[:, coord_1], ge[:, coord_2], color, linewidth=line_width)
-        return axis
+            if node_distribution_data is not None:
+                c_set = node_ax.scatter(gn[:, coord_1], gn[:, coord_2], s=node_marker_size, c=node_distribution_data, cmap='plasma')
+                return c_set
+            else:
+                # c_set = node_ax.scatter(gn[:, coord_1], gn[:, coord_2], s=marker_size)
+                node_ax.plot(gn[:, coord_1], gn[:, coord_2], 'b.', markersize=node_marker_size)
+                return None
 
-    @staticmethod
-    def plot_graph_nodes(axis: plt.axis, nx_graph: nx.Graph, is_graph_2d: bool, marker_size: float = 3, distribution_data: list = None, display_node_id: bool = False):
-        """
-        Plot graph nodes on top of the image.
-        :param axis: Matplotlib axis
-        :param nx_graph: a NetworkX graph
-        :param is_graph_2d: whether the generated graph is 2D or 3D
-        :param marker_size: the size of each node
-        :param distribution_data: the heatmap distribution data
-        :param display_node_id: indicate the node id on the plot
-        :return:
+        def create_plt_axes(pos):
+            """
+            Create a matplotlib axes object.
+            Args:
+                pos: index position of image frame.
 
-        """
+            Returns:
 
-        node_list = list(nx_graph.nodes())
-        gn = np.array([nx_graph.nodes[i]['o'] for i in node_list])
-        # 3D Coordinates are (x, y, z) ... assume that y and z are the same for 2D graphs and x is depth.
+            """
+            new_fig = plt.Figure()
+            new_ax = new_fig.add_axes((0, 0, 1, 1))  # span the whole figure
+            new_ax.set_axis_off()
+            if transparent:
+                new_ax.imshow(image[pos], cmap='gray', alpha=0)  # Alpha=0 makes image 100% transparent
+            else:
+                new_ax.imshow(image[pos], cmap='gray')
+            return new_fig
 
-        if is_graph_2d:
-            coord_1, coord_2 = 1, 0         # coordinates: (y, x)
-        else:
-            coord_1, coord_2 = 2, 1         # coordinates: (z, y)
+        fig_group = {}
+        # Create axes for the first frame of image (enough if it is 2D)
+        fig = create_plt_axes(0)
+        fig_group[0] = fig
 
-        if display_node_id:
-            i = 0
-            for x, y in zip(gn[:, coord_1], gn[:, coord_2]):
-                axis.annotate(str(i), (x, y), fontsize=5)
-                i += 1
+        color_list = ['black', 'r', 'g', 'b', 'c', 'm', 'y', 'k']
+        color_cycle = itertools.cycle(color_list)
+        nx_components = list(nx.connected_components(nx_graph))
+        for component in nx_components:
+            color = next(color_cycle)
+            sg = nx_graph.subgraph(component)
 
-        if distribution_data is not None:
-            c_set = axis.scatter(gn[:, coord_1], gn[:, coord_2], s=marker_size, c=distribution_data, cmap='plasma')
-            return c_set
-        else:
-            # c_set = axis.scatter(gn[:, coord_1], gn[:, coord_2], s=marker_size)
-            axis.plot(gn[:, coord_1], gn[:, coord_2], 'b.', markersize=marker_size)
-            return axis
+            for (s, e) in sg.edges():
+                ge = sg[s][e]['pts']
+                coord_1, coord_2 = 1, 0  # coordinates: (y, x)
+                coord_3 = 0
+                if ge.shape[1] == 3:
+                    # image and graph are 3D (not 2D)
+                    # 3D Coordinates are (x, y, z) ... assume that y and z are the same for 2D graphs and x is depth.
+                    coord_1, coord_2, coord_3 = 2, 1, 0  # coordinates: (z, y, x)
+
+                if coord_3 in fig_group and fig_group[coord_3] is not None:
+                    fig = fig_group[coord_3]
+                else:
+                    fig = create_plt_axes(coord_3)
+                    fig_group[coord_3] = fig
+                ax = fig.get_axes()[0]
+                ax.plot(ge[:, coord_1], ge[:, coord_2], color, linewidth=line_width)
+
+        if plot_nodes:
+            for idx, plt_fig in fig_group.items():
+                ax = plt_fig.get_axes()[0]
+                node_color_set = plot_graph_nodes(ax)
+                if node_color_set is not None:
+                    cbar = plt_fig.colorbar(node_color_set, ax=ax, orientation='vertical', label='Value')
+                    # [left, bottom, width, height]
+                    cbar.ax.set_position([0.82, 0.05, 0.05, 0.9])
+        return fig_group
 
     # TO DELETE IT LATER
     def data_gen_function(self):

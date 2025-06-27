@@ -47,13 +47,25 @@ Item {
                     Layout.leftMargin: 20
                     sourceComponent: {
                         switch (model.id) {
-                            case "display_ohms_histogram": return ohmsComponent
-                            case "compute_avg_node_connectivity": return avgComponent
-                            default: return null
+                            case "display_ohms_histogram":
+                                return ohmsComponent
+                            case "compute_avg_node_connectivity":
+                                return avgComponent
+                            default:
+                                return null
                         }
                     }
                 }
             }
+        }
+
+        Label {
+            wrapMode: Text.Wrap
+            Layout.leftMargin: 15
+            color: "#229922"
+            font.pixelSize: 10
+            Layout.preferredWidth: 200
+            text: "**Note**: all these computations are applied on the giant graph ONLY."
         }
     }
 
@@ -61,7 +73,8 @@ Item {
     Component {
         id: ohmsComponent
         ColumnLayout {
-            MicroscopyPropertyWidget { }
+            MicroscopyPropertyWidget {
+            }
         }
     }
 

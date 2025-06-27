@@ -1,12 +1,14 @@
 
 import os
 import sys
-import logging
 import pickle
+import logging
+import requests
 import numpy as np
+from packaging import version
 from ovito import scene
-from ovito.io import import_file
 from ovito.vis import Viewport
+from ovito.io import import_file
 from ovito.gui import create_qwidget
 from typing import TYPE_CHECKING, Optional
 from PySide6.QtWidgets import QApplication
@@ -256,60 +258,6 @@ class MainController(QObject):
             sel_img_batch.current_view = img_view
         return sel_images
 
-    def load_graph_simulation(self):
-        """Render and visualize OVITO graph network simulation."""
-        try:
-            # Clear any existing scene
-            for p_line in list(scene.pipelines):
-                p_line.remove_from_scene()
-
-            # Create OVITO data pipeline
-            sgt_obj = self.get_selected_sgt_obj()
-            sel_batch = sgt_obj.ntwk_p.get_selected_batch()
-            pipeline = import_file(sel_batch.graph_obj.gsd_file)
-            pipeline.add_to_scene()
-
-            vp = Viewport(type=Viewport.Type.Perspective, camera_dir=(2, 1, -1))
-            ovito_widget = create_qwidget(vp, parent=self.qml_app.activeWindow())
-            ovito_widget.setMinimumSize(800, 500)
-            vp.zoom_all((800, 500))
-            ovito_widget.show()
-
-            """
-            # Find the QML Rectangle to embed into
-            root = self.qml_engine.rootObjects()[0]
-            ntwk_container = root.findChild(QObject, "ntwkContainer")
-
-            if ntwk_container:
-                # Testing
-                # print(f"Found it! {type(ntwk_container)}")
-                # ntwk_container.setProperty("color", "#8b0000")
-
-                # Grab rectangle properties
-                x = ntwk_container.property("x")
-                y = ntwk_container.property("y")
-                w = ntwk_container.property("width")
-                h = ntwk_container.property("height")
-
-                # Create OVITO data pipeline
-                sgt_obj = self.get_selected_sgt_obj()
-                filename, out_dir = sgt_obj.ntwk_p.get_filenames()
-                gsd_filename = filename + "_skel.gsd"
-                gsd_file = str(os.path.join(out_dir, gsd_filename))
-                pipeline = import_file(gsd_file)
-                pipeline.add_to_scene()
-
-                vp = Viewport(type=Viewport.Type.Perspective, camera_dir=(2, 1, -1))
-                ovito_widget = create_qwidget(vp, parent=self.qml_app.activeWindow())
-                ovito_widget.setMinimumSize(800, 500)
-                vp.zoom_all((800, 500))
-
-                # Re-parent OVITO QWidget
-                ovito_widget.setGeometry(x, y, w, h)
-                ovito_widget.show()"""
-        except Exception as e:
-            print("Graph Simulation Error:", e)
-
     def _handle_progress_update(self, progress_val: int, msg: str):
         """
         Handler function for progress updates for ongoing tasks.
@@ -391,35 +339,68 @@ class MainController(QObject):
     @Slot(result=str)
     def get_about_details(self):
         about_app = (
-            f"<html>"
-            f"<p>"
-            f"A software tool for performing Graph Theory analysis on microscopy images. This is a modified version "
-            "of StructuralGT initially proposed by Drew A. Vecchio,<br>"
+            "<html>"
+            "<p>"
+            "A software tool for performing Graph Theory analysis on <br>microscopy images. This is a modified version "
+            "of StructuralGT <br>initially proposed by Drew A. Vecchio,<br>"
             "<b>DOI:</b> <a href='https://pubs.acs.org/doi/10.1021/acsnano.1c04711'>10.1021/acsnano.1c04711</a>"
             "</p><p>"
-            "<b>Contributors:</b><ol>"
-            "<li>Nicolas Kotov</li>"
-            "<li>Dickson Owuor</li>"
-            "<li>Alain Kadar</li>"
-            "</ol></p><p>"
+            "<b>Main Contributors:</b><br>"
+            "<table border='0.5' cellspacing='0' cellpadding='4'>"
+            # "<tr><th>Name</th><th>Email</th></tr>"
+            "<tr><td>Dickson Owuor</td><td>owuor@umich.edu</td></tr>"
+            "<tr><td>Nicolas Kotov</td><td>kotov@umich.edu</td></tr>"
+            "<tr><td>Alain Kadar</td><td>alaink@umich.edu</td></tr>"
+            "<tr><td>Xiong Ye Xiao</td><td>xiongyex@usc.edu</td></tr>"
+            "<tr><td>Kotov Lab</td><td></td></tr>"
+            "<tr><td>COMPASS</td><td></td></tr>"
+            "</table></p><p><br><br>"
             "<b>Documentation:</b> <a href='https://structural-gt.readthedocs.io'>structural-gt.readthedocs.io</a>"
             "<br>"
             f"<b> Version: </b> {self.get_sgt_version()}<br>"
-            "<b>License:</b> GPL GNU v3<br>"
-            "Copyright (C) 2018-2025, The Regents of the University of Michigan.<br>"
+            "<b>License:</b> GPL GNU v3"
+            "</p><p>"
+            "Copyright (C) 2018-2025<br>The Regents of the University of Michigan."
             "</p>"
             "</html>")
         return about_app
 
     @Slot(result=str)
     def check_for_updates(self):
-        # current_version = float(__version__)
-        # new_version = float(https://github.com/owuordickson/structural-gt/blob/main/src/StructuralGT/__init__.py __version__)
-        updates_available = False
-        if updates_available:
-            msg = "<html>New version available! <br>Download via this <a href='https://forms.gle/oG9Gk2qbmxooK63D7'>link</a></html>"
+        """"""
+        github_url = "https://raw.githubusercontent.com/owuordickson/structural-gt/refs/heads/main/src/StructuralGT/__init__.py"
+
+        try:
+            response = requests.get(github_url, timeout=5)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            msg = f"Error checking for updates: {e}"
+            return msg
+
+        remote_version = None
+        for line in response.text.splitlines():
+            if line.strip().startswith("__install_version__"):
+                try:
+                    remote_version = line.split("=")[1].strip().strip("\"'")
+                    break
+                except IndexError:
+                    msg = "Could not connect to server!"
+                    return msg
+
+        if not remote_version:
+            msg = "Could not find the new version!"
+            return msg
+
+        new_version = version.parse(remote_version)
+        current_version = version.parse(__version__)
+        if new_version > current_version:
+            # https://github.com/owuordickson/structural-gt/releases/tag/v3.3.5
+            msg = (
+                "New version available!<br>"
+                f"Download via this <a href='https://github.com/owuordickson/structural-gt/releases/tag/v{remote_version}'>link</a>"
+            )
         else:
-            msg = "<html>No updates available.</html>"
+            msg = "No updates available."
         return msg
 
     @Slot(str, result=str)
@@ -541,6 +522,68 @@ class MainController(QObject):
         if choice is not None:
             sel_img_batch.current_view = choice
         self.changeImageSignal.emit()
+
+    @Slot(bool)
+    def reload_graph_image(self, only_giant_graph=False):
+        sgt_obj = self.get_selected_sgt_obj()
+        sel_img_batch = sgt_obj.ntwk_p.get_selected_batch()
+        sgt_obj.ntwk_p.draw_graph_image(sel_img_batch, show_giant_only=only_giant_graph)
+        self.changeImageSignal.emit()
+
+    @Slot()
+    def load_graph_simulation(self):
+        """Render and visualize OVITO graph network simulation."""
+        try:
+            # Clear any existing scene
+            for p_line in list(scene.pipelines):
+                p_line.remove_from_scene()
+
+            # Create OVITO data pipeline
+            sgt_obj = self.get_selected_sgt_obj()
+            sel_batch = sgt_obj.ntwk_p.get_selected_batch()
+            pipeline = import_file(sel_batch.graph_obj.gsd_file)
+            pipeline.add_to_scene()
+
+            vp = Viewport(type=Viewport.Type.Perspective, camera_dir=(2, 1, -1))
+            ovito_widget = create_qwidget(vp, parent=self.qml_app.activeWindow())
+            ovito_widget.setMinimumSize(800, 500)
+            vp.zoom_all((800, 500))
+            ovito_widget.show()
+
+            """
+            # Find the QML Rectangle to embed into
+            root = self.qml_engine.rootObjects()[0]
+            ntwk_container = root.findChild(QObject, "ntwkContainer")
+
+            if ntwk_container:
+                # Testing
+                # print(f"Found it! {type(ntwk_container)}")
+                # ntwk_container.setProperty("color", "#8b0000")
+
+                # Grab rectangle properties
+                x = ntwk_container.property("x")
+                y = ntwk_container.property("y")
+                w = ntwk_container.property("width")
+                h = ntwk_container.property("height")
+
+                # Create OVITO data pipeline
+                sgt_obj = self.get_selected_sgt_obj()
+                filename, out_dir = sgt_obj.ntwk_p.get_filenames()
+                gsd_filename = filename + "_skel.gsd"
+                gsd_file = str(os.path.join(out_dir, gsd_filename))
+                pipeline = import_file(gsd_file)
+                pipeline.add_to_scene()
+
+                vp = Viewport(type=Viewport.Type.Perspective, camera_dir=(2, 1, -1))
+                ovito_widget = create_qwidget(vp, parent=self.qml_app.activeWindow())
+                ovito_widget.setMinimumSize(800, 500)
+                vp.zoom_all((800, 500))
+
+                # Re-parent OVITO QWidget
+                ovito_widget.setGeometry(x, y, w, h)
+                ovito_widget.show()"""
+        except Exception as e:
+            print("Graph Simulation Error:", e)
 
     @Slot(int)
     def load_image(self, index=None, reload_thumbnails=False):
@@ -669,7 +712,7 @@ class MainController(QObject):
                                                                               "image. Try again."])
 
     @Slot()
-    def export_graph(self):
+    def export_graph_to_file(self):
         """Export graph data and save as a file."""
         try:
             sel_images = self.get_selected_images()
@@ -817,7 +860,17 @@ class MainController(QObject):
 
     @Slot(result=bool)
     def display_graph(self):
-        return True
+        if len(self.sgt_objs) <= 0:
+            return False
+
+        sgt_obj = self.get_selected_sgt_obj()
+        sel_img_batch = sgt_obj.ntwk_p.get_selected_batch()
+        if sel_img_batch.graph_obj.img_ntwk is None:
+            return False
+
+        if sel_img_batch.current_view  == "graph":
+            return True
+        return False
 
     @Slot(result=bool)
     def image_batches_exist(self):

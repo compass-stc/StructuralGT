@@ -2,8 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
-//import QtQuick.Dialogs as QuickDialogs
-//import Qt.labs.platform as Platform
+
 
 ColumnLayout {
     Layout.fillWidth: true
@@ -41,7 +40,9 @@ ColumnLayout {
                         id: btnCreateProject
                         Layout.preferredWidth: 180
                         Layout.preferredHeight: 48
-                        background: Rectangle { color: "transparent"}
+                        background: Rectangle {
+                            color: "transparent"
+                        }
                         text: ""
                         onClicked: createProjectDialog.open()
 
@@ -64,7 +65,9 @@ ColumnLayout {
                         id: btnOpenProject
                         Layout.preferredWidth: 180
                         Layout.preferredHeight: 48
-                        background: Rectangle { color: "transparent"}
+                        background: Rectangle {
+                            color: "transparent"
+                        }
                         text: ""
                         onClicked: projectFileDialog.open()
 
@@ -153,35 +156,57 @@ ColumnLayout {
                 }
 
             }
-
         }
-
     }
 
 
     Rectangle {
-        id: imgBatchSelector
+        id: imgViewControls
         height: 32
         Layout.fillHeight: false
         Layout.fillWidth: true
         color: "transparent"
-        visible: mainController.image_batches_exist()
+        visible: mainController.display_image()
 
         RowLayout {
-            anchors.fill: parent
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.horizontalCenter: parent.horizontalCenter
 
             ComboBox {
                 id: cbBatchSelector
+                visible: mainController.image_batches_exist()
+                //enabled: image_batches_exist.display_image()
                 Layout.minimumWidth: 125
-                Layout.alignment: Qt.AlignCenter
                 model: imgBatchModel
                 implicitContentWidthPolicy: ComboBox.WidestTextWhenCompleted
                 textRole: "text"
                 valueRole: "value"
                 ToolTip.text: "Change image batch"
                 ToolTip.visible: cbBatchSelector.hovered
-                //enabled: image_batches_exist.display_image()
                 onCurrentIndexChanged: mainController.select_img_batch(valueAt(currentIndex))
+            }
+
+            Switch {
+                id: toggleShowGiantGraph
+                visible: mainController.display_graph()
+                text: "only giant graph"
+                checked: false // Initial state
+                onCheckedChanged: {
+                    if (checked) {
+                        // Actions when switched on
+                        mainController.reload_graph_image(true);
+                    } else {
+                        // Actions when switched off
+                        mainController.reload_graph_image(false);
+                    }
+                }
+            }
+
+            Button {
+                id: btnLoad3DGraph
+                text: "view 3D graph"
+                visible: mainController.display_graph()
+                onClicked: mainController.load_graph_simulation()
             }
         }
     }
@@ -261,7 +286,9 @@ ColumnLayout {
                             anchors.left: parent.left
                             anchors.top: parent.top
                             anchors.margins: 2
-                            background: Rectangle { color: "transparent" }
+                            background: Rectangle {
+                                color: "transparent"
+                            }
                         }
 
                         CheckBox {
@@ -313,18 +340,18 @@ ColumnLayout {
             anchors.fill: parent
             enabled: false
             onPressed: (mouse) => {
-                           cropArea.x = mouse.x;
-                           cropArea.y = mouse.y;
-                           cropArea.width = 0;
-                           cropArea.height = 0;
-                           cropArea.visible = true;
-                       }
+                cropArea.x = mouse.x;
+                cropArea.y = mouse.y;
+                cropArea.width = 0;
+                cropArea.height = 0;
+                cropArea.visible = true;
+            }
             onPositionChanged: (mouse) => {
-                                   if (cropArea.visible) {
-                                       cropArea.width = Math.abs(mouse.x - cropArea.x);
-                                       cropArea.height = Math.abs(mouse.y - cropArea.y);
-                                   }
-                               }
+                if (cropArea.visible) {
+                    cropArea.width = Math.abs(mouse.x - cropArea.x);
+                    cropArea.height = Math.abs(mouse.y - cropArea.y);
+                }
+            }
             onReleased: {
                 if (cropArea.width < 5 || cropArea.height < 5) {
                     cropArea.visible = false;  // Hide small selections
@@ -353,7 +380,9 @@ ColumnLayout {
                     Layout.alignment: Qt.AlignLeft
                     Layout.margins: 5
                     font.bold: true
-                    background: Rectangle { color: "#80ffffff"}  // 80% opacity (50% transparency)
+                    background: Rectangle {
+                        color: "#80ffffff"
+                    }  // 80% opacity (50% transparency)
                     ToolTip.text: "Zoom in"
                     ToolTip.visible: btnZoomIn.hovered
                     onClicked: zoomFactor = Math.min(zoomFactor + 0.1, 3.0) // Max zoom = 3x
@@ -367,7 +396,9 @@ ColumnLayout {
                     Layout.alignment: Qt.AlignRight
                     Layout.margins: 5
                     font.bold: true
-                    background: Rectangle { color: "#80ffffff"}
+                    background: Rectangle {
+                        color: "#80ffffff"
+                    }
                     ToolTip.text: "Zoom out"
                     ToolTip.visible: btnZoomOut.hovered
                     onClicked: zoomFactor = Math.max(zoomFactor - 0.1, 0.5) // Min zoom = 0.5x
@@ -375,17 +406,6 @@ ColumnLayout {
             }
         }
     }
-
-    /*Rectangle {
-        id: ntwkContainer
-        objectName: "ntwkContainer" // IMPORTANT: Python will find this
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        color: "#ffffff"
-        border.color: "#d0d0d0"
-        border.width: 1
-        visible: false
-    }*/
 
 
     Rectangle {
@@ -405,7 +425,9 @@ ColumnLayout {
                 icon.source: "../assets/icons/back_icon.png" // Path to your icon
                 icon.width: 24 // Adjust as needed
                 icon.height: 24
-                background: Rectangle { color: "transparent"}
+                background: Rectangle {
+                    color: "transparent"
+                }
                 Layout.alignment: Qt.AlignLeft
                 onClicked: mainController.load_prev_image()
             }
@@ -423,7 +445,9 @@ ColumnLayout {
                 icon.source: "../assets/icons/next_icon.png" // Path to your icon
                 icon.width: 24 // Adjust as needed
                 icon.height: 24
-                background: Rectangle { color: "transparent"}
+                background: Rectangle {
+                    color: "transparent"
+                }
                 Layout.alignment: Qt.AlignRight
                 onClicked: mainController.load_next_image()
             }
@@ -439,7 +463,7 @@ ColumnLayout {
         const imageSourceHeight = imgView.sourceSize.height;
 
         if (imageSourceWidth <= 0 || imageSourceHeight <= 0)
-            return { width: 0, height: 0 };
+            return {width: 0, height: 0};
 
         const imgAspect = imageSourceWidth / imageSourceHeight;
         const containerAspect = containerWidth / containerHeight;
@@ -455,7 +479,7 @@ ColumnLayout {
             actualWidth = containerHeight * imgAspect;
         }
 
-        return { width: actualWidth, height: actualHeight };
+        return {width: actualWidth, height: actualHeight};
     }
 
     function getCropAreaInImageCoords() {
@@ -497,10 +521,12 @@ ColumnLayout {
             imgView.visible = !mainController.is_img_3d();
             imgGridView.visible = mainController.is_img_3d();
             welcomeContainer.visible = mainController.display_image() ? false : !mainController.is_project_open();
-            imgContainer.visible = mainController.display_image();// ? !mainController.display_graph() : false;
-            //ntwkContainer.visible = mainController.display_image() ? mainController.display_graph() : false;
+            imgContainer.visible = mainController.display_image();
             imgNavControls.visible = mainController.display_image();
-            imgBatchSelector.visible = mainController.image_batches_exist();
+            imgViewControls.visible = mainController.display_image();
+            cbBatchSelector.visible = mainController.image_batches_exist();
+            toggleShowGiantGraph.visible = mainController.display_graph();
+            btnLoad3DGraph.visible = mainController.display_graph();
 
             if (!mainController.is_img_3d()) {
                 imgView.source = mainController.get_pixmap();
@@ -547,7 +573,7 @@ ColumnLayout {
             lblNavInfo.text = mainController.get_img_nav_location();
         }
 
-        function onTaskTerminatedSignal(success_val, msg_data){
+        function onTaskTerminatedSignal(success_val, msg_data) {
             lblNavInfo.text = mainController.get_img_nav_location();
             btnNext.enabled = mainController.enable_next_nav_btn();
             lblNavInfo.text = mainController.get_img_nav_location();

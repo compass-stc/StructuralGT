@@ -11,13 +11,13 @@ import cv2
 import logging
 import numpy as np
 # import nibabel as nib
-import matplotlib.pyplot as plt
 from PIL import Image
 from math import isqrt
 from cv2.typing import MatLike
 from dataclasses import dataclass
 from collections import defaultdict
 
+from ..utils.sgt_utils import plot_to_opencv
 from ..utils.progress_update import ProgressUpdate
 from ..imaging.base_image import BaseImage
 from ..networks.fiber_network import FiberNetworkBuilder
@@ -361,9 +361,7 @@ class ImageProcessor(ProgressUpdate):
             # Get binary image
             sel_images = self.get_selected_images(sel_batch)
             img_bin = [img.img_bin for img in sel_images]
-            img_3d = [img.img_2d for img in sel_images]
             img_bin = np.asarray(img_bin)
-            img_3d = np.asarray(img_3d)
 
             # Get the selected batch's graph object and generate the graph
             px_size = float(sel_batch.images[0].configs["pixel_width"]["value"])  # First BaseImage in batch
@@ -372,8 +370,11 @@ class ImageProcessor(ProgressUpdate):
 
             sel_batch.graph_obj.abort = False
             sel_batch.graph_obj.add_listener(self.track_progress)
-            sel_batch.graph_obj.fit_graph(out_dir, img_bin, img_3d, sel_batch.is_2d, px_size, rho_val,
-                                          image_file=f_name)
+            sel_batch.graph_obj.fit_graph(out_dir, img_bin, sel_batch.is_2d, px_size, rho_val, image_file=f_name)
+
+            self.update_status([95, "Plotting graph network..."])
+            self.draw_graph_image(sel_batch)
+
             sel_batch.graph_obj.remove_listener(self.track_progress)
             self.abort = sel_batch.graph_obj.abort
             if self.abort:
@@ -495,7 +496,7 @@ class ImageProcessor(ProgressUpdate):
                 success = graph_patch.extract_graph(img_patch, is_img_2d=True)
                 if success:
                     height, width = img_patch.shape
-                    graph_groups[(height, width)].append(graph_patch.nx_3d_graph)
+                    graph_groups[(height, width)].append(graph_patch.nx_giant_graph)
                 else:
                     self.update_status([101, f"Filter {img_patch.shape} graph extraction failed!"])
 
@@ -575,61 +576,6 @@ class ImageProcessor(ProgressUpdate):
         ]
         selected_batch.props = props
 
-    def plot_images(self):
-        """
-        Create plot figures of original, processed, and binary image.
-
-        :return:
-        """
-
-        figs = []
-        sel_batch = self.get_selected_batch()
-        sel_images = self.get_selected_images(sel_batch)
-        is_3d = True if len(sel_images) > 1 else False
-
-        for i, img in enumerate(sel_images):
-            opt_img = img.configs
-            raw_img = img.img_2d
-            filtered_img = img.img_mod
-            img_bin = img.img_bin
-
-            img_histogram = cv2.calcHist([filtered_img], [0], None, [256], [0, 256])
-
-            fig = plt.Figure(figsize=(8.5, 8.5), dpi=400)
-            ax_1 = fig.add_subplot(2, 2, 1)
-            ax_2 = fig.add_subplot(2, 2, 2)
-            ax_3 = fig.add_subplot(2, 2, 3)
-            ax_4 = fig.add_subplot(2, 2, 4)
-
-            ax_1.set_title(f"Frame {i}: Original Image") if is_3d else ax_1.set_title(f"Original Image")
-            ax_1.set_axis_off()
-            ax_1.imshow(raw_img, cmap='gray')
-
-            ax_2.set_title(f"Frame {i}: Processed Image") if is_3d else ax_2.set_title(f"Processed Image")
-            ax_2.set_axis_off()
-            ax_2.imshow(filtered_img, cmap='gray')
-
-            ax_3.set_title(f"Frame {i}: Binary Image") if is_3d else ax_3.set_title(f"Binary Image")
-            ax_3.set_axis_off()
-            ax_3.imshow(img_bin, cmap='gray')
-
-            ax_4.set_title(f"Frame {i}: Histogram of Processed Image") if is_3d else ax_4.set_title(
-                f"Histogram of Processed Image")
-            ax_4.set(yticks=[], xlabel='Pixel values', ylabel='Counts')
-            ax_4.plot(img_histogram)
-            if opt_img["threshold_type"]["value"] == 0:
-                thresh_arr = np.array(
-                    [[int(opt_img["global_threshold_value"]["value"]), int(opt_img["global_threshold_value"]["value"])],
-                     [0, max(img_histogram)]], dtype='object')
-                ax_4.plot(thresh_arr[0], thresh_arr[1], ls='--', color='black')
-            elif opt_img["threshold_type"]["value"] == 2:
-                otsu_val = opt_img["otsu"]["value"]
-                thresh_arr = np.array([[otsu_val, otsu_val],
-                                       [0, max(img_histogram)]], dtype='object')
-                ax_4.plot(thresh_arr[0], thresh_arr[1], ls='--', color='black')
-            figs.append(fig)
-        return figs
-
     def save_images_to_file(self):
         """
         Write images to a file.
@@ -662,7 +608,29 @@ class ImageProcessor(ProgressUpdate):
         if sel_batch.graph_obj.skel_obj.skeleton is not None:
             write_gsd_file(gsd_file, sel_batch.graph_obj.skel_obj.skeleton)"""
 
+    def draw_graph_image(self, sel_batch: ImageBatch, show_giant_only: bool = False):
+        """
+        Use Matplotlib to draw the extracted graph which is superimposed on the processed image.
+
+        :param sel_batch: ImageBatch data object.
+        :param show_giant_only: If True, only draw the largest/giant graph on the processed image.
+        """
+        sel_images = self.get_selected_images(sel_batch)
+        img_3d = [img.img_2d for img in sel_images]
+        img_3d = np.asarray(img_3d)
+
+        if sel_batch.graph_obj is None:
+            return
+
+        plt_fig = sel_batch.graph_obj.plot_graph_network(image_arr=img_3d, giant_only=show_giant_only)
+        if plt_fig is not None:
+            sel_batch.graph_obj.img_ntwk = plot_to_opencv(plt_fig)
+
     # MODIFIED TO EXCLUDE 3D IMAGES (TO BE REVISITED LATER)
+    # Problems:
+    # 1. Merge Nodes
+    # 2. Prune dangling edges
+    # 3. Matplotlib plot nodes and edges
     @staticmethod
     def create_img_batch_groups(img_groups: defaultdict, cfg_file: str, auto_scale: bool):
         """"""

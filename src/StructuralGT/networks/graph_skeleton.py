@@ -68,7 +68,8 @@ class GraphSkeleton:
             # self.update_progress([56, f"Ran remove_bubbles for image skeleton..."])
 
         if self.configs["merge_nearby_nodes"]["value"] == 1:
-            temp_skeleton = GraphSkeleton.merge_nodes(temp_skeleton)
+            node_radius_size = 2 # int(self.configs["merge_nearby_nodes"]["items"][0]["value"])
+            temp_skeleton = GraphSkeleton.merge_nodes(temp_skeleton, node_radius_size)
             if self.update_progress is not None:
                 self.update_progress([52, f"Ran merge_nodes for image skeleton..."])
 
@@ -79,8 +80,9 @@ class GraphSkeleton:
                 self.update_progress([54, f"Ran remove_small_objects for image skeleton..."])
 
         if self.configs["prune_dangling_edges"]["value"] == 1:
+            max_iter = 500 # int(self.configs["prune_dangling_edges"]["items"][0]["value"])
             b_points = GraphSkeleton.get_branched_points(temp_skeleton)
-            temp_skeleton = GraphSkeleton.prune_edges(temp_skeleton, 500, b_points)
+            temp_skeleton = GraphSkeleton.prune_edges(temp_skeleton, max_iter, b_points)
             if self.update_progress is not None:
                 self.update_progress([56, f"Ran prune_dangling_edges for image skeleton..."])
 
@@ -321,10 +323,10 @@ class GraphSkeleton:
         return ep
 
     @classmethod
-    def prune_edges(cls, skeleton: MatLike, size, branch_points):
+    def prune_edges(cls, skeleton: MatLike, max_num, branch_points):
         """Prune dangling edges around b_points. Remove iteratively end points 'size' times from the skeleton"""
         temp_skeleton = skeleton.copy()
-        for i in range(0, size):
+        for i in range(0, max_num):
             end_points = GraphSkeleton.get_end_points(temp_skeleton)
             points = np.logical_and(end_points, branch_points)
             end_points = np.logical_xor(end_points, points)
@@ -333,12 +335,11 @@ class GraphSkeleton:
         return temp_skeleton
 
     @classmethod
-    def merge_nodes(cls, skeleton: MatLike):
+    def merge_nodes(cls, skeleton: MatLike, node_radius):
         """Merge nearby nodes in the graph skeleton."""
         # overlay a disk over each branch point and find the overlaps to combine nodes
         skeleton_int = 1 * skeleton
-        radius = 2
-        mask_elem = disk(radius)
+        mask_elem = disk(node_radius)
         bp_skel = GraphSkeleton.get_branched_points(skeleton)
         bp_skel = 1 * (dilate(bp_skel, mask_elem))
 
