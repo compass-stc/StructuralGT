@@ -4,15 +4,18 @@
 
 import shutil
 
+import numpy as np
+import pandas as pd
+from StructuralGT import error
+from StructuralGT.networks import Graph, Network, PointNetwork
+
 import options
 import pytest
-
-from StructuralGT import error
-from StructuralGT.networks import Graph, Network
 
 Small_path = "StructuralGT/pytest/data/Small/"
 AgNWN_path = "StructuralGT/pytest/data/AgNWN/"
 ANF_path = "StructuralGT/pytest/data/ANF/"
+PointNetwork_path = "StructuralGT/pytest/data/Seeds/"
 
 
 class TestNetwork:
@@ -38,9 +41,7 @@ class TestNetwork:
         with pytest.raises(UserWarning):
             testNetwork = Network(AgNWN_path)
 
-        testNetwork = Network(AgNWN_path, prefix="slice")
-
-        return testNetwork
+        return Network(AgNWN_path, prefix="slice")
 
     @pytest.fixture
     def test_graph(self, test_2d_constructor):
@@ -78,7 +79,9 @@ class TestNetwork:
         testNetwork = test_crop
         testNetwork.set_graph(
             weight_type=["FixedWidthConductance"],
-            R_j=10, rho_dim=2, write=False
+            R_j=10,
+            rho_dim=2,
+            write=False,
         )
 
         return testNetwork
@@ -101,5 +104,38 @@ class TestNetwork:
 class TestGraph:
     def test_from_gsd(self):
         testGraph = Graph(Small_path + "Binarized/network.gsd")
-
         testGraph.vs["o"][0]
+
+ATTR_VALUES = {
+            "periodic": False,
+            "cutoff": 1200,
+            "dim": 3,
+        }
+class TestPointNetwork:
+    def test_write(self):
+        positions = pd.read_csv(PointNetwork_path + 'seed_stats.csv')
+        positions = positions[
+            [
+                "Center Of Mass X (µm)",
+                "Center Of Mass Y (µm)",
+                "Center Of Mass Z (µm)",
+            ]
+        ]
+        positions = positions.values
+
+        N = PointNetwork(positions, ATTR_VALUES["cutoff"])
+        N.point_to_skel()
+
+        assert hasattr(N, "graph")
+
+        ATTR_VALUES['box'] = N.box
+
+        N.node_labelling([np.ones(N.graph.vcount())], ["Ones"],
+                         filename=PointNetwork_path + 'labelled.gsd')
+
+    def test_from_gsd(self):
+        N = PointNetwork.from_gsd(PointNetwork_path + "labelled.gsd")
+
+        assert ATTR_VALUES['periodic'] == N.periodic
+        assert ATTR_VALUES['cutoff'] == N.cutoff
+        assert np.all(ATTR_VALUES['box'] == N.box)
