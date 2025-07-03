@@ -56,6 +56,11 @@ class Network:
             directory. This is primarily used to analyse a subset of a large
             directory. Cropping can be carried out after, if this argument
             is not specified.
+        prefix (str, optional):
+            The characters preceding numbers in the filename of the image.
+            Default is "slice".
+        dim (int, optional):
+            The dimensionality of the network, either 2 or 3. Default is 2.
     """
 
     def __init__(
@@ -63,7 +68,7 @@ class Network:
         directory,
         binarized_dir="Binarized",
         depth=None,
-        prefix=None,
+        prefix="slice",
         dim=2,
     ):
         if dim == 2 and depth is not None:
@@ -82,10 +87,8 @@ class Network:
             self._2d = True
         else:
             self._2d = False
-        if prefix is None:
-            self.prefix = "slice"
-        else:
-            self.prefix = prefix
+
+        self.prefix = prefix 
 
         image_stack = _image_stack()
         for slice_name in sorted(os.listdir(self.dir)):
@@ -96,7 +99,7 @@ class Network:
                 domain=_domain(depth),
                 _2d=self._2d,
             )
-            if dim == 2 and fname.isimg and prefix in fname:
+            if dim == 2 and fname.isimg and self.prefix in fname:
                 if len(image_stack) != 0:
                     warnings.warn(
                         "You have specified a 2D network but there are \
@@ -108,7 +111,7 @@ class Network:
                 _slice = plt.imread(self.dir + "/" + slice_name)
                 image_stack.append(_slice, slice_name)
             if dim == 3:
-                if fname.isinrange and fname.isimg and prefix in fname:
+                if fname.isinrange and fname.isimg and self.prefix in fname:
                     _slice = plt.imread(self.dir + "/" + slice_name)
                     image_stack.append(_slice, slice_name)
 
@@ -129,7 +132,7 @@ class Network:
                 A dictionary of option-value pairs for image processing. All
                 options must be specified. When this arguement is not
                 specified, the network's parent directory will be searched for
-                a file called img_options.json, containing the options.
+                a file called :code:`img_options.json`, containing the options.
         """
         if not os.path.isdir(self.dir + self.binarized_dir):
             os.mkdir(self.dir + self.binarized_dir)
@@ -212,21 +215,33 @@ class Network:
         self._img_bin = np.squeeze(self._img_bin)
 
     def set_graph(
-        self, sub=True, weight_type=None, write="network.gsd", **kwargs
+        self, sub=True, weight_type=None, write="network.gsd",
+        R_j=0, rho_dim=1
     ):
-        """Sets :class:`Graph` object as an attribute by reading the
+        r"""Sets :class:`Graph` object as an attribute by reading the
         skeleton file written by :meth:`img_to_skel`.
 
         Args:
             sub (optional, bool):
                 Whether to onlyh assign the largest connected component as the
                 :class:`igraph.Graph` object.
-            weight_type (optional, str):
-                How to weight the edges. Options include :code:`Length`,
-                :code:`Width`, :code:`Area`,
+            weight_type (optional, List[str]):
+                List of weights to include for edges. Options include :code:`Length`,
+                :code:`Width`, :code:`Area`, :code:`InverseLength`,
                 :code:`FixedWidthConductance`,
-                :code:`VariableWidthConductance`,
+                :code:`VariableWidthConductance`, :code:`Resistance`,
                 :code:`PerpBisector`.
+            write (optional, str):
+                Filename that graph should be written to.
+            R_j (optional, float):
+                Junction resistance used for electrical weight types.
+            rho_dim (optional, float):
+                Scaling parameter mapping pixel length to resistance used for
+                electrical weight types. If weight_type is
+                :code:`VariableWidthConductance`, this should have units
+                :math:`Ohm` pixels. If weight_type is
+                :code:`FixedWidthConductance`, this should be
+                resistivity/cross_sectional_area.
         """
 
         if not hasattr(self, "_skeleton"):
@@ -303,7 +318,8 @@ class Network:
                 self.Gr.vs[i]["pts"] = node_positions[i]
 
         if weight_type is not None:
-            self.Gr = base.add_weights(self, weight_type=weight_type, **kwargs)
+            self.Gr = base.add_weights(self, weight_type=weight_type,
+                                       rho_dim=rho_dim, R_j=R_j)
 
         self.shape = list(
             max(list(self.Gr.vs[i]["o"][j] for i in range(self.Gr.vcount())))
@@ -344,7 +360,7 @@ class Network:
                 binarization of the image(s).
             rotate (float):
                 The amount to rotate the skeleton by *after* the
-                :py:attr:`Gr` attribute has been set.
+                :py:attr:`graph` attribute has been set.
             debubble (list[:class:`numpy.ndarray`]):
                 The footprints to use for a debubbling protocol.
             box (bool):
@@ -459,16 +475,17 @@ class Network:
         sparse adjacency matrix (therefore edge/node attributes are not saved).
 
         Args:
-            attribute (:class:`numpy.ndarray`):
-                An array of attribute values in ascending order of node id.
-            label (str):
-                The label to give the attribute in the file.
+            attributes (list[:class:`numpy.ndarray`]):
+                A list of arrays of attribute values, with each array listing
+                attribute values in in ascending order of node id.
+            label (list[str]):
+                A list of the labels to give the attribute in the file.
             filename (str):
                 The file name to write.
             edge_weight (optional, :class:`numpy.ndarray`):
                 Any edge weights to store in the adjacency matrix.
             mode (optional, str):
-                The writing mode. See  for details.
+                The writing mode. See the `gsd documentation <https://gsd.readthedocs.io/en/stable/python-module-gsd.hoomd.html#:~:text=Valid%20values%20for%20mode%3A>`__ for details.
         """
         if isinstance(self.Gr, list):
             self.Gr = self.Gr[0]
@@ -602,7 +619,10 @@ class Network:
             ax (:class:`matplotlib.axes.Axes`, optional):
                 Axis to plot on. If :code:`None`, make a new figure and axis.
                 (Default value = :code:`None`)
-
+            depth (int, optional):
+                If the :code:`Network` is 3D, which slice to plot.
+            plot_img (bool, optional):
+                Whether to plot the image or not.
         Returns:
             (:class:`matplotlib.axes.Axes`): Axis with the plot.
         """
@@ -665,6 +685,14 @@ class Network:
             ax (:class:`matplotlib.axes.Axes`, optional):
                 Axis to plot on. If :code:`None`, make a new figure and axis.
                 (Default value = :code:`None`)
+            depth (int, optional):
+                If the :code:`Network` is 3D, which slice to plot.
+            edge_cmap (:code:`Colormap` or str, optional):
+                The colormap used for plotting edges.
+            plot_img (bool, optional):
+                Whether to plot the image or not.
+            kwargs (optional):
+                Keyword arguements to pass to :code:`ax.scatter`.
 
         Returns:
             (:class:`matplotlib.axes.Axes`): Axis with the plot.
@@ -870,6 +898,8 @@ def Graph(filename, frame=0):
     Args:
         filename (str):
             The file name to read.
+        frame (int, optional):
+            The frame to load from the gsd.
 
     Returns:
         (`igraph.Graph`): igraph Graph object.
@@ -929,6 +959,12 @@ class Regions:
 
 
 class ParticleNetwork(Sequence):
+    """Class for extracting sliceable list of graphs from :code:`gsd` files.
+
+    Args:
+        trajectory (str):
+           The filename of the trajectory. 
+    """
     def __init__(self, trajectory, cutoff, partition=0, periodic=False):
         self.traj = gsd.hoomd.open(trajectory)
         self.cutoff = cutoff
@@ -1058,10 +1094,13 @@ class PointNetwork:
         attribute with the given node attribute values.
 
         Args:
-            attribute (:class:`numpy.ndarray`):
-                An array of attribute values in ascending order of node id.
-            label (str):
-                The label to give the attribute in the file.
+            attributes (list[:class:`numpy.ndarray`]):
+                A list of arrays of attribute values, with each array listing
+                attribute values in in ascending order of node id.
+            label (list[str]):
+                A list of the labels to give the attribute in the file.
+            filename (str):
+                The file name to write.
         """
 
         if not isinstance(labels, list):
@@ -1094,7 +1133,14 @@ class PointNetwork:
     @classmethod
     def from_gsd(cls, filename, frame=0):
         """Alternative constructor for returning a PointNetwork object that is
-        stored in a `.gsd` file."""
+        stored in a :code:`.gsd` file.
+
+        Args:
+            filename (str):
+               The filename to read the :code:`.gsd` file from.
+            frame (int, optional):
+                The frame to load from the :code:`gsd`.
+        """
 
         f = gsd.hoomd.open(name=filename, mode="r")[frame]
         cutoff = f.log["cutoff"]
