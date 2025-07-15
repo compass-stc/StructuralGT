@@ -467,7 +467,7 @@ class Network:
             self.rotate = None
 
     def node_labelling(
-        self, attributes, labels, filename, edge_weight=None, mode="w"
+        self, attributes, labels, filename='labelled.gsd', edge_weight=None, mode="w"
     ):
         """Method saves a new :code:`.gsd` which labels the :attr:`graph`
         attribute with the given node attribute values. Method saves the
@@ -834,7 +834,7 @@ class Network:
         return self._skeleton
 
     @classmethod
-    def from_gsd(cls, filename, frame=0, depth=None, dim=2):
+    def from_gsd(cls, filename, frame=0, depth=None, dim=2, prefix="slice"):
         """
         Alternative constructor for returning a Network object that was
         previously stored in a `.gsd` and `.json` file. Assumes file is stored
@@ -846,7 +846,8 @@ class Network:
         _dir = os.path.abspath(filename)
         _dir = os.path.split(os.path.split(filename)[0])[0]
         binarized_dir = os.path.split(os.path.split(filename)[0])[-1]
-        N = cls(_dir, depth=depth, dim=dim, binarized_dir=binarized_dir)
+        N = cls(_dir, depth=depth, dim=dim, binarized_dir=binarized_dir,
+                prefix=prefix)
         if dim == 2:
             N._2d = True
         else:
