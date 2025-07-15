@@ -32,7 +32,7 @@ class NodeBetweenness(_Compute):
                 The :class:`Network` object.
         """
 
-        self._node_betweenness = network.graph.betweenness() / network.graph.vcount() / (network.graph.vcount() - 1 )
+        self._node_betweenness = np.array(network.graph.betweenness()) / network.graph.vcount() / (network.graph.vcount() - 1 )
 
     @_Compute._computed_property
     def node_betweenness(self):
