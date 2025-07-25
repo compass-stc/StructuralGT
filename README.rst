@@ -39,7 +39,7 @@ Betweenness).
 .. code:: bash
 
    git clone https://github.com/compass-stc/StructuralGT.git
-   conda install -c conda-forge numpy scipy scikit-image matplotlib networkx opencv pandas gsd python-igraph pytest ipywidgets freud
+   conda install -c conda-forge numpy scipy scikit-image matplotlib networkx opencv pandas gsd python-igraph pytest ipywidgets freud igraph cython eigen
    cd StructuralGT
    export C_FLAG=FALSE
    python3 -m pip install . --no-deps
