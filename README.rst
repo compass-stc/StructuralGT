@@ -39,7 +39,7 @@ Betweenness).
 .. code:: bash
 
    git clone https://github.com/compass-stc/StructuralGT.git
-   conda install -c conda-forge numpy scipy scikit-image matplotlib networkx opencv pandas gsd python-igraph pytest ipywidgets freud
+   conda install -c conda-forge numpy scipy scikit-image matplotlib networkx opencv pandas gsd python-igraph pytest ipywidgets freud igraph cython eigen
    cd StructuralGT
    export C_FLAG=FALSE
    python3 -m pip install . --no-deps
@@ -71,7 +71,7 @@ To learn how to implement this yourself, consult our
                     "bsize": 1, "wsize": 1, "thresh": 128.0}
 
    AgNWN = Network('AgNWN')
-   AgNWN.binarize(options_dict=agnwn_options)
+   AgNWN.binarize(options=agnwn_options)
    AgNWN.img_to_skel()
    AgNWN.set_graph(weight_type= ['FixedWidthConductance'])
 
