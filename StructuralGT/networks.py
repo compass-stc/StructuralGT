@@ -88,7 +88,7 @@ class Network:
         else:
             self._2d = False
 
-        self.prefix = prefix 
+        self.prefix = prefix
 
         image_stack = _image_stack()
         for slice_name in sorted(os.listdir(self.dir)):
@@ -215,8 +215,7 @@ class Network:
         self._img_bin = np.squeeze(self._img_bin)
 
     def set_graph(
-        self, sub=True, weight_type=None, write="network.gsd",
-        R_j=0, rho_dim=1
+        self, sub=True, weight_type=None, write="network.gsd", R_j=0, rho_dim=1
     ):
         r"""Sets :class:`Graph` object as an attribute by reading the
         skeleton file written by :meth:`img_to_skel`.
@@ -318,8 +317,9 @@ class Network:
                 self.Gr.vs[i]["pts"] = node_positions[i]
 
         if weight_type is not None:
-            self.Gr = base.add_weights(self, weight_type=weight_type,
-                                       rho_dim=rho_dim, R_j=R_j)
+            self.Gr = base.add_weights(
+                self, weight_type=weight_type, rho_dim=rho_dim, R_j=R_j
+            )
 
         self.shape = list(
             max(list(self.Gr.vs[i]["o"][j] for i in range(self.Gr.vcount())))
@@ -467,7 +467,12 @@ class Network:
             self.rotate = None
 
     def node_labelling(
-        self, attributes, labels, filename='labelled.gsd', edge_weight=None, mode="w"
+        self,
+        attributes,
+        labels,
+        filename="labelled.gsd",
+        edge_weight=None,
+        mode="w",
     ):
         """Method saves a new :code:`.gsd` which labels the :attr:`graph`
         attribute with the given node attribute values. Method saves the
@@ -846,8 +851,13 @@ class Network:
         _dir = os.path.abspath(filename)
         _dir = os.path.split(os.path.split(filename)[0])[0]
         binarized_dir = os.path.split(os.path.split(filename)[0])[-1]
-        N = cls(_dir, depth=depth, dim=dim, binarized_dir=binarized_dir,
-                prefix=prefix)
+        N = cls(
+            _dir,
+            depth=depth,
+            dim=dim,
+            binarized_dir=binarized_dir,
+            prefix=prefix,
+        )
         if dim == 2:
             N._2d = True
         else:
@@ -887,11 +897,13 @@ class Network:
         )
         N.Gr.vs["o"] = base.shift(centroid_pos, _2d=N._2d)[0].astype(int)
 
+        N.shape = f.configuration.box[first_axis:3].astype(int)
+
         return N
 
 
 def Graph(filename, frame=0):
-    """Functions which returns an `igraph.Graph` object from a gsd, with
+    """Function which returns an `igraph.Graph` object from a gsd, with
     node and edge position attributes. Useful when a `Network` object is not
     required. Unlike `Network.from_gsd`, it makes no assumptions about the
     path of the `gsd` file.
@@ -921,7 +933,65 @@ def Graph(filename, frame=0):
     Gr.vs["pts"] = node_pos
     Gr.vs["o"] = centroid_pos
 
+    Gr.crop = crop_method
+    Gr.node_labelling = node_labelling_method
+
     return Gr
+
+
+class GeometricGraph:
+    """
+
+    Args:
+        filename (str):
+            The file name to read.
+        frame (int, optional):
+            The frame to load from the gsd.
+
+    Returns:
+        (`igraph.Graph`): igraph Graph object.
+    """
+
+    def __init__(self, filename, frame=0):
+        f = gsd.hoomd.open(name=filename, mode="r")[frame]
+        _json = os.path.splitext(filename)[0] + ".json"
+        with open(_json) as json_file:
+            data = json.load(json_file)
+
+        self.dim = int(data["dim"])
+        self._2d = {2: True, 3: False}[self.dim]
+        self.cropper_string = data["cropper"]  # Dubious about whether useful.
+        f = gsd.hoomd.open(name=filename, mode="r")[frame]
+        rows = f.log["Adj_rows"]
+        cols = f.log["Adj_cols"]
+        values = f.log["Adj_values"]
+        S = scipy.sparse.csr_matrix((values, (rows, cols)))
+        G = ig.Graph()
+        self.Gr = G.Weighted_Adjacency(S, mode="upper")
+
+        first_axis = {2: 1, 3: 0}[self.dim]
+        edge_pos = (
+            f.particles.position[f.particles.typeid == 0].T[first_axis:3].T
+        )
+        node_pos = (
+            f.particles.position[f.particles.typeid == 1].T[first_axis:3].T
+        )
+        centroid_pos = (
+            f.particles.position[f.particles.typeid == 2].T[first_axis:3].T
+        )
+
+        self.Gr.es["pts"] = base.split(
+            base.shift(edge_pos, _2d=self._2d)[0].astype(int),
+            f.log["Edge_lens"],
+        )
+        self.Gr.vs["pts"] = base.split(
+            base.shift(node_pos, _2d=self._2d)[0].astype(int),
+            f.log["Node_lens"],
+        )
+        self.Gr.vs["o"] = base.shift(centroid_pos, _2d=self._2d)[0].astype(int)
+
+        self.shape = f.configuration.box[first_axis:3].astype(int)
+        self.graph = self.Gr
 
 
 class Regions:
@@ -964,8 +1034,9 @@ class ParticleNetwork(Sequence):
 
     Args:
         trajectory (str):
-           The filename of the trajectory. 
+           The filename of the trajectory.
     """
+
     def __init__(self, trajectory, cutoff, partition=0, periodic=False):
         self.traj = gsd.hoomd.open(trajectory)
         self.cutoff = cutoff
