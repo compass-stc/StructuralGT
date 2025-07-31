@@ -79,21 +79,19 @@ class Network:
             )
 
         if not os.path.exists(directory):
-            raise FileNotFoundError(
-                    "The path you provided does not exist"
-            )
+            raise FileNotFoundError("The path you provided does not exist")
 
         if not os.path.isdir(directory):
             warnings.warn(
-                    "You have not provided a directory so "
-                    "StructuralGT will create one and move the image and "
-                    "all subsequent results inside of it."
+                "You have not provided a directory so "
+                "StructuralGT will create one and move the image and "
+                "all subsequent results inside of it.",
+                UserWarning,
             )
-            dir_name = os.path.splitext(directory)[0] 
-            img_name = os.path.split(directory)[1]
+            dir_name = os.path.splitext(directory)[0]
             if not os.path.exists(dir_name):
                 os.mkdir(dir_name)
-            os.rename(directory, dir_name + '/' + img_name)
+            os.rename(directory, dir_name + "/slice0000.tiff")
             directory = dir_name
 
         self.dir = directory
@@ -123,7 +121,8 @@ class Network:
                         "You have specified a 2D network but there are \
                         several suitable images in the given directory. \
                         By default, StructuralGT will take the first image.\
-                        To override, specify the prefix argument."
+                        To override, specify the prefix argument.",
+                        UserWarning,
                     )
                     break
                 _slice = plt.imread(self.dir + "/" + slice_name)
@@ -950,9 +949,6 @@ def Graph(filename, frame=0):
     Gr.es["pts"] = edge_pos
     Gr.vs["pts"] = node_pos
     Gr.vs["o"] = centroid_pos
-
-    Gr.crop = crop_method
-    Gr.node_labelling = node_labelling_method
 
     return Gr
 

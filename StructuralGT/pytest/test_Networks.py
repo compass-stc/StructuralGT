@@ -106,9 +106,8 @@ class TestNetwork:
         testNetwork.set_graph()
 
         dir_name = os.path.splitext(img_path)[0]
-        os.rename(dir_name + "/loose_img.tiff", img_path)
+        os.rename(dir_name + "/slice0000.tiff", img_path)
         shutil.rmtree(dir_name)
-        print("run")
 
 
 class TestGraph:
@@ -116,14 +115,17 @@ class TestGraph:
         testGraph = Graph(Small_path + "Binarized/network.gsd")
         testGraph.vs["o"][0]
 
+
 ATTR_VALUES = {
-            "periodic": False,
-            "cutoff": 1200,
-            "dim": 3,
-        }
+    "periodic": False,
+    "cutoff": 1200,
+    "dim": 3,
+}
+
+
 class TestPointNetwork:
     def test_write(self):
-        positions = pd.read_csv(PointNetwork_path + 'seed_stats.csv')
+        positions = pd.read_csv(PointNetwork_path + "seed_stats.csv")
         positions = positions[
             [
                 "Center Of Mass X (µm)",
@@ -138,14 +140,17 @@ class TestPointNetwork:
 
         assert hasattr(N, "graph")
 
-        ATTR_VALUES['box'] = N.box
+        ATTR_VALUES["box"] = N.box
 
-        N.node_labelling([np.ones(N.graph.vcount())], ["Ones"],
-                         filename=PointNetwork_path + 'labelled.gsd')
+        N.node_labelling(
+            [np.ones(N.graph.vcount())],
+            ["Ones"],
+            filename=PointNetwork_path + "labelled.gsd",
+        )
 
     def test_from_gsd(self):
         N = PointNetwork.from_gsd(PointNetwork_path + "labelled.gsd")
 
-        assert ATTR_VALUES['periodic'] == N.periodic
-        assert ATTR_VALUES['cutoff'] == N.cutoff
-        assert np.all(ATTR_VALUES['box'] == N.box)
+        assert ATTR_VALUES["periodic"] == N.periodic
+        assert ATTR_VALUES["cutoff"] == N.cutoff
+        assert np.all(ATTR_VALUES["box"] == N.box)
