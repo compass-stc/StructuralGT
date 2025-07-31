@@ -3,6 +3,7 @@
 # License.
 
 import shutil
+import os
 
 import numpy as np
 import pandas as pd
@@ -16,6 +17,7 @@ Small_path = "StructuralGT/pytest/data/Small/"
 AgNWN_path = "StructuralGT/pytest/data/AgNWN/"
 ANF_path = "StructuralGT/pytest/data/ANF/"
 PointNetwork_path = "StructuralGT/pytest/data/Seeds/"
+img_path = "StructuralGT/pytest/data/loose_img.tiff"
 
 
 class TestNetwork:
@@ -38,12 +40,17 @@ class TestNetwork:
         with pytest.raises(error.ImageDirectoryError):
             testNetwork = Network(AgNWN_path, prefix="wrong_prefix")
 
-        with pytest.raises(UserWarning):
+        with pytest.warns(UserWarning):
             testNetwork = Network(AgNWN_path)
 
         return Network(AgNWN_path, prefix="slice")
 
     @pytest.fixture
+    def test_binarize(self, test_2d_constructor):
+        test_2d_constructor.binarize(options=options.agnwn)
+
+        return test_2d_constructor
+
     def test_graph(self, test_2d_constructor):
         shutil.rmtree(AgNWN_path + "Binarized", ignore_errors=True)
         shutil.rmtree(AgNWN_path + "HighThresh", ignore_errors=True)
@@ -51,7 +58,7 @@ class TestNetwork:
         testNetwork = Network(AgNWN_path)
         testNetwork.binarize(options=options.agnwn)
 
-        HighThresh = Network(AgNWN_path, child_dir="HighThresh")
+        HighThresh = Network(AgNWN_path, binarized_dir="HighThresh")
         HighThresh.binarize(options=options.agnwn_high_thresh)
 
         with pytest.raises(AttributeError):
@@ -60,8 +67,6 @@ class TestNetwork:
         HighThresh.img_to_skel()
         HighThresh.set_graph(write=False)
 
-        return testNetwork
-
     @pytest.fixture
     def test_crop(self, test_binarize):
         testNetwork = test_binarize
@@ -69,12 +74,10 @@ class TestNetwork:
 
         return testNetwork
 
-    @pytest.fixture
     def test_rotations(self, test_binarize):
         testNetwork = test_binarize
         testNetwork.img_to_skel(crop=[149, 868, 408, 1127], rotate=45)
 
-    @pytest.fixture
     def test_weighting(self, test_crop):
         testNetwork = test_crop
         testNetwork.set_graph(
@@ -83,12 +86,6 @@ class TestNetwork:
             rho_dim=2,
             write=False,
         )
-
-        return testNetwork
-
-    @pytest.fixture(scope="session")
-    def test_unweighted_network(self, test_crop):
-        return test_crop
 
     def test_from_gsd(self):
         writeNetwork = Network(Small_path, binarized_dir="HighThresh")
@@ -99,6 +96,19 @@ class TestNetwork:
         testNetwork = Network.from_gsd(Small_path + "HighThresh/network.gsd")
 
         testNetwork.Gr.vs["o"][0]
+
+    def test_from_img_file_path(self):
+        with pytest.warns(UserWarning):
+            testNetwork = Network(img_path)
+
+        testNetwork.binarize(options=options.agnwn)
+        testNetwork.img_to_skel()
+        testNetwork.set_graph()
+
+        dir_name = os.path.splitext(img_path)[0]
+        os.rename(dir_name + "/loose_img.tiff", img_path)
+        shutil.rmtree(dir_name)
+        print("run")
 
 
 class TestGraph:

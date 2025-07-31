@@ -78,6 +78,24 @@ class Network:
                 network."
             )
 
+        if not os.path.exists(directory):
+            raise FileNotFoundError(
+                    "The path you provided does not exist"
+            )
+
+        if not os.path.isdir(directory):
+            warnings.warn(
+                    "You have not provided a directory so "
+                    "StructuralGT will create one and move the image and "
+                    "all subsequent results inside of it."
+            )
+            dir_name = os.path.splitext(directory)[0] 
+            img_name = os.path.split(directory)[1]
+            if not os.path.exists(dir_name):
+                os.mkdir(dir_name)
+            os.rename(directory, dir_name + '/' + img_name)
+            directory = dir_name
+
         self.dir = directory
         self.binarized_dir = "/" + binarized_dir
         self.stack_dir = os.path.normpath(self.dir + self.binarized_dir)
