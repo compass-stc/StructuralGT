@@ -27,7 +27,7 @@ sucessful when all dependencies are obtained with conda.
 .. code:: bash
 
    git clone https://github.com/compass-stc/StructuralGT.git
-   conda install -c conda-forge numpy scipy scikit-image matplotlib networkx opencv pandas gsd python-igraph pytest ipywidgets freud
+   conda install -c conda-forge numpy scipy scikit-image matplotlib networkx opencv pandas gsd python-igraph pytest ipywidgets freud eigen cython igraph
    cd StructuralGT
    python3 -m pip install . --no-deps
 
