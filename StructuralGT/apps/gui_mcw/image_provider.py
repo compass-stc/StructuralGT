@@ -35,6 +35,7 @@ class ImageProvider(QQuickImageProvider):
                     img_cv = None
                     self.img_controller.load_graph_simulation()
                 else:
+                    print("Calling graph_plot()")
                     ax = image.network.graph_plot()
                     fig = ax.get_figure()
                     fig.subplots_adjust(left=0, right=1, top=1, bottom=0)

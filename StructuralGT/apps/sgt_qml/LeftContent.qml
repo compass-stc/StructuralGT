@@ -19,6 +19,7 @@ Rectangle {
             TabButton { text: "Images" }
             TabButton { text: "Properties" }
             TabButton { text: "Filters" }
+            TabButton { text: "Graph" }
         }
 
         StackLayout {
@@ -28,6 +29,7 @@ Rectangle {
             ImgNav{}
             ImageProperties{}
             ImageFilters{}
+            GraphExtraction{}
         }
     }
 

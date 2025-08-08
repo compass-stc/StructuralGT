@@ -38,18 +38,31 @@ class WorkerTask (QObject):
             logging.exception("Binarizer Error: %s", err, extra={'user': 'SGT Logs'})
             self.taskFinishedSignal.emit(False, ["Binarizer Failed", "Error applying binarizer."])
     
-    def task_run_graph_extraction(self, image):
+    def task_run_graph_extraction(self, image, weights):
+        """Run graph extraction using Network.img_to_skel() and set_graph() methods"""
         try:
-            if image.binary_loaded == False:
-                self.taskFinishedSignal.emit(False, ["Graph Extraction Failed", "Please run binarizer first."])
-                return
+            # First ensure we have a skeleton by calling img_to_skel
             image.network.img_to_skel()
-            image.network.set_graph()
+            
+            # Set weight_type parameter if weights are specified
+            weight_type = None if not weights or weights.strip() == "" else weights.strip()
+            
+            # Call Network.set_graph() method
+            image.network.set_graph(weight_type=weight_type, write="network.gsd")
+            
+            # Mark graph as loaded
             image.graph_loaded = True
-            self.taskFinishedSignal.emit(True, image)
-        except Exception as err:
-            logging.exception("Graph Error: %s", err, extra={'user': 'SGT Logs'})
-            self.taskFinishedSignal.emit(False, ["Graph Extraction Failed", "Error extracting graph."])
+            
+            # Update properties if needed
+            if hasattr(image.network, 'Gr') and image.network.Gr:
+                image.properties["Node Count"] = image.network.Gr.vcount()
+                image.properties["Edge Count"] = image.network.Gr.ecount()
+            
+            self.taskFinishedSignal.emit(True, None)
+            
+        except Exception as e:
+            error_msg = f"Graph extraction failed: {str(e)}"
+            self.taskFinishedSignal.emit(False, ["Graph Extraction Error", error_msg])
 
     def task_run_graph_analysis(self, image, options):
         try:

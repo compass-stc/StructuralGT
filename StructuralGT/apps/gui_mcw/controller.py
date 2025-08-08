@@ -392,6 +392,14 @@ class MainController(QObject):
             self.wait_flag = False
             return
 
+        # Ensure binary image is available before graph extraction
+        if not image.binary_loaded:
+            self.showAlertSignal.emit(
+                "Binary Image Required", 
+                "Please apply binarizer before extracting graph."
+            )
+            return
+
         self.wait_flag = True
         self.thread = QThreadWorker(
             self.worker_task.task_run_graph_extraction,
