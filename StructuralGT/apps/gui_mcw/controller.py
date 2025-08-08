@@ -374,6 +374,11 @@ class MainController(QObject):
     @Slot()
     def run_graph_extraction(self):
         """Run the graph extraction on the selected image"""
+        self.run_graph_extraction_with_weights("")
+    
+    @Slot(str)
+    def run_graph_extraction_with_weights(self, weights):
+        """Run the graph extraction on the selected image with weights"""
         if self.wait_flag:
             logging.info(
                 "Please Wait: Another Task Running!",
@@ -390,7 +395,7 @@ class MainController(QObject):
         self.wait_flag = True
         self.thread = QThreadWorker(
             self.worker_task.task_run_graph_extraction,
-            (image,),
+            (image, weights),
         )
         self.worker_task.taskFinishedSignal.connect(
             self._on_graph_extraction_finished
@@ -637,3 +642,33 @@ class MainController(QObject):
                 "CSV Error", f"Error loading CSV file: {str(err)}"
             )
             return False
+
+    @Slot(str)
+    def apply_binarizer_direct(self, options):
+        """Apply binarizer by directly calling Network.binarize() method"""
+        image = self.get_selected_image()
+        if image is None:
+            return
+
+        try:
+            # Parse the options from JSON
+            if options:
+                options_dict = json.loads(options)
+            else:
+                options_dict = None
+            
+            # Call Network.binarize() directly
+            image.network.binarize(options_dict)
+            
+            # Update the display to show binary image
+            image.binary_loaded = True
+            image.display_type = "binary"
+            self.load_image()
+            
+        except Exception as err:
+            logging.exception(
+                "Binarizer Error: %s", err, extra={"user": "SGT Logs"}
+            )
+            self.showAlertSignal.emit(
+                "Binarizer Error", f"Error applying binarizer: {str(err)}"
+            )

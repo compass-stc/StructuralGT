@@ -120,21 +120,26 @@ class Network:
                 may need to specify the prefix argument."
             )
 
-    def binarize(self, options="img_options.json"):
+    def binarize(self, options=None):
         """Binarizes stack of experimental images using a set of image
         processing parameters.
 
         Args:
             options (dict, optional):
                 A dictionary of option-value pairs for image processing. All
-                options must be specified. When this arguement is not
+                options must be specified. When this argument is not
                 specified, the network's parent directory will be searched for
                 a file called img_options.json, containing the options.
         """
         if not os.path.isdir(self.dir + self.binarized_dir):
             os.mkdir(self.dir + self.binarized_dir)
 
-        if isinstance(options, str):
+        if options is None:
+            # Default behavior - look for img_options.json
+            options = self.dir + "/" + "img_options.json"
+            with open(options) as f:
+                options = json.load(f)
+        elif isinstance(options, str):
             options = self.dir + "/" + options
             with open(options) as f:
                 options = json.load(f)

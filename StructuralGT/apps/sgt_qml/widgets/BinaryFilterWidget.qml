@@ -265,8 +265,8 @@ ColumnLayout {
                     "wsize": parseInt(bWindowSize.value) * 2 + 1,
                     "thresh": bThreshold.value
                 };
-                // Send the options to the main controller
-                mainController.run_binarizer(JSON.stringify(options));
+                // Send the options to the main controller to call Network.binarize()
+                mainController.apply_binarizer_direct(JSON.stringify(options));
             }
         }
 
