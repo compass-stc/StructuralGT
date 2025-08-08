@@ -67,6 +67,8 @@ class MainController(QObject):
         self.imagePropsModel = TableModel([])
         self.graphPropsModel = TableModel([])
         self.imageListModel = ListModel([])
+        
+        self.ovito_widget_opened = False
 
     @Slot(str, result=str)
     def get_file_extensions(self, option):
@@ -426,33 +428,37 @@ class MainController(QObject):
 
     def load_graph_simulation(self):
         """Render and visualize OVITO graph network simulation."""
-        try:
-            # Clear any existing scene
-            for p_line in list(scene.pipelines):
-                p_line.remove_from_scene()
+        if self.ovito_widget_opened:
+            print("OVITO widget already opened.")
+        else:
+            self.ovito_widget_opened = True
+            try:
+                # Clear any existing scene
+                for p_line in list(scene.pipelines):
+                    p_line.remove_from_scene()
 
-            # Create OVITO data pipeline
-            image = self.get_selected_image()
-            gsd_file = (
-                os.path.join(image.img_path.name, "Binarized/network.gsd")
-                if not image.is_3d
-                else os.path.join(image.img_path, "Binarized/network.gsd")
-            )
-            pipeline = import_file(gsd_file)
-            pipeline.add_to_scene()
+                # Create OVITO data pipeline
+                image = self.get_selected_image()
+                gsd_file = (
+                    os.path.join(image.img_path.name, "Binarized/network.gsd")
+                    if not image.is_3d
+                    else os.path.join(image.img_path, "Binarized/network.gsd")
+                )
+                pipeline = import_file(gsd_file)
+                pipeline.add_to_scene()
 
-            vp = Viewport(
-                type=Viewport.Type.Perspective, camera_dir=(2, 1, -1)
-            )
-            ovito_widget = create_qwidget(
-                vp, parent=self.qml_app.activeWindow()
-            )
-            ovito_widget.setMinimumSize(800, 500)
-            vp.zoom_all((800, 500))
-            ovito_widget.show()
+                vp = Viewport(
+                    type=Viewport.Type.Perspective, camera_dir=(2, 1, -1)
+                )
+                ovito_widget = create_qwidget(
+                    vp, parent=self.qml_app.activeWindow()
+                )
+                ovito_widget.setMinimumSize(800, 500)
+                vp.zoom_all((800, 500))
+                ovito_widget.show()
 
-        except Exception as e:
-            print("Graph Simulation Error:", e)
+            except Exception as e:
+                print("Graph Simulation Error:", e)
 
     @Slot()
     def update_image_model(self):
@@ -620,7 +626,7 @@ class MainController(QObject):
                 ]
             )
 
-            self.load_image()
+            #self.load_image()
             return True
 
         except Exception as err:
