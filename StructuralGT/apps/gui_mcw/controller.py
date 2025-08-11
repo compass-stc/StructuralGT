@@ -67,8 +67,24 @@ class MainController(QObject):
         self.imagePropsModel = TableModel([])
         self.graphPropsModel = TableModel([])
         self.imageListModel = ListModel([])
-        
+
         self.ovito_widget_opened = False
+
+    def skip(condition):
+        """
+        Decorator that skips the function call if condition_func returns True.
+        """
+
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                if condition:
+                    print("Condition met, skipping function.")
+                    return None  # or any appropriate value
+                return func(*args, **kwargs)
+
+            return wrapper
+
+        return decorator
 
     @Slot(str, result=str)
     def get_file_extensions(self, option):
@@ -116,6 +132,7 @@ class MainController(QObject):
             return False
         return a_path
 
+    # @skip(lambda self: isinstance(self.network, PointNetwork))
     def get_selected_image(self):
         try:
             return self.images[self.selected_img_index]
@@ -159,6 +176,7 @@ class MainController(QObject):
         return self.get_selected_image().selected_slice_index
 
     @Slot(result=int)
+    # @skip(lambda self: isinstance(self.network, PointNetwork))
     def get_number_of_slices(self):
         """Get the number of slices of the selected image."""
         return self.get_selected_image().network.image.shape[0]
@@ -375,7 +393,7 @@ class MainController(QObject):
     def run_graph_extraction(self):
         """Run the graph extraction on the selected image"""
         self.run_graph_extraction_with_weights("")
-    
+
     @Slot(str)
     def run_graph_extraction_with_weights(self, weights):
         """Run the graph extraction on the selected image with weights"""
@@ -395,8 +413,8 @@ class MainController(QObject):
         # Ensure binary image is available before graph extraction
         if not image.binary_loaded:
             self.showAlertSignal.emit(
-                "Binary Image Required", 
-                "Please apply binarizer before extracting graph."
+                "Binary Image Required",
+                "Please apply binarizer before extracting graph.",
             )
             return
 
@@ -620,6 +638,10 @@ class MainController(QObject):
             # Create PointNetwork object
             point_network = PointNetwork(positions, cutoff)
 
+            point_network.shape = list(
+                max(positions.T[i]) - min(positions.T[1]) for i in [0, 1, 2]
+            )
+
             # Create a CSV handler similar to ImageHandler
             csv_handler = CSVHandler(csv_path, point_network)
             self.images.append(csv_handler)
@@ -639,7 +661,7 @@ class MainController(QObject):
                 ]
             )
 
-            #self.load_image()
+            self.load_image()
             return True
 
         except Exception as err:
@@ -664,15 +686,15 @@ class MainController(QObject):
                 options_dict = json.loads(options)
             else:
                 options_dict = None
-            
+
             # Call Network.binarize() directly
             image.network.binarize(options_dict)
-            
+
             # Update the display to show binary image
             image.binary_loaded = True
             image.display_type = "binary"
             self.load_image()
-            
+
         except Exception as err:
             logging.exception(
                 "Binarizer Error: %s", err, extra={"user": "SGT Logs"}

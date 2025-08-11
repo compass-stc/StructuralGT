@@ -38,18 +38,15 @@ class WorkerTask (QObject):
             logging.exception("Binarizer Error: %s", err, extra={'user': 'SGT Logs'})
             self.taskFinishedSignal.emit(False, ["Binarizer Failed", "Error applying binarizer."])
     
-    def task_run_graph_extraction(self, image, weights):
+    def task_run_graph_extraction(self, image, weights=None):
         """Run graph extraction using Network.img_to_skel() and set_graph() methods"""
         try:
             # First ensure we have a skeleton by calling img_to_skel
             image.network.img_to_skel()
             
-            # Set weight_type parameter if weights are specified
-            weight_type = None if not weights or weights.strip() == "" else weights.strip()
-            
             # Call Network.set_graph() method
-            image.network.set_graph(weight_type=weight_type, write="network.gsd")
-            
+            image.network.set_graph(weight_type=list(weights), write="network.gsd")
+
             # Mark graph as loaded
             image.graph_loaded = True
             

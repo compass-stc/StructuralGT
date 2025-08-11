@@ -24,7 +24,7 @@ Rectangle {
                 id: btnAddImage
                 Layout.preferredWidth: 80
                 Layout.preferredHeight: 30
-                text: "Add 32D"
+                text: "Add 2D"
                 onClicked: imageFileDialog.open()
             }
 
