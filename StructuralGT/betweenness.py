@@ -2,6 +2,8 @@
 # This file is from the StructuralGT project, released under the BSD 3-Clause
 # License.
 
+"""Mocked module for use in documentation builds."""
+
 import copy
 
 import numpy as np
@@ -32,7 +34,7 @@ class NodeBetweenness(_Compute):
                 The :class:`Network` object.
         """
 
-        self._node_betweenness = np.array(network.graph.betweenness()) / network.graph.vcount() / (network.graph.vcount() - 1 )
+        self._node_betweenness = network.graph.betweenness()
 
     @_Compute._computed_property
     def node_betweenness(self):
@@ -40,24 +42,15 @@ class NodeBetweenness(_Compute):
 
         .. math::
 
-           g(v) =\frac{1}{|N|(|N|-1)} \sum_{s\in N,t \in N} \frac{\sigma(s, t|v)}{\sigma(s, t)}
+           c_B(v) =\sum_{s\in N,t \in N} \frac{\sigma(s, t|v)}{\sigma(s, t)}
 
-        where :math:`N` is the set of nodes, 
+        where :math:`S` is the set of sources, :math:`T` is the set of targets,
         :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
         and :math:`\sigma(s, t|v)` is the number of those paths
-        passing through node :math:`v` :cite:`Brandes2008`.
+        passing through node :math:`v` :cite:`Brandes2008` (which is unity for
+        real value weighted graphs).
         """
         return self._node_betweenness
-    
-    @_Compute._computed_property
-    def average_node_betweenness(self):
-        r"""Average node betweenness centrality.
-
-        .. math::
-
-           \bar{g} = \frac{1}{|N|} \sum_{v\in N} g(v)
-        """
-        return np.mean(self._node_betweenness)
 
 class NodeBoundaryBetweenness(_Compute):
     """A module for calculating different extension of the classical
@@ -102,17 +95,18 @@ class NodeBoundaryBetweenness(_Compute):
 
     @_Compute._computed_property
     def vertex_boundary_betweenness(self):
-        r"""Node betweenness centrality over a subset of nodes.
+        r"""Edge betweenness centrality over a subset of nodes.
         Sometimes called betweenness subset.
 
         .. math::
 
-           g_B(v) =\sum_{s\in S,t \in T} \frac{\sigma(s, t|e)}{\sigma(s, t)}
+           c_B(v) =\sum_{s\in S,t \in T} \frac{\sigma(s, t|e)}{\sigma(s, t)}
 
         where :math:`S` is the set of sources, :math:`T` is the set of targets,
         :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
         and :math:`\sigma(s, t|e)` is the number of those paths
-        passing through edge :math:`e` :cite:`Brandes2008`.
+        passing through edge :math:`e` :cite:`Brandes2008` (which is unity for
+        real value weighted graphs).
         """
         return self._vertex_boundary_betweenness
 
@@ -165,12 +159,13 @@ class BoundaryBetweenness(_Compute):
 
         .. math::
 
-           EBC_B(e) = \frac{1}{2|T|(|S|-1)} \sum_{s\in S,t \in T} \frac{\sigma(s, t|e)}{\sigma(s, t)}
+           c_B(v) =\sum_{s\in S,t \in T} \frac{\sigma(s, t|e)}{\sigma(s, t)}
 
         where :math:`S` is the set of sources, :math:`T` is the set of targets,
         :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
         and :math:`\sigma(s, t|e)` is the number of those paths
-        passing through edge :math:`e` :cite:`Brandes2008`.
+        passing through edge :math:`e` :cite:`Brandes2008` (which is unity for
+        real value weighted graphs).
         """
         return self._boundary_betweenness
 
@@ -236,15 +231,18 @@ class RandomBoundaryBetweenness(_Compute):
 
     @_Compute._computed_property
     def linear_betweenness(self):
-        """A random walk betweenness that requires number of sources and
-        targets to be equal for random walker balance (i.e. charge
-        conservation).
+        """Similar to :meth:`random_walk` except flow is conserved by
+        adding a ghost node and attaching it to all the target nodes. Flow
+        constraints are enforced only at the source and ghost node. Full
+        details are given in :cite:`Martinez2024`.
         """
         return self._linear_betweenness
 
     @_Compute._computed_property
     def nonlinear_betweenness(self):
-        """A random walk betweenness that does not requires number of sources
-        and targets to be equal because a ghost sink node is added.
+        """Similar to :meth:`random_walk` except flow is conserved by
+        adding a ghost node and attaching it to all the target nodes. Flow
+        constraints are enforced only at the source and ghost node. Full
+        details are given in :cite:`Martinez2024`.
         """
         return self._nonlinear_betweenness

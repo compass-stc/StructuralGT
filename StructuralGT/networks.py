@@ -56,11 +56,6 @@ class Network:
             directory. This is primarily used to analyse a subset of a large
             directory. Cropping can be carried out after, if this argument
             is not specified.
-        prefix (str, optional):
-            The characters preceding numbers in the filename of the image.
-            Default is "slice".
-        dim (int, optional):
-            The dimensionality of the network, either 2 or 3. Default is 2.
     """
 
     def __init__(
@@ -68,7 +63,7 @@ class Network:
         directory,
         binarized_dir="Binarized",
         depth=None,
-        prefix="slice",
+        prefix=None,
         dim=2,
     ):
         if dim == 2 and depth is not None:
@@ -77,22 +72,6 @@ class Network:
                 Change dim to 3 if you would like a single slice of a 3D \
                 network."
             )
-
-        if not os.path.exists(directory):
-            raise FileNotFoundError("The path you provided does not exist")
-
-        if not os.path.isdir(directory):
-            warnings.warn(
-                "You have not provided a directory so "
-                "StructuralGT will create one and move the image and "
-                "all subsequent results inside of it.",
-                UserWarning,
-            )
-            dir_name = os.path.splitext(directory)[0]
-            if not os.path.exists(dir_name):
-                os.mkdir(dir_name)
-            os.rename(directory, dir_name + "/slice0000.tiff")
-            directory = dir_name
 
         self.dir = directory
         self.binarized_dir = "/" + binarized_dir
@@ -103,8 +82,10 @@ class Network:
             self._2d = True
         else:
             self._2d = False
-
-        self.prefix = prefix
+        if prefix is None:
+            self.prefix = "slice"
+        else:
+            self.prefix = prefix
 
         image_stack = _image_stack()
         for slice_name in sorted(os.listdir(self.dir)):
@@ -115,20 +96,19 @@ class Network:
                 domain=_domain(depth),
                 _2d=self._2d,
             )
-            if dim == 2 and fname.isimg and self.prefix in fname:
+            if dim == 2 and fname.isimg and prefix in fname:
                 if len(image_stack) != 0:
                     warnings.warn(
                         "You have specified a 2D network but there are \
                         several suitable images in the given directory. \
                         By default, StructuralGT will take the first image.\
-                        To override, specify the prefix argument.",
-                        UserWarning,
+                        To override, specify the prefix argument."
                     )
                     break
                 _slice = plt.imread(self.dir + "/" + slice_name)
                 image_stack.append(_slice, slice_name)
             if dim == 3:
-                if fname.isinrange and fname.isimg and self.prefix in fname:
+                if fname.isinrange and fname.isimg and prefix in fname:
                     _slice = plt.imread(self.dir + "/" + slice_name)
                     image_stack.append(_slice, slice_name)
 
@@ -140,21 +120,26 @@ class Network:
                 may need to specify the prefix argument."
             )
 
-    def binarize(self, options="img_options.json"):
+    def binarize(self, options=None):
         """Binarizes stack of experimental images using a set of image
         processing parameters.
 
         Args:
             options (dict, optional):
                 A dictionary of option-value pairs for image processing. All
-                options must be specified. When this arguement is not
+                options must be specified. When this argument is not
                 specified, the network's parent directory will be searched for
-                a file called :code:`img_options.json`, containing the options.
+                a file called img_options.json, containing the options.
         """
         if not os.path.isdir(self.dir + self.binarized_dir):
             os.mkdir(self.dir + self.binarized_dir)
 
-        if isinstance(options, str):
+        if options is None:
+            # Default behavior - look for img_options.json
+            options = self.dir + "/" + "img_options.json"
+            with open(options) as f:
+                options = json.load(f)
+        elif isinstance(options, str):
             options = self.dir + "/" + options
             with open(options) as f:
                 options = json.load(f)
@@ -232,32 +217,21 @@ class Network:
         self._img_bin = np.squeeze(self._img_bin)
 
     def set_graph(
-        self, sub=True, weight_type=None, write="network.gsd", R_j=0, rho_dim=1
+        self, sub=True, weight_type=None, write="network.gsd", **kwargs
     ):
-        r"""Sets :class:`Graph` object as an attribute by reading the
+        """Sets :class:`Graph` object as an attribute by reading the
         skeleton file written by :meth:`img_to_skel`.
 
         Args:
             sub (optional, bool):
                 Whether to onlyh assign the largest connected component as the
                 :class:`igraph.Graph` object.
-            weight_type (optional, List[str]):
-                List of weights to include for edges. Options include :code:`Length`,
-                :code:`Width`, :code:`Area`, :code:`InverseLength`,
+            weight_type (optional, str):
+                How to weight the edges. Options include :code:`Length`,
+                :code:`Width`, :code:`Area`,
                 :code:`FixedWidthConductance`,
-                :code:`VariableWidthConductance`, :code:`Resistance`,
+                :code:`VariableWidthConductance`,
                 :code:`PerpBisector`.
-            write (optional, str):
-                Filename that graph should be written to.
-            R_j (optional, float):
-                Junction resistance used for electrical weight types.
-            rho_dim (optional, float):
-                Scaling parameter mapping pixel length to resistance used for
-                electrical weight types. If weight_type is
-                :code:`VariableWidthConductance`, this should have units
-                :math:`Ohm` pixels. If weight_type is
-                :code:`FixedWidthConductance`, this should be
-                resistivity/cross_sectional_area.
         """
 
         if not hasattr(self, "_skeleton"):
@@ -334,9 +308,7 @@ class Network:
                 self.Gr.vs[i]["pts"] = node_positions[i]
 
         if weight_type is not None:
-            self.Gr = base.add_weights(
-                self, weight_type=weight_type, rho_dim=rho_dim, R_j=R_j
-            )
+            self.Gr = base.add_weights(self, weight_type=weight_type, **kwargs)
 
         self.shape = list(
             max(list(self.Gr.vs[i]["o"][j] for i in range(self.Gr.vcount())))
@@ -377,7 +349,7 @@ class Network:
                 binarization of the image(s).
             rotate (float):
                 The amount to rotate the skeleton by *after* the
-                :py:attr:`graph` attribute has been set.
+                :py:attr:`Gr` attribute has been set.
             debubble (list[:class:`numpy.ndarray`]):
                 The footprints to use for a debubbling protocol.
             box (bool):
@@ -484,12 +456,7 @@ class Network:
             self.rotate = None
 
     def node_labelling(
-        self,
-        attributes,
-        labels,
-        filename="labelled.gsd",
-        edge_weight=None,
-        mode="w",
+        self, attributes, labels, filename, edge_weight=None, mode="w"
     ):
         """Method saves a new :code:`.gsd` which labels the :attr:`graph`
         attribute with the given node attribute values. Method saves the
@@ -497,17 +464,16 @@ class Network:
         sparse adjacency matrix (therefore edge/node attributes are not saved).
 
         Args:
-            attributes (list[:class:`numpy.ndarray`]):
-                A list of arrays of attribute values, with each array listing
-                attribute values in in ascending order of node id.
-            label (list[str]):
-                A list of the labels to give the attribute in the file.
+            attribute (:class:`numpy.ndarray`):
+                An array of attribute values in ascending order of node id.
+            label (str):
+                The label to give the attribute in the file.
             filename (str):
                 The file name to write.
             edge_weight (optional, :class:`numpy.ndarray`):
                 Any edge weights to store in the adjacency matrix.
             mode (optional, str):
-                The writing mode. See the `gsd documentation <https://gsd.readthedocs.io/en/stable/python-module-gsd.hoomd.html#:~:text=Valid%20values%20for%20mode%3A>`__ for details.
+                The writing mode. See  for details.
         """
         if isinstance(self.Gr, list):
             self.Gr = self.Gr[0]
@@ -641,10 +607,7 @@ class Network:
             ax (:class:`matplotlib.axes.Axes`, optional):
                 Axis to plot on. If :code:`None`, make a new figure and axis.
                 (Default value = :code:`None`)
-            depth (int, optional):
-                If the :code:`Network` is 3D, which slice to plot.
-            plot_img (bool, optional):
-                Whether to plot the image or not.
+
         Returns:
             (:class:`matplotlib.axes.Axes`): Axis with the plot.
         """
@@ -707,14 +670,6 @@ class Network:
             ax (:class:`matplotlib.axes.Axes`, optional):
                 Axis to plot on. If :code:`None`, make a new figure and axis.
                 (Default value = :code:`None`)
-            depth (int, optional):
-                If the :code:`Network` is 3D, which slice to plot.
-            edge_cmap (:code:`Colormap` or str, optional):
-                The colormap used for plotting edges.
-            plot_img (bool, optional):
-                Whether to plot the image or not.
-            kwargs (optional):
-                Keyword arguements to pass to :code:`ax.scatter`.
 
         Returns:
             (:class:`matplotlib.axes.Axes`): Axis with the plot.
@@ -856,7 +811,7 @@ class Network:
         return self._skeleton
 
     @classmethod
-    def from_gsd(cls, filename, frame=0, depth=None, dim=2, prefix="slice"):
+    def from_gsd(cls, filename, frame=0, depth=None, dim=2):
         """
         Alternative constructor for returning a Network object that was
         previously stored in a `.gsd` and `.json` file. Assumes file is stored
@@ -868,13 +823,7 @@ class Network:
         _dir = os.path.abspath(filename)
         _dir = os.path.split(os.path.split(filename)[0])[0]
         binarized_dir = os.path.split(os.path.split(filename)[0])[-1]
-        N = cls(
-            _dir,
-            depth=depth,
-            dim=dim,
-            binarized_dir=binarized_dir,
-            prefix=prefix,
-        )
+        N = cls(_dir, depth=depth, dim=dim, binarized_dir=binarized_dir)
         if dim == 2:
             N._2d = True
         else:
@@ -914,13 +863,11 @@ class Network:
         )
         N.Gr.vs["o"] = base.shift(centroid_pos, _2d=N._2d)[0].astype(int)
 
-        N.shape = f.configuration.box[first_axis:3].astype(int)
-
         return N
 
 
 def Graph(filename, frame=0):
-    """Function which returns an `igraph.Graph` object from a gsd, with
+    """Functions which returns an `igraph.Graph` object from a gsd, with
     node and edge position attributes. Useful when a `Network` object is not
     required. Unlike `Network.from_gsd`, it makes no assumptions about the
     path of the `gsd` file.
@@ -928,8 +875,6 @@ def Graph(filename, frame=0):
     Args:
         filename (str):
             The file name to read.
-        frame (int, optional):
-            The frame to load from the gsd.
 
     Returns:
         (`igraph.Graph`): igraph Graph object.
@@ -951,61 +896,6 @@ def Graph(filename, frame=0):
     Gr.vs["o"] = centroid_pos
 
     return Gr
-
-
-class GeometricGraph:
-    """
-
-    Args:
-        filename (str):
-            The file name to read.
-        frame (int, optional):
-            The frame to load from the gsd.
-
-    Returns:
-        (`igraph.Graph`): igraph Graph object.
-    """
-
-    def __init__(self, filename, frame=0):
-        f = gsd.hoomd.open(name=filename, mode="r")[frame]
-        _json = os.path.splitext(filename)[0] + ".json"
-        with open(_json) as json_file:
-            data = json.load(json_file)
-
-        self.dim = int(data["dim"])
-        self._2d = {2: True, 3: False}[self.dim]
-        self.cropper_string = data["cropper"]  # Dubious about whether useful.
-        f = gsd.hoomd.open(name=filename, mode="r")[frame]
-        rows = f.log["Adj_rows"]
-        cols = f.log["Adj_cols"]
-        values = f.log["Adj_values"]
-        S = scipy.sparse.csr_matrix((values, (rows, cols)))
-        G = ig.Graph()
-        self.Gr = G.Weighted_Adjacency(S, mode="upper")
-
-        first_axis = {2: 1, 3: 0}[self.dim]
-        edge_pos = (
-            f.particles.position[f.particles.typeid == 0].T[first_axis:3].T
-        )
-        node_pos = (
-            f.particles.position[f.particles.typeid == 1].T[first_axis:3].T
-        )
-        centroid_pos = (
-            f.particles.position[f.particles.typeid == 2].T[first_axis:3].T
-        )
-
-        self.Gr.es["pts"] = base.split(
-            base.shift(edge_pos, _2d=self._2d)[0].astype(int),
-            f.log["Edge_lens"],
-        )
-        self.Gr.vs["pts"] = base.split(
-            base.shift(node_pos, _2d=self._2d)[0].astype(int),
-            f.log["Node_lens"],
-        )
-        self.Gr.vs["o"] = base.shift(centroid_pos, _2d=self._2d)[0].astype(int)
-
-        self.shape = f.configuration.box[first_axis:3].astype(int)
-        self.graph = self.Gr
 
 
 class Regions:
@@ -1044,13 +934,6 @@ class Regions:
 
 
 class ParticleNetwork(Sequence):
-    """Class for extracting sliceable list of graphs from :code:`gsd` files.
-
-    Args:
-        trajectory (str):
-           The filename of the trajectory.
-    """
-
     def __init__(self, trajectory, cutoff, partition=0, periodic=False):
         self.traj = gsd.hoomd.open(trajectory)
         self.cutoff = cutoff
@@ -1180,13 +1063,10 @@ class PointNetwork:
         attribute with the given node attribute values.
 
         Args:
-            attributes (list[:class:`numpy.ndarray`]):
-                A list of arrays of attribute values, with each array listing
-                attribute values in in ascending order of node id.
-            label (list[str]):
-                A list of the labels to give the attribute in the file.
-            filename (str):
-                The file name to write.
+            attribute (:class:`numpy.ndarray`):
+                An array of attribute values in ascending order of node id.
+            label (str):
+                The label to give the attribute in the file.
         """
 
         if not isinstance(labels, list):
@@ -1219,14 +1099,7 @@ class PointNetwork:
     @classmethod
     def from_gsd(cls, filename, frame=0):
         """Alternative constructor for returning a PointNetwork object that is
-        stored in a :code:`.gsd` file.
-
-        Args:
-            filename (str):
-               The filename to read the :code:`.gsd` file from.
-            frame (int, optional):
-                The frame to load from the :code:`gsd`.
-        """
+        stored in a `.gsd` file."""
 
         f = gsd.hoomd.open(name=filename, mode="r")[frame]
         cutoff = f.log["cutoff"]
