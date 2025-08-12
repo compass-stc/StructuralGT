@@ -21,7 +21,7 @@ class MainWindow(QObject):
         self.ui_engine = QQmlApplicationEngine()
 
         # Register Controller for Dynamic Updates
-        controller = MainController(qml_app=self.app)
+        controller = MainController(qml_app=self.app, qml_engine=self.ui_engine)
         # Register Image Provider
         self.image_provider = ImageProvider(controller)
 

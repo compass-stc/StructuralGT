@@ -4,6 +4,7 @@ from PySide6.QtQuick import QQuickImageProvider
 import cv2
 import numpy as np
 from matplotlib.backends.backend_agg import FigureCanvasAgg
+from .handler import NetworkHandler
 
 class ImageProvider(QQuickImageProvider):
 
@@ -15,27 +16,26 @@ class ImageProvider(QQuickImageProvider):
 
     def handle_change_image(self):
         print("ImageProvider: handle_change_image called")
-        if len(self.img_controller.images) > 0:
+        image = self.img_controller.get_selected_handler()
+        if image and isinstance(image, NetworkHandler):
             img_cv = None # img_cv must be a numpy array
-            image = self.img_controller.get_selected_image()
 
             if image.display_type == "original":
                 img_cv = image.network.image
-                if image.is_3d:
+                if image.dim == 3:
                     img_cv = img_cv[image.selected_slice_index, :, :]
             elif image.display_type == "binary":
-                if image.is_3d:
+                if image.dim == 3:
                     binary_img_path = "/Binarized/slice" + str(image.selected_slice_index+1).zfill(4) + ".tiff"
-                    img_cv = cv2.imread(image.img_path + binary_img_path)
+                    img_cv = cv2.imread(image.path + binary_img_path)
                 else:
                     binary_img_path = "/Binarized/slice0000.tiff"
-                    img_cv = cv2.imread(image.img_path.name + binary_img_path)
+                    img_cv = cv2.imread(image.path.name + binary_img_path)
             elif image.display_type == "graph":
-                if image.is_3d:
+                if image.dim == 3:
                     img_cv = None
-                    self.img_controller.load_graph_simulation()
+                    self.img_controller.load_graph()
                 else:
-                    print("Calling graph_plot()")
                     ax = image.network.graph_plot()
                     fig = ax.get_figure()
                     fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
@@ -48,7 +48,7 @@ class ImageProvider(QQuickImageProvider):
                     buf = canvas.buffer_rgba()
                     img_cv = np.asarray(buf, dtype=np.uint8).reshape((height, width, 4))
 
-                    self.img_controller.load_graph_simulation()
+                    self.img_controller.load_graph()
                 
 
             if img_cv is not None:
