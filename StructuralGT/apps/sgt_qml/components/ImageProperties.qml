@@ -79,7 +79,7 @@ Rectangle {
         target: mainController
 
         function onImageChangedSignal() {
-            lblNoImageProps.visible = mainController.img_loaded() ? false : true;
+            lblNoImageProps.visible = mainController.display_type() === "welcome" ? true : false;
             lblNoGraphProps.visible = mainController.graph_loaded() ? false : true;
         }
 

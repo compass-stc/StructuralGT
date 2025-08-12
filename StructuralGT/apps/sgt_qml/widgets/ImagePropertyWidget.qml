@@ -74,7 +74,7 @@ Item {
     Connections {
         target: mainController
             function onImageChangedSignal() {
-                imgPropsTbl.visible = mainController.img_loaded() ? true : false;
+                imgPropsTbl.visible = mainController.display_type() !== "welcome"
                 mainController.update_image_model();
             }
 

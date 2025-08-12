@@ -67,7 +67,7 @@ Rectangle {
             currentIndex: -1
             ToolTip.text: "Change image type"
             ToolTip.visible: cbImageType.hovered
-            enabled: mainController.img_loaded()
+            enabled: mainController.display_type() !== "welcome"
             onCurrentIndexChanged: {
                 currentIndex = mainController.toggle_current_img_view(valueAt(currentIndex)) ? currentIndex : -1;
             }
@@ -83,15 +83,10 @@ Rectangle {
             icon.height: 24
             ToolTip.text: "Show graph"
             ToolTip.visible: btnShowGraph.hovered
-            enabled: mainController.img_loaded()
+            enabled: mainController.display_type() !== "welcome"
             onClicked: {
                 mainController.run_graph_extraction();
             }
-        }
-
-        Button {
-            text: "Load CSV"
-            onClicked: csvFileDialog.open()
         }
     }
 
@@ -100,8 +95,8 @@ Rectangle {
 
         function onImageChangedSignal() {
             // Force refresh
-            cbImageType.enabled = mainController.img_loaded();
-            btnShowGraph.enabled = mainController.img_loaded();
+            cbImageType.enabled = mainController.display_type() !== "welcome";
+            btnShowGraph.enabled = mainController.display_type() !== "welcome";
 
             let curr_view = mainController.display_type();
             for (let i=0; i < cbImageType.model.count; i++) {
@@ -113,5 +108,3 @@ Rectangle {
     }
 
 }
-
-
