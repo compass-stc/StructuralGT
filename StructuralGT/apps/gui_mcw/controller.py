@@ -512,8 +512,8 @@ class MainController(QObject):
 
         if image.graph_loaded:
             graph_props = [
-                ["Edge Count", "???"],
-                ["Node Count", "???"],
+                ["Edge Count", f"{image.network.graph.ecount()}"],
+                ["Node Count", f"{image.network.graph.vcount()}"],
             ]
 
             for key, value in image.properties.items():
