@@ -45,6 +45,38 @@ Rectangle {
                 }
             }
 
+            Button {
+                id: btnWelcomePage
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+                text: "Home"
+                property int pageId: 0
+                onClicked: {
+                    togglePages(pageId);
+                }
+            }
+
+            Button {
+                id: btnImagePage
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+                text: "Image"
+                property int pageId: 1
+                onClicked: {
+                    togglePages(pageId);
+                }
+            }
+
+            Button {
+                id: btnGraphPage
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+                text: "Graph"
+                property int pageId: 2
+                onClicked: {
+                    togglePages(pageId);
+                }
+            }   
         }
     }
 
@@ -52,27 +84,6 @@ Rectangle {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
 
-        ComboBox {
-            id: cbImageType
-            Layout.minimumWidth: 150
-            model: ListModel {
-                id: imgTypeModel
-                ListElement { text: "Original Image"; value: "original" }
-                ListElement { text: "Binary Image"; value: "binary" }
-                ListElement { text: "Extracted Graph"; value: "graph" }
-            }
-            implicitContentWidthPolicy: ComboBox.WidestTextWhenCompleted
-            textRole: "text"
-            valueRole: "value"
-            currentIndex: -1
-            ToolTip.text: "Change image type"
-            ToolTip.visible: cbImageType.hovered
-            enabled: mainController.display_type() !== "welcome"
-            onCurrentIndexChanged: {
-                currentIndex = mainController.toggle_current_img_view(valueAt(currentIndex)) ? currentIndex : -1;
-            }
-        }
-    
         Button {
             id: btnShowGraph
             text: ""

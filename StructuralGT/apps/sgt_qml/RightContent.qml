@@ -11,6 +11,13 @@ Rectangle {
     GridLayout {
         anchors.fill: parent
         columns: 1
-        ImageViewWidget{}
+        WelcomeWidget{ id: welcomeContainer }
+        ImageViewWidget{ id: imageContainer }
+        GraphViewWidget{ id: graphContainer }
     }
+
+    // Expose child components
+    property alias welcomePage: welcomeContainer
+    property alias imagePage: imageContainer
+    property alias graphPage: graphContainer
 }

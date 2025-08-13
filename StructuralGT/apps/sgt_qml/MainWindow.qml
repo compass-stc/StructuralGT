@@ -57,12 +57,30 @@ ApplicationWindow {
             Layout.preferredWidth: parent.width - 300
             Layout.fillWidth: true
             Layout.fillHeight: true
-            RightContent {}
+            RightContent { id: recContent }
         }
     }
 
     function toggleLeftPane(showVal) {
         recLeftPane.visible = showVal;
+    }
+
+    function togglePages(pageId) {
+        if (pageId === 0) {
+            recContent.welcomePage.visible = true;
+            recContent.imagePage.visible = false;
+            recContent.graphPage.visible = false;
+        }
+        else if (pageId === 1) {
+            recContent.welcomePage.visible = false;
+            recContent.imagePage.visible = true;
+            recContent.graphPage.visible = false;
+        }
+        else if (pageId === 2) {
+            recContent.welcomePage.visible = false;
+            recContent.imagePage.visible = false;
+            recContent.graphPage.visible = true;
+        }
     }
 
     AboutDialog { id: dialogAbout }
