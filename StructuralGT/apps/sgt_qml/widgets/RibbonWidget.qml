@@ -45,38 +45,29 @@ Rectangle {
                 }
             }
 
-            Button {
-                id: btnWelcomePage
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                text: "Home"
-                property int pageId: 0
-                onClicked: {
-                    togglePages(pageId);
+            TabBar {
+                id: tabBar
+                onCurrentIndexChanged: togglePages(currentIndex)
+                Layout.fillWidth: true
+
+                TabButton {
+                    text: "Home"
+                    width: 60
+                    onClicked: tabBar.currentIndex = 0;
+                }
+
+                TabButton {
+                    text: "Image"
+                    width: 60
+                    onClicked: tabBar.currentIndex = 1;
+                }
+
+                TabButton {
+                    text: "Graph"
+                    width: 60
+                    onClicked: tabBar.currentIndex = 2;
                 }
             }
-
-            Button {
-                id: btnImagePage
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                text: "Image"
-                property int pageId: 1
-                onClicked: {
-                    togglePages(pageId);
-                }
-            }
-
-            Button {
-                id: btnGraphPage
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                text: "Graph"
-                property int pageId: 2
-                onClicked: {
-                    togglePages(pageId);
-                }
-            }   
         }
     }
 
