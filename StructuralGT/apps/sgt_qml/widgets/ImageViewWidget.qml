@@ -41,28 +41,6 @@ ColumnLayout {
                 }
 
                 Button {
-                    id: btnAddImage
-                    Layout.preferredWidth: 125
-                    Layout.preferredHeight: 32
-                    text: ""
-                    onClicked: imageFileDialog.open()
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 5
-                        color: "#808080"
-
-                        Label {
-                            text: "Add 2D image"
-                            color: "white"
-                            font.bold: true
-                            font.pixelSize: 12
-                            anchors.centerIn: parent
-                        }
-                    }
-                }
-
-                Button {
                     id: btnAddImageFolder
                     Layout.preferredWidth: 125
                     Layout.preferredHeight: 32
@@ -75,7 +53,7 @@ ColumnLayout {
                         color: "#808080"
 
                         Label {
-                            text: "Add 3D image"
+                            text: "Add Network"
                             color: "white"
                             font.bold: true
                             font.pixelSize: 12
@@ -305,5 +283,9 @@ ColumnLayout {
 
             zoomFactor = 1.0;
         }
+    }
+
+    Connections {
+        target: fileController
     }
 }

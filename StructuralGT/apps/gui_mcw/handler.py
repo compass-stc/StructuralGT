@@ -1,12 +1,13 @@
 from StructuralGT.networks import Network, PointNetwork
 import pandas as pd
-import os
+import pathlib
 
 class Handler:
     """Base class to handle different types of networks."""
 
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, input_dir: str, temp_dir: str):
+        self.input_dir = input_dir
+        self.temp_dir = temp_dir
         self.network = None
         self.display_type = None
         self.dim = None
@@ -24,10 +25,10 @@ class Handler:
 class NetworkHandler(Handler):
     """Class to handle Network loading and processing."""
 
-    def __init__(self, path, dim):
-        super().__init__(path)
+    def __init__(self, input_dir: str, temp_dir: str, dim: int):
+        super().__init__(input_dir, temp_dir)
         self.dim = dim
-        self.network = Network(path, dim=dim) if dim == 3 else Network(path.name, dim=dim)
+        self.network = Network(directory=input_dir, dim=dim)
         self.img_loaded = False
         self.binary_loaded = False
         self.graph_loaded = False
@@ -53,9 +54,10 @@ class NetworkHandler(Handler):
 class PointNetworkHandler(Handler):
     """Class to handle PointNetwork loading and processing."""
 
-    def __init__(self, path, cutoff):
-        super().__init__(path)
-        positions = pd.read_csv(self.path)
+    def __init__(self, input_dir: str, temp_dir: str, cutoff: float):
+        super().__init__(input_dir, temp_dir)
+        positions = pd.read_csv(self.input_dir)
         positions = positions[["x", "y", "z"]].values
         self.network = PointNetwork(positions, cutoff)
-        self.network.point_to_skel(filename=os.path.join(os.path.dirname(self.path), "skel.gsd"))
+        # TODO: Change to pathlib
+        self.network.point_to_skel(filename=os.path.join(os.path.dirname(self.input_dir), "skel.gsd"))

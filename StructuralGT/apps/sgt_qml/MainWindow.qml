@@ -68,25 +68,20 @@ ApplicationWindow {
     AboutDialog { id: dialogAbout }
     AlertDialog { id: dialogAlert }
     GraphPropertiesDialog { id: dialogGraphProperties }
+    PointNetworkCutoffDialog { id: dialogPointNetworkCutoff }
+    NetworkDimensionDialog { id: dialogNetworkDimension }
 
     Platform.FolderDialog {
         id: imageFolderDialog
         title: "Select a Folder"
-        onAccepted: mainController.add_handler(imageFolderDialog.folder, "3D");
-    }
-
-    QuickDialogs.FileDialog {
-        id: imageFileDialog
-        title: "Open file"
-        nameFilters: [mainController.get_file_extensions("img")]
-        onAccepted: mainController.add_handler(imageFileDialog.selectedFile, "2D");
+        onAccepted: dialogNetworkDimension.open()
     }
 
     QuickDialogs.FileDialog {
         id: csvFileDialog
         title: "Open CSV File"
-        nameFilters: ["CSV files (*.csv)"]
-        onAccepted: mainController.add_handler(csvFileDialog.selectedFile, "Point");
+        nameFilters: [fileController.get_file_extensions("csv")]
+        onAccepted: dialogPointNetworkCutoff.open();
     }
 
     Connections {

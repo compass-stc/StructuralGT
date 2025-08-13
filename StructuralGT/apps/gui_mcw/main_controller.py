@@ -24,6 +24,7 @@ from .csv_handler import CSVHandler
 from .table_model import TableModel
 from .list_model import ListModel
 from .qthread_worker import QThreadWorker, WorkerTask
+from .file_controller import FileController
 
 from StructuralGT import __version__
 from StructuralGT.networks import PointNetwork
@@ -51,10 +52,11 @@ class MainController(QObject):
         bool, object
     )  # success/fail (True/False), result (object)
 
-    def __init__(self, qml_app: QApplication, qml_engine: QQmlApplicationEngine):
+    def __init__(self, qml_app: QApplication, qml_engine: QQmlApplicationEngine, file_controller: FileController):
         super().__init__()
         self.qml_app = qml_app
         self.qml_engine = qml_engine
+        self.file_controller = file_controller
 
         # Create network objects
         self.handlers = []
@@ -72,102 +74,43 @@ class MainController(QObject):
         
         self.ovito_widget_opened = False
 
-    @Slot(str, result=str)
-    def get_file_extensions(self, option):
-        if option == "img":
-            pattern_string = " ".join(ALLOWED_IMG_EXTENSIONS)
-            return f"Image files ({pattern_string})"
-        elif option == "proj":
-            return "Project files (*.sgtproj)"
-        elif option == "csv":
-            pattern_string = " ".join(ALLOWED_CSV_EXTENSIONS)
-            return f"CSV files ({pattern_string})"
-        else:
-            return ""
-
-    def verify_path(self, a_path):
-        if not a_path:
-            logging.info(
-                "No folder/file selected.", extra={"user": "SGT Logs"}
-            )
-            self.showAlertSignal.emit(
-                "File/Directory Error", "No folder/file selected."
-            )
-            return False
-
-        # Convert QML "file:///" path format to a proper OS path
-        if a_path.startswith("file:///"):
-            if sys.platform.startswith("win"):
-                # Windows Fix (remove extra '/')
-                a_path = a_path[8:]
-            else:
-                # macOS/Linux (remove "file://")
-                a_path = a_path[7:]
-
-        # Normalize the path
-        a_path = os.path.normpath(a_path)
-
-        if not os.path.exists(a_path):
-            logging.exception(
-                "Path Error: %s", IOError, extra={"user": "SGT Logs"}
-            )
-            self.showAlertSignal.emit(
-                "Path Error",
-                f"File/Folder in {a_path} does not exist. Try again.",
-            )
-            return False
-        return a_path
-
-    def get_selected_handler(self):
-        try:
-            return self.handlers[self.selected_index]
-        except IndexError:
-            logging.info(
-                "No Image Error: Please import/add an image.",
-                extra={"user": "SGT Logs"},
-            )
-            self.showAlertSignal.emit(
-                "No Image Error", "No image added! Please import/add an image."
-            )
-            return None
-
     @Slot(result=bool)
     def is_3d_img(self):
         """Check if the selected image is a 3D image."""
         if not self.handlers:
             return False
-        handler = self.get_selected_handler()
+        handler = self.file_controller.get_selected_handler()
         return isinstance(handler, NetworkHandler) and handler.dim == 3
 
 
     @Slot(result=bool)
     def graph_loaded(self):
         if self.handlers:
-            return self.get_selected_handler().graph_loaded
+            return self.file_controller.get_selected_handler().graph_loaded
         return False
 
     @Slot(result=str)
     def display_type(self):
         if not self.handlers:
             return "welcome"
-        return self.get_selected_handler().display_type
+        return self.file_controller.get_selected_handler().display_type
 
     @Slot(result=int)
     def get_selected_slice_index(self):
         """Get the selected slice index of the selected image."""
         if not self.handlers:
             return -1
-        return self.get_selected_handler().selected_slice_index
+        return self.file_controller.get_selected_handler().selected_slice_index
 
     @Slot(result=int)
     def get_number_of_slices(self):
         """Get the number of slices of the selected image."""
-        return self.get_selected_handler().network.image.shape[0]
+        return self.file_controller.get_selected_handler().network.image.shape[0]
 
     @Slot(int, result=bool)
     def set_selected_slice_index(self, index):
         """Set the selected slice index of the selected image."""
-        handler = self.get_selected_handler()
+        handler = self.file_controller.get_selected_handler()
         if handler and 0 <= index < handler.network.image.shape[0]:
             handler.selected_slice_index = index
             self.load_image()
@@ -177,7 +120,7 @@ class MainController(QObject):
     @Slot(result=bool)
     def load_prev_slice(self):
         """Load the previous slice of the selected image."""
-        handler = self.get_selected_handler()
+        handler = self.file_controller.get_selected_handler()
         if handler and handler.selected_slice_index > 0:
             handler.selected_slice_index -= 1
             self.load_image()
@@ -187,89 +130,12 @@ class MainController(QObject):
     @Slot(result=bool)
     def load_next_slice(self):
         """Load the next slice of the selected image."""
-        handler = self.get_selected_handler()
+        handler = self.file_controller.get_selected_handler()
         if handler and handler.selected_slice_index < handler.network.image.shape[0] - 1:
             handler.selected_slice_index += 1
             self.load_image()
             return True
         return False
-
-    def create_handler(self, path, type):
-        path = self.verify_path(path)
-        if not path:
-            return False
-        print(path)
-
-        # Try reading the image
-        try:
-            if type == "3D":
-                # Create a 3D image object
-                self.handlers.append(NetworkHandler(path, dim=3))
-            elif type == "2D":
-                # Create a temporary directory for the image
-                prefix = "sgt_"
-                temp_dir = tempfile.TemporaryDirectory(prefix=prefix)
-
-                # Copy the image to the temporary directory
-                temp_path = os.path.join(
-                    temp_dir.name, os.path.basename(path)
-                )
-                shutil.copy(path, temp_path)
-
-                print(temp_dir.name)
-
-                if type == "2D":
-                    # Create a 2d image object
-                    self.handlers.append(NetworkHandler(temp_dir, dim=2))
-            elif type == "Point":
-                self.handlers.append(PointNetworkHandler(path, cutoff=1200))
-            return True
-
-        except Exception as err:
-            logging.exception(
-                "File Error: %s", err, extra={"user": "SGT Logs"}
-            )
-            self.showAlertSignal.emit(
-                "File Error", "Error processing image. Try again."
-            )
-            return False
-
-    # TODO: make it compatible with point network
-    @Slot(str, str, result=bool)
-    def add_handler(self, img_path, type):
-        """Verify and validate an image path, use it to create an Network and load it in view."""
-        is_created = self.create_handler(img_path, type)
-        if is_created:
-
-            self.imageListModel.reset_data(
-                [{"id": i, "name": str(handler.path)}
-                for i, handler in enumerate(self.handlers)]
-            )
-
-            if isinstance(self.get_selected_handler(), NetworkHandler):
-                self.load_image()
-            else:
-                self.load_graph()
-
-            return True
-        return False
-
-    @Slot(int, result=bool)
-    def delete_handler(self, index):
-        """Delete an image from the list of images."""
-        # Remove the image from the list
-        del self.handlers[index]
-        self.selected_index = 0 if not self.handlers else min(
-            self.selected_index, len(self.handlers) - 1
-        )
-
-        # Reset the models
-        self.imageListModel.reset_data(
-            [{"id": i, "name": str(handler.path)}
-                for i, handler in enumerate(self.handlers)]
-        )
-
-        return True
 
     @Slot(int)
     def load_image(self, index=None):
@@ -315,7 +181,7 @@ class MainController(QObject):
             self.showAlertSignal.emit("Please Wait", "Another Task Running!")
             return
 
-        handler = self.get_selected_handler()
+        handler = self.file_controller.get_selected_handler()
         if handler is None:
             self.wait_flag = False
             return
@@ -362,7 +228,7 @@ class MainController(QObject):
             self.showAlertSignal.emit("Please Wait", "Another Task Running!")
             return
 
-        handler = self.get_selected_handler()
+        handler = self.file_controller.get_selected_handler()
         if handler is None:
             self.wait_flag = False
             return
@@ -399,7 +265,7 @@ class MainController(QObject):
     def toggle_current_img_view(self, display_type):
         print(f"Display type: {display_type}")
 
-        image = self.get_selected_handler()
+        image = self.file_controller.get_selected_handler()
 
         if display_type == "binary" and not image.binary_loaded:
             # Use the default options
@@ -437,7 +303,7 @@ class MainController(QObject):
                 h = graph_container.property("height")
 
                 # Create OVITO data pipeline
-                handler = self.get_selected_handler()
+                handler = self.file_controller.get_selected_handler()
                 if isinstance(handler, PointNetworkHandler):
                     gsd_file = os.path.join(os.path.dirname(handler.path), "skel.gsd")
                 elif isinstance(handler, NetworkHandler):
@@ -461,7 +327,7 @@ class MainController(QObject):
     @Slot()
     def update_image_model(self):
         """Update the image properties model with the selected image's properties."""
-        handler = self.get_selected_handler()
+        handler = self.file_controller.get_selected_handler()
 
         if handler is None or isinstance(handler, PointNetworkHandler):
             self.imagePropsModel.reset_data([])
@@ -485,7 +351,7 @@ class MainController(QObject):
     @Slot()
     def update_graph_model(self):
         """Update the graph properties model with the selected image's graph properties."""
-        handler = self.get_selected_handler()
+        handler = self.file_controller.get_selected_handler()
 
         if handler is None:
             return
@@ -513,7 +379,7 @@ class MainController(QObject):
             self.showAlertSignal.emit("Please Wait", "Another Task Running!")
             return
 
-        handler = self.get_selected_handler()
+        handler = self.file_controller.get_selected_handler()
         if handler is None:
             self.wait_flag = False
             return

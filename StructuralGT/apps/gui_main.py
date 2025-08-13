@@ -10,7 +10,8 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtCore import QObject
 from PySide6.QtWidgets import QApplication
 
-from .gui_mcw.controller import MainController
+from .gui_mcw.main_controller import MainController
+from .gui_mcw.file_controller import FileController
 from .gui_mcw.image_provider import ImageProvider
 
 
@@ -20,13 +21,15 @@ class MainWindow(QObject):
         self.app = QApplication(sys.argv)
         self.ui_engine = QQmlApplicationEngine()
 
+        file_controller = FileController(qml_app=self.app)
         # Register Controller for Dynamic Updates
-        controller = MainController(qml_app=self.app, qml_engine=self.ui_engine)
+        controller = MainController(qml_app=self.app, qml_engine=self.ui_engine, file_controller=file_controller)
         # Register Image Provider
         self.image_provider = ImageProvider(controller)
 
         # Set Models in QML Context
         self.ui_engine.rootContext().setContextProperty("mainController", controller)
+        self.ui_engine.rootContext().setContextProperty("fileController", file_controller)
         self.ui_engine.addImageProvider("imageProvider", self.image_provider)
         self.ui_engine.rootContext().setContextProperty("imagePropsModel", controller.imagePropsModel)
         self.ui_engine.rootContext().setContextProperty("graphPropsModel", controller.graphPropsModel)
