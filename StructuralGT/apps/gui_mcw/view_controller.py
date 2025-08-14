@@ -59,6 +59,14 @@ class ImageViewController:
             "number_of_slices": num_slices
         }
 
+    def set_display_type(self, display_type: str) -> bool:
+        """Set the display type for the image view."""
+        handler = self.registry.get_selected()
+        if handler and isinstance(handler, NetworkHandler):
+            handler.display_type = display_type
+            return True
+        return False
+
     def set_selected_slice_index(self, index: int) -> bool:
         """Set the selected slice index of the selected image."""
         handler = self.registry.get_selected()
@@ -77,10 +85,12 @@ class ImageViewController:
         image = None
 
         if handler and isinstance(handler, NetworkHandler):
-            image = handler.network.image
-            if handler.dim == 3:
-                image = image[handler.selected_slice_index, :, :]
-
+            try:
+                image = handler.network.image
+                if handler.dim == 3:
+                    image = image[handler.selected_slice_index, :, :]
+            except Exception as e:
+                logging.exception("Error loading raw image: %s", e)
         return image
 
     def get_binarized_image(self) -> np.ndarray | None:
@@ -89,13 +99,19 @@ class ImageViewController:
         image = None
 
         if handler and isinstance(handler, NetworkHandler):
-            binarized_dir = (
-                "/Binarized/slice" +
-                str(handler.selected_slice_index+1).zfill(4) +
-                ".tiff" if handler.dim == 3 else "/Binarized/slice0000.tiff"
-            )
-            image = cv2.imread(handler.input_dir + binarized_dir)
+            if handler.binary_loaded is False:
+                return None
 
+            try:
+                binarized_dir = (
+                    "/Binarized/slice" +
+                    str(handler.selected_slice_index+1).zfill(4) +
+                    ".tiff" if handler.dim == 3 else "/Binarized/slice0000.tiff"
+                )
+                image = cv2.imread(handler.input_dir + binarized_dir)
+                logging.info(handler.options)
+            except Exception as e:
+                logging.exception("Error loading binarized image: %s", e)
         return image
 
     def get_extracted_graph_image(self) -> np.ndarray | None:
@@ -104,18 +120,23 @@ class ImageViewController:
         image = None
 
         if handler and isinstance(handler, NetworkHandler) and handler.dim == 2:
-            ax = handler.network.graph_plot()
-            fig = ax.get_figure()
-            fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+            if handler.graph_loaded is False:
+                return None
 
-            canvas = FigureCanvasAgg(fig)
-            canvas.draw()
+            try:
+                ax = handler.network.graph_plot()
+                fig = ax.get_figure()
+                fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
 
-            width, height = canvas.get_width_height()
+                canvas = FigureCanvasAgg(fig)
+                canvas.draw()
 
-            buf = canvas.buffer_rgba()
-            image = np.asarray(buf, dtype=np.uint8).reshape((height, width, 4))
+                width, height = canvas.get_width_height()
 
+                buf = canvas.buffer_rgba()
+                image = np.asarray(buf, dtype=np.uint8).reshape((height, width, 4))
+            except Exception as e:
+                logging.exception("Error loading extracted graph image: %s", e)
         return image
 
 class GraphViewController:

@@ -32,11 +32,25 @@ class ImageProvider(QQuickImageProvider):
             image = image_view_ctrl.get_raw_image()
             self.pixmap = ImageQt.toqpixmap(Image.fromarray(image))
         elif display_info["display_type"] == "binarized":
-            image = image_view_ctrl.get_binarized_image()
-            self.pixmap = ImageQt.toqpixmap(Image.fromarray(image))
-        elif display_info["display_type"] == "graph":
-            image = image_view_ctrl.get_extracted_graph_image()
-            self.pixmap = ImageQt.toqpixmap(Image.fromarray(image))
+            try:
+                image = image_view_ctrl.get_binarized_image()
+                self.pixmap = ImageQt.toqpixmap(Image.fromarray(image))
+            except Exception as e:
+                self.pixmap = QPixmap()
+                self.main_controller.showAlertSignal.emit(
+                    "Image Error",
+                    "No binarized image available. Apply binarizer first."
+                )
+        elif display_info["display_type"] == "extracted":
+            try:
+                image = image_view_ctrl.get_extracted_graph_image()
+                self.pixmap = ImageQt.toqpixmap(Image.fromarray(image))
+            except Exception as e:
+                self.pixmap = QPixmap()
+                self.main_controller.showAlertSignal.emit(
+                    "Image Error",
+                    "No extracted graph image available. Apply graph extraction first."
+                )
         self.main_controller.imageRefreshedSignal.emit()
 
     def requestPixmap(self, img_id, size, requested_size) -> QPixmap:
