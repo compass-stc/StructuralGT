@@ -98,7 +98,7 @@ ApplicationWindow {
     QuickDialogs.FileDialog {
         id: csvFileDialog
         title: "Open CSV File"
-        nameFilters: [fileController.get_file_extensions("csv")]
+        nameFilters: [mainController.get_file_extensions("csv")]
         onAccepted: dialogPointNetworkCutoff.open();
     }
 

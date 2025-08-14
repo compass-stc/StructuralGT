@@ -35,7 +35,7 @@ class MainController(QObject):
     refreshImageSignal = Signal()  # noqa: N815
     imageRefreshedSignal = Signal()  # noqa: N815
     showAlertSignal = Signal(str, str)  # noqa: N815
-
+    refreshGraphSignal = Signal()  # noqa: N815
 
     errorSignal = Signal(str)
     changeImageSignal = Signal()
@@ -75,7 +75,6 @@ class MainController(QObject):
         else:
             self.registry.add(handler)
             self.registry.select(self.registry.count() - 1)
-            self.refresh_image_view()
 
     @Slot(str, float)
     def add_point_network(self, path: str, cutoff: float):
@@ -88,7 +87,7 @@ class MainController(QObject):
         else:
             self.registry.add(handler)
             self.registry.select(self.registry.count() - 1)
-            self.refresh_image_view()
+            self.refreshGraphSignal.emit()
 
     @Slot()
     def refresh_image_view(self):
@@ -114,6 +113,23 @@ class MainController(QObject):
         """Set the selected slice index of the selected image."""
         self.image_view_ctrl.set_selected_slice_index(index)
         self.refresh_image_view()
+
+    @Slot(QObject)
+    def refresh_graph_view(self, container: QObject):
+        """Refresh the graph in the GUI."""
+        try:
+            if not self.graph_view_ctrl.ovito_widget:
+                self.graph_view_ctrl.attach_after_qml_loaded(container)
+            if self.registry.get_selected() is None:
+                return
+            self.graph_view_ctrl.render_graph()
+        except Exception as e:
+            logging.exception(
+                "Graph Refresh Error: %s", e, extra={"user": "SGT Logs"}
+            )
+            self.showAlertSignal.emit(
+                "Graph Error", "Error refreshing graph. Try again."
+            )
 
     @Slot(str)
     def run_binarizer(self, options):

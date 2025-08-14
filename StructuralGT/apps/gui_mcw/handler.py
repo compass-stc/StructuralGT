@@ -110,6 +110,8 @@ class HandlerRegistry:
 
     def get_selected(self) -> Optional[HandlerType]:
         """Get the currently selected network handler."""
+        if self._selected_index == -1:
+            return None
         return self._handlers[self._selected_index]
 
     def get_all(self) -> list[HandlerType]:

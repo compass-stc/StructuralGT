@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: GNU GPL v3
 
-"""
-Pyside6 implementation of StructuralGT user interface.
-"""
+"""Pyside6 implementation of StructuralGT user interface."""
 
 import logging
 import os
@@ -18,22 +16,29 @@ from .gui_mcw.main_controller import MainController
 logging.basicConfig(level=logging.INFO)
 
 class MainWindow(QObject):
+    """Main application window class."""
+
     def __init__(self):
         super().__init__()
         self.app = QApplication(sys.argv)
         self.ui_engine = QQmlApplicationEngine()
 
         # Register Controller for Dynamic Updates
-        controller = MainController(qml_app=self.app, qml_engine=self.ui_engine)
+        main_controller = MainController(qml_app=self.app, qml_engine=self.ui_engine)
         # Register Image Provider
-        self.image_provider = ImageProvider(controller)
+        self.image_provider = ImageProvider(main_controller)
 
         # Set Models in QML Context
-        self.ui_engine.rootContext().setContextProperty("mainController", controller)
-        self.ui_engine.addImageProvider("imageProvider", self.image_provider)
-        self.ui_engine.rootContext().setContextProperty("imagePropsModel", controller.imagePropsModel)
-        self.ui_engine.rootContext().setContextProperty("graphPropsModel", controller.graphPropsModel)
-        self.ui_engine.rootContext().setContextProperty("imageListModel", controller.imageListModel)
+        self.ui_engine.rootContext().setContextProperty(
+            "mainController", main_controller)
+        self.ui_engine.addImageProvider(
+            "imageProvider", self.image_provider)
+        self.ui_engine.rootContext().setContextProperty(
+            "imagePropsModel", main_controller.imagePropsModel)
+        self.ui_engine.rootContext().setContextProperty(
+            "graphPropsModel", main_controller.graphPropsModel)
+        self.ui_engine.rootContext().setContextProperty(
+            "imageListModel", main_controller.imageListModel)
 
         # Load UI
         qml_dir = os.path.dirname(os.path.abspath(__file__))
@@ -44,11 +49,7 @@ class MainWindow(QObject):
             sys.exit(-1)
 
 def pyside_app():
-    """
-    Initialize and run the PySide GUI application.
-    Returns:
-
-    """
+    """Initialize and run the PySide GUI application."""
     main_window = MainWindow()
     sys.exit(main_window.app.exec())
 

@@ -10,7 +10,7 @@ from ovito import scene
 from ovito.gui import create_qwidget
 from ovito.io import import_file
 from ovito.vis import Viewport
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QPoint, QPointF, QRect, QSize, Qt, QTimer
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 from PySide6.QtWidgets import QApplication
@@ -129,17 +129,90 @@ class GraphViewController:
         self.registry = registry
         self.qml_app = qml_app
         self.qml_engine = qml_engine
-        self.container_object_name = "graphPage"
         self.viewport = Viewport(
             type=Viewport.Type.Perspective, camera_dir=(2, 1, -1)
         )
-        container = self._find_container()
+        self.ovito_widget = None
+        self._container: QQuickItem | None = None
+        self._window: QQuickWindow | None = None
+        self._coalesce_timer = QTimer()
+        self._coalesce_timer.setSingleShot(True)
+        self._coalesce_timer.setInterval(0)
+        self._coalesce_timer.timeout.connect(lambda: self._sync_to_container())
+
+    def attach_after_qml_loaded(self, container: QQuickItem) -> bool:
+        """Attach the Ovito widget to QML container after loaded."""
         if not container:
-            logging.error(f"Graph container '{self.container_object_name}' not found.")
-            return
-        self.ovito_widget = create_qwidget(
-            self.viewport, parent=container
+            logging.error("Graph container not found.")
+            return False
+        logging.info(
+            f"Attaching Ovito widget to QML container {container.objectName()}"
         )
+        self._container = container
+        self._window = container.window()
+        self.ovito_widget = create_qwidget(self.viewport, parent=None)
+        self.ovito_widget.setWindowFlag(Qt.Tool, True)
+        self.ovito_widget.setWindowFlag(Qt.FramelessWindowHint, True)
+        if self.ovito_widget.windowHandle() is not None:
+            self.ovito_widget.windowHandle().setParent(self._window)
+        self._hook_geometry_signals()
+        self._sync_to_container()
+        self.ovito_widget.show()
+        logging.info(
+            f"Ovito widget attached to QML container {container.objectName()}."
+        )
+        return True
+
+    def _queue_sync(self):
+        self._sync_to_container()
+        if self._coalesce_timer.isActive():
+            self._coalesce_timer.start()
+        self._coalesce_timer.start(0)
+
+    def _hook_geometry_signals(self):
+        c = self._container
+        w = self._window
+        if not c or not w:
+            return
+
+        for sig in (
+            c.widthChanged, c.heightChanged, c.xChanged, c.yChanged, c.visibleChanged
+        ):
+            sig.connect(lambda *_, f=self._queue_sync: f())
+
+        for sig in (
+            w.xChanged, w.yChanged, w.widthChanged,
+            w.heightChanged, w.visibilityChanged, w.windowStateChanged
+        ):
+            sig.connect(lambda *_, f=self._queue_sync: f())
+
+    def _sync_to_container(self):
+        o = self.ovito_widget
+        c = self._container
+        w = self._window
+        if not o or not c or not w:
+            return
+
+        minimized = bool(w.windowState() & Qt.WindowMinimized)
+        hidden = (w.visibility() == QQuickWindow.Hidden)
+        visible = c.isVisible() and w.isVisible() and not minimized and not hidden
+
+        if visible:
+            if not o.isVisible():
+                o.show()
+        else:
+            if o.isVisible():
+                o.hide()
+
+        scene_pos: QPointF = c.mapToScene(QPointF(0, 0))
+        global_pos: QPoint = w.mapToGlobal(
+            QPoint(int(scene_pos.x()), int(scene_pos.y())))
+        width = int(c.width())
+        height = int(c.height())
+        o.setGeometry(QRect(global_pos, QSize(width, height)))
+        o.raise_()
+        self.viewport.zoom_all()
+        logging.debug(f"Ovito widget geometry updated: {global_pos}, {width}x{height}")
 
     def render_graph(self) -> bool:
         """Construct scene and mount it to the qml engine."""
@@ -164,14 +237,6 @@ class GraphViewController:
 
         return True
 
-    def _find_container(self) -> Optional[QQuickItem]:
-        """Find the container object in the QML engine."""
-        roots = self.qml_engine.rootObjects()
-        if not roots:
-            return None
-        root = roots[0]
-        return root.findChild(QQuickItem, self.container_object_name)
-
     def _find_gsd_file(self) -> Optional[str]:
         """Find the GSD file associated with the selected NetworkHandler."""
         handler = self.registry.get_selected()
@@ -180,6 +245,6 @@ class GraphViewController:
         if handler and isinstance(handler, NetworkHandler):
             gsd_file = handler.input_dir + "Binarized/network.gsd"
         elif handler and isinstance(handler, PointNetworkHandler):
-            gsd_file = handler.input_dir + "skel.gsd"
+            gsd_file = pathlib.Path(handler.input_dir).parent / "skel.gsd"
 
         return gsd_file
