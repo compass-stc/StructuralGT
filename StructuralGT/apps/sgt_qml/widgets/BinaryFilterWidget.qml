@@ -9,7 +9,7 @@ ColumnLayout {
     Layout.fillWidth: true
     Layout.leftMargin: 10
     Layout.alignment: Qt.AlignLeft
-    visible: mainController.display_type() !== "welcome"
+    visible: true
 
     property int btnWidth: 100
     property int spbWidth: 170
@@ -266,7 +266,7 @@ ColumnLayout {
                     "thresh": bThreshold.value
                 };
                 // Send the options to the main controller
-                mainController.run_binarizer(JSON.stringify(options));
+                mainController.submit_binarize_task(JSON.stringify(options));
             }
         }
 
@@ -300,11 +300,5 @@ ColumnLayout {
 
     Connections {
         target: mainController
-
-        function onImageChangedSignal() {
-            // Force refresh
-            imgBinControls.visible = mainController.display_type() !== "welcome";
-        }
-
     }
 }

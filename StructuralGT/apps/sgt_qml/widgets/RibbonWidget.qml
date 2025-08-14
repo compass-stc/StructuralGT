@@ -74,6 +74,23 @@ Rectangle {
     RowLayout {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
+        Layout.rightMargin: 10
+
+        Button {
+            id: btnRefresh
+            text: "Refresh"
+            Layout.preferredWidth: 32
+            Layout.preferredHeight: 32
+            icon.source: "../assets/icons/refresh_icon.png" // Path to your icon
+            icon.width: 24 // Adjust as needed
+            icon.height: 24
+            ToolTip.text: "Refresh"
+            ToolTip.visible: btnRefresh.hovered
+            enabled: true
+            onClicked: {
+                mainController.refresh_image_view();
+            }
+        }
 
         Button {
             id: btnShowGraph
@@ -83,30 +100,17 @@ Rectangle {
             icon.source: "../assets/icons/graph_icon.png" // Path to your icon
             icon.width: 24 // Adjust as needed
             icon.height: 24
-            ToolTip.text: "Show graph"
+            ToolTip.text: "Extract Graph"
             ToolTip.visible: btnShowGraph.hovered
-            enabled: mainController.display_type() !== "welcome"
+            enabled: true
             onClicked: {
-                mainController.run_graph_extraction();
+                mainController.submit_extract_graph_task("");
             }
         }
     }
 
     Connections {
         target: mainController
-
-        function onImageChangedSignal() {
-            // Force refresh
-            cbImageType.enabled = mainController.display_type() !== "welcome";
-            btnShowGraph.enabled = mainController.display_type() !== "welcome";
-
-            let curr_view = mainController.display_type();
-            for (let i=0; i < cbImageType.model.count; i++) {
-                if (cbImageType.model.get(i).value === curr_view){
-                    cbImageType.currentIndex = i;
-                }
-            }
-        }
     }
 
 }

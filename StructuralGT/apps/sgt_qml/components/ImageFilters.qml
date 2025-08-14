@@ -34,49 +34,7 @@ Rectangle {
                 Layout.bottomMargin: 5
                 Layout.alignment: Qt.AlignHCenter
             }
-
-            Label {
-                id: lblNoImgFilters
-                Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: 20
-                text: "No image filters to show!"
-                color: "#808080"
-                visible: mainController.display_type() !== "welcome" // TODO: account for point network
-            }
             BinaryFilterWidget{}
-
-            // Rectangle {
-            //     height: 1
-            //     color: "#d0d0d0"
-            //     Layout.fillWidth: true
-            //     Layout.alignment: Qt.AlignHCenter
-            //     Layout.topMargin: 20
-            //     Layout.leftMargin: 20
-            //     Layout.rightMargin: 20
-            // }
-
-            // Text {
-            //     text: "Image Filters"
-            //     font.pixelSize: 12
-            //     font.bold: true
-            //     Layout.topMargin: 10
-            //     Layout.bottomMargin: 5
-            //     Layout.alignment: Qt.AlignHCenter
-            // }
-
-
-            // ImageFilterWidget{}
-
         }
-    }
-
-    Connections {
-        target: mainController
-
-        function onImageChangedSignal() {
-            // Force refresh
-            lblNoImgFilters.visible = mainController.display_type() === "welcome";
-        }
-
     }
 }

@@ -12,12 +12,28 @@ ColumnLayout {
     property real zoomFactor: 1.0
     property int selectedRole: (Qt.UserRole + 20)
 
+    TabBar {
+        id: tabBar
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        onCurrentIndexChanged: {
+            if (currentIndex === 0)      
+                mainController.set_display_type("raw");
+            else if (currentIndex === 1) 
+                mainController.set_display_type("binarized");
+            else if (currentIndex === 2) 
+                mainController.set_display_type("extracted");
+        }
+        TabButton { text: "Raw"; width: 80 }
+        TabButton { text: "Binarized"; width: 80 }
+        TabButton { text: "Extracted"; width: 80 }
+    }
+
     Rectangle {
         id: imgContainer
         Layout.fillWidth: true
         Layout.fillHeight: true
         color: "transparent"
-
 
         Flickable {
             id: flickableArea
