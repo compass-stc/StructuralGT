@@ -337,6 +337,9 @@ class Network:
             self.Gr = base.add_weights(
                 self, weight_type=weight_type, rho_dim=rho_dim, R_j=R_j
             )
+            if "FixedWidthConductance" in weight_type:
+                weight_type.remove("FixedWidthConductance")
+                weight_type.append("Conductance")
 
         self.shape = list(
             max(list(self.Gr.vs[i]["o"][j] for i in range(self.Gr.vcount())))
@@ -344,7 +347,7 @@ class Network:
         )
 
         if write:
-            self.node_labelling([], [], write)
+            self.node_labelling([], [], write, edge_weight=weight_type)
 
     def img_to_skel(
         self,
@@ -601,7 +604,9 @@ class Network:
         for label in labels:
             s.log["particles/" + label] = [np.nan] * N
 
-        matrix = self.Gr.get_adjacency_sparse(attribute=edge_weight)
+        matrix = self.Gr.get_adjacency_sparse(
+                attribute=edge_weight[0] if edge_weight else None
+                )
         rows, columns = matrix.nonzero()
         values = matrix.data
 
