@@ -23,7 +23,7 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    options
+    options,
     exclude_binaries=True,
     name='gui_main',
     debug=False,
