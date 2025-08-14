@@ -1,50 +1,42 @@
-import os
-import sys
 import json
 import logging
+import os
+import shutil
+import sys
+import tempfile
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pandas as pd
-import tempfile
-import shutil
 from ovito import scene
+from ovito.gui import create_qwidget
 from ovito.io import import_file
 from ovito.vis import Viewport
-from ovito.gui import create_qwidget
-from typing import TYPE_CHECKING
-from PySide6.QtWidgets import QApplication
-from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtCore import QObject, Signal, Slot
-
-if TYPE_CHECKING:
-    # False at run time, only for a type-checker
-    from _typeshed import SupportsWrite
-
-from .handler import NetworkHandler, PointNetworkHandler
-from .csv_handler import CSVHandler
-from .table_model import TableModel
-from .list_model import ListModel
-from .qthread_worker import QThreadWorker, WorkerTask
-from .file_controller import FileController
+from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtWidgets import QApplication
 
 from StructuralGT import __version__
 from StructuralGT.networks import PointNetwork
 
-ALLOWED_IMG_EXTENSIONS = ["*.jpg", "*.jpeg", "*.tif", "*.tiff"]
-ALLOWED_CSV_EXTENSIONS = ["*.csv"]
+from .csv_handler import CSVHandler
+from .file_controller import FileController
+from .handler import HandlerRegistry, NetworkHandler, PointNetworkHandler
+from .list_model import ListModel
+from .qthread_worker import QThreadWorker, WorkerTask
+from .table_model import TableModel
+from .view_controller import GraphViewController, ImageViewController
 
 
 class MainController(QObject):
-    """Exposes a method to refresh the image in QML"""
+    """Exposes a method to refresh the image in QML."""
 
-    # updateProgressSignal = Signal(int, str)
-    # taskTerminatedSignal = Signal(bool, list)
-    # projectOpenedSignal = Signal(str)
-    # enableRectangularSelectionSignal = Signal(bool)
-    # showCroppingToolSignal = Signal(bool)
-    # showUnCroppingToolSignal = Signal(bool)
-    # performCroppingSignal = Signal(bool)
+    # Signals
+    refreshImageSignal = Signal()  # noqa: N815
+    imageRefreshedSignal = Signal()  # noqa: N815
+    showAlertSignal = Signal(str, str)  # noqa: N815
 
-    showAlertSignal = Signal(str, str)
+
     errorSignal = Signal(str)
     changeImageSignal = Signal()
     imageChangedSignal = Signal()
@@ -52,15 +44,17 @@ class MainController(QObject):
         bool, object
     )  # success/fail (True/False), result (object)
 
-    def __init__(self, qml_app: QApplication, qml_engine: QQmlApplicationEngine, file_controller: FileController):
+    def __init__(self, qml_app: QApplication, qml_engine: QQmlApplicationEngine):
         super().__init__()
         self.qml_app = qml_app
         self.qml_engine = qml_engine
-        self.file_controller = file_controller
 
-        # Create network objects
-        self.handlers = []
-        self.selected_index = 0
+        self.registry = HandlerRegistry()
+        self.file_ctrl = FileController(self.registry)
+        self.image_view_ctrl = ImageViewController(self.registry)
+        self.graph_view_ctrl = GraphViewController(
+            self.registry, self.qml_app, self.qml_engine
+        )
 
         # Create QThreadWorker for long tasks
         self.wait_flag = False
@@ -71,104 +65,55 @@ class MainController(QObject):
         self.imagePropsModel = TableModel([])
         self.graphPropsModel = TableModel([])
         self.imageListModel = ListModel([])
-        
-        self.ovito_widget_opened = False
 
-    @Slot(result=bool)
-    def is_3d_img(self):
-        """Check if the selected image is a 3D image."""
-        if not self.handlers:
-            return False
-        handler = self.file_controller.get_selected_handler()
-        return isinstance(handler, NetworkHandler) and handler.dim == 3
+    @Slot(str, int)
+    def add_network(self, path: str, dim: int):
+        """Add a network for the given path and dimension."""
+        handler = self.file_ctrl.create_network_handler(path, dim)
+        if handler is None:
+            self.showAlertSignal.emit("Network Error", "Error creating network.")
+        else:
+            self.registry.add(handler)
+            self.registry.select(self.registry.count() - 1)
+            self.refresh_image_view()
 
+    @Slot(str, float)
+    def add_point_network(self, path: str, cutoff: float):
+        """Add a point network for the given path and dimension."""
+        handler = self.file_ctrl.create_point_network_handler(path, cutoff)
+        if handler is None:
+            self.showAlertSignal.emit(
+                "Point Network Error", "Error creating point network."
+            )
+        else:
+            self.registry.add(handler)
+            self.registry.select(self.registry.count() - 1)
+            self.refresh_image_view()
 
-    @Slot(result=bool)
-    def graph_loaded(self):
-        if self.handlers:
-            return self.file_controller.get_selected_handler().graph_loaded
-        return False
-
-    @Slot(result=str)
-    def display_type(self):
-        if not self.handlers:
-            return "welcome"
-        return self.file_controller.get_selected_handler().display_type
-
-    @Slot(result=int)
-    def get_selected_slice_index(self):
-        """Get the selected slice index of the selected image."""
-        if not self.handlers:
-            return -1
-        return self.file_controller.get_selected_handler().selected_slice_index
-
-    @Slot(result=int)
-    def get_number_of_slices(self):
-        """Get the number of slices of the selected image."""
-        return self.file_controller.get_selected_handler().network.image.shape[0]
-
-    @Slot(int, result=bool)
-    def set_selected_slice_index(self, index):
-        """Set the selected slice index of the selected image."""
-        handler = self.file_controller.get_selected_handler()
-        if handler and 0 <= index < handler.network.image.shape[0]:
-            handler.selected_slice_index = index
-            self.load_image()
-            return True
-        return False
-
-    @Slot(result=bool)
-    def load_prev_slice(self):
-        """Load the previous slice of the selected image."""
-        handler = self.file_controller.get_selected_handler()
-        if handler and handler.selected_slice_index > 0:
-            handler.selected_slice_index -= 1
-            self.load_image()
-            return True
-        return False
-
-    @Slot(result=bool)
-    def load_next_slice(self):
-        """Load the next slice of the selected image."""
-        handler = self.file_controller.get_selected_handler()
-        if handler and handler.selected_slice_index < handler.network.image.shape[0] - 1:
-            handler.selected_slice_index += 1
-            self.load_image()
-            return True
-        return False
-
-    @Slot(int)
-    def load_image(self, index=None):
-        """Load the image of the selected network handler."""
-        print("Loading image...")
+    @Slot()
+    def refresh_image_view(self):
+        """Refresh the image in the GUI."""
         try:
-            if index is not None:
-                if index == self.selected_index:
-                    return
-                else:
-                    self.selected_index = index
-
-            self.changeImageSignal.emit()
-        except Exception as err:
-            self.delete_handler(self.selected_index)
-            self.selected_index = 0
+            self.refreshImageSignal.emit()
+        except Exception as e:
             logging.exception(
-                "Image Loading Error: %s", err, extra={"user": "SGT Logs"}
+                "Image Loading Error: %s", e, extra={"user": "SGT Logs"}
             )
             self.showAlertSignal.emit(
                 "Image Error", "Error loading image. Try again."
             )
 
     @Slot(result=str)
-    def get_pixmap(self):
-        """Returns the URL that QML should use to load the image"""
-        curr_img_view = np.random.randint(0, 4)
-        unique_num = (
-            self.selected_index
-            + curr_img_view
-            + np.random.randint(low=21, high=1000)
-        )
-        return "image://imageProvider/" + str(unique_num)
+    def get_display_info(self):
+        """Get display information for the current image."""
+        info = self.image_view_ctrl.get_display_info()
+        return json.dumps(info)
+
+    @Slot(int)
+    def set_selected_slice_index(self, index):
+        """Set the selected slice index of the selected image."""
+        self.image_view_ctrl.set_selected_slice_index(index)
+        self.refresh_image_view()
 
     @Slot(str)
     def run_binarizer(self, options):

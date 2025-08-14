@@ -46,7 +46,7 @@ Dialog {
                 onClicked: {
                     var cutoff = parseFloat(cutoffInput.text);
                     if (cutoff > 0) {
-                        fileController.add_point_network_handler(csvFileDialog.selectedFile, cutoff);
+                        mainController.add_point_network(csvFileDialog.selectedFile, cutoff);
                         dialogPointNetworkCutoff.close();
                     }
                 }

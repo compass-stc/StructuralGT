@@ -62,7 +62,7 @@ Dialog {
                 enabled: true
                 onClicked: {
                     var dimension = radio2D.checked ? 2 : 3;
-                    fileController.add_network_handler(imageFolderDialog.folder, dimension);
+                    mainController.add_network(imageFolderDialog.folder, dimension);
                     dialogNetworkDimension.close();
                 }
             }

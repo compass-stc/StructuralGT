@@ -1,49 +1,44 @@
-import sys
-import pathlib
 import logging
-import tempfile
+import pathlib
 import shutil
-from PySide6.QtGui import QIcon
-from PySide6.QtCore import QObject, Signal, Slot, QDir
-from PySide6.QtWidgets import QApplication, QTreeView, QFileSystemModel 
+import sys
+import tempfile
+from typing import Optional
 
-from .handler import NetworkHandler, PointNetworkHandler
-
+from .handler import HandlerRegistry, NetworkHandler, PointNetworkHandler
 
 ALLOWED_IMG_EXTENSIONS = ["*.jpg", "*.jpeg", "*.tif", "*.tiff"]
 ALLOWED_CSV_EXTENSIONS = ["*.csv"]
 
 
-class FileController(QObject):
+class FileController:
+    """Class to manage file operations for the GUI."""
 
-    projectOpened = Signal()
-    projectClosed = Signal()
-    projectChanged = Signal()
-    selectedIndexChanged = Signal(int)
-    showAlert = Signal(str, str)
-
-    def __init__(self, qml_app: QApplication):
+    def __init__(self, registry: HandlerRegistry, project_root: Optional[str] = None):
         super().__init__()
-        self.qml_app = qml_app
-        self.handlers = []
-        self.selected_index = 0
-        self.project_opened = False
-        self.project_temp_dir = tempfile.mkdtemp(prefix="sgt_proj_")
+        self._registry = registry
+        if project_root:
+            self._project_root = pathlib.Path(project_root)
+        else:
+            self._temp_dir = tempfile.TemporaryDirectory(prefix="sgt_proj_")
+            self._project_root = pathlib.Path(self._temp_dir.name)
 
-    @Slot(str, result=str)
-    def get_file_extensions(self, option: str) -> str:
+    @staticmethod
+    def file_filters(option: str) -> str:
+        """Return file filters based on the option."""
         if option == "img":
             pattern = " ".join(ALLOWED_IMG_EXTENSIONS)
             return f"Image files ({pattern})"
-        elif option == "proj":
+        if option == "proj":
             return "Project files (*.sgtproj)"
-        elif option == "csv":
+        if option == "csv":
             pattern = " ".join(ALLOWED_CSV_EXTENSIONS)
             return f"CSV files ({pattern})"
-        else:
-            return ""
+        return ""
 
-    def verify_path(self, path: str) -> str:
+    @staticmethod
+    def verify_path(path: str) -> str:
+        """Verify and normalize the file path."""
         if not path:
             raise ValueError("Path cannot be empty.")
 
@@ -59,80 +54,55 @@ class FileController(QObject):
         # Normalize the path
         return str(pathlib.Path(path).resolve())
 
-    def get_selected_handler(self) -> NetworkHandler | PointNetworkHandler | None:
-        try:
-            return self.handlers[self.selected_index]
-        except IndexError:
-            logging.error(
-                "No handler found at index %d", self.selected_index
-            )
-            self.showAlert.emit(
-                "Network Error", "No network added! Please import/add a network."
-            )
-            return None
-
-    @Slot(str, int, result=bool)
-    def add_network_handler(self, path: str, dim: int) -> bool:
+    def create_network_handler(
+            self, path: str, dim: int
+        ) -> NetworkHandler | None:
+        """Create a NetworkHandler for the given path and dimension."""
         try:
             path = self.verify_path(path)
             if not path:
-                return False
+                return None
             logging.info(f"Creating {dim}D NetworkHandler for path: {path}")
-
-            # TODO: Create temp_dir for output
-            temp_dir = tempfile.mkdtemp(dir=self.project_temp_dir)
-            self.handlers.append(NetworkHandler(path, temp_dir, dim))
-            # TODO: update the front end
-            return True
+            temp_dir = tempfile.mkdtemp(dir=self._project_root)
+            return NetworkHandler(path, temp_dir, dim)
         except Exception as e:
             logging.error(f"Error creating NetworkHandler: {e}")
-            self.showAlert.emit("Network Error", "Error creating network.")
-            return False
+            return None
 
-    @Slot(str, float, result=bool)
-    def add_point_network_handler(self, path: str, cutoff: float) -> bool:
+    def create_point_network_handler(
+            self, path: str, cutoff: float
+        ) -> PointNetworkHandler | None:
+        """Create a PointNetworkHandler for the given path and cutoff."""
         try:
             path = self.verify_path(path)
             if not path:
-                return False
-            logging.info(f"Creating PointNetworkHandler for path: {path} with cutoff: {cutoff}")
+                return None
+            logging.info(
+                f"Creating PointNetworkHandler for path: {path} with cutoff: {cutoff}"
+            )
 
-            # TODO: Create temp_dir for output
-            temp_dir = tempfile.mkdtemp(dir=self.project_temp_dir)
-            self.handlers.append(PointNetworkHandler(path, temp_dir, cutoff))
-            # TODO: update the front end
-            return True
+            temp_dir = tempfile.mkdtemp(dir=self._project_root)
+            return PointNetworkHandler(path, temp_dir, cutoff)
         except Exception as e:
             logging.error(f"Error creating PointNetworkHandler: {e}")
-            self.showAlert.emit("Network Error", "Error creating point network.")
-            return False
+            return None
 
-    @Slot(int, result=bool)
-    def delete_handler(self, index: int) -> bool:
-        # TODO: this may be implemented later
-        pass
+    def set_project_root(self, project_root: str) -> None:
+        """Set the project root directory."""
+        self._project_root = project_root
 
-    @Slot(str, str, result=bool)
-    def create_sgt_project(self, proj_name: str, project_path: str) -> bool:
-        # project_path is the directory for the project
-        pass
+    def open_sgt_project(self, project_path: str) -> bool:
+        """Open an existing SGT project."""
+        return True
 
-    @Slot(str, result=bool)
-    def open_sgt_project(self, proj_path: str) -> bool:
-        pass
-
-    @Slot(result=bool)
     def close_sgt_project(self) -> bool:
-        pass
+        """Close the currently opened SGT project."""
+        return True
 
-    @Slot(result=bool)
     def save_sgt_project(self) -> bool:
-        pass
+        """Save the currently opened SGT project."""
+        return True
 
-    @Slot(str, result=bool)
     def rename_sgt_project(self, new_name: str) -> bool:
-        pass
-
-    @Slot(str, result=bool)
-    def set_output_dir(self, dir_path: str) -> bool:
-        pass
+        """Rename the currently opened SGT project."""
+        return True

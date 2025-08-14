@@ -17,14 +17,13 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         color: "transparent"
-        clip: true  // Ensures only the selected area is visible
+
 
         Flickable {
             id: flickableArea
             anchors.fill: parent
             contentWidth: imgView.width * imgView.scale
             contentHeight: imgView.height * imgView.scale
-            //clip: true
             flickableDirection: Flickable.HorizontalAndVerticalFlick
 
             ScrollBar.vertical: ScrollBar {
@@ -95,7 +94,7 @@ ColumnLayout {
         Layout.fillHeight: false
         Layout.fillWidth: true
         color: "transparent"
-        visible: mainController.is_3d_img()
+        visible: true
 
         RowLayout {
             anchors.fill: parent
@@ -108,7 +107,7 @@ ColumnLayout {
                 icon.height: 24
                 background: null
                 Layout.alignment: Qt.AlignLeft
-                onClicked: mainController.load_prev_slice()
+                onClicked: mainController.set_selected_slice_index(sliceNavInfo.currentSlice - 2)
             }
 
             Item {
@@ -171,7 +170,7 @@ ColumnLayout {
                 icon.height: 24
                 background: null
                 Layout.alignment: Qt.AlignRight
-                onClicked: mainController.load_next_slice()
+                onClicked: mainController.set_selected_slice_index(sliceNavInfo.currentSlice)
             }
         }
     }
@@ -179,24 +178,14 @@ ColumnLayout {
     Connections {
         target: mainController
 
-        function onImageChangedSignal() {
+        function onImageRefreshedSignal() {
             // Force refresh
-            welcomeContainer.visible = mainController.display_type() === "welcome";
-            imgContainer.visible = mainController.display_type() === "original" || mainController.display_type() === "binary";
-            imgNavControls.visible = mainController.is_3d_img();
-            sliceNavInfo.currentSlice = mainController.get_selected_slice_index() + 1;
-            sliceNavInfo.totalSlice = mainController.get_number_of_slices();
-
-            console.log("Image changed signal received");
-
-            imgView.source = mainController.get_pixmap();
+            var displayInfo = JSON.parse(mainController.get_display_info());
+            sliceNavInfo.currentSlice = displayInfo.selected_slice + 1;
+            sliceNavInfo.totalSlice = displayInfo.number_of_slices;
+            imgView.source = displayInfo.pixmap;
             console.log("Image source: " + imgView.source);
-
             zoomFactor = 1.0;
         }
-    }
-
-    Connections {
-        target: fileController
     }
 }
