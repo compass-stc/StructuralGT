@@ -75,6 +75,7 @@ class MainController(QObject):
         else:
             self.registry.add(handler)
             self.registry.select(self.registry.count() - 1)
+            self.refreshImageSignal.emit()
 
     @Slot(str, float)
     def add_point_network(self, path: str, cutoff: float):
