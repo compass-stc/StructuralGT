@@ -1,19 +1,17 @@
-# SPDX-License-Identifier: GNU GPL v3
-
-"""Pyside6 implementation of StructuralGT user interface."""
+"""Main entry point of StructuralGT GUI."""
 
 import logging
-import os
 import sys
+import pathlib
 
 from PySide6.QtCore import QObject
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
-
-from .gui_mcw.image_provider import ImageProvider
-from .gui_mcw.main_controller import MainController
+from apps.controller.main_controller import MainController
+from apps.controller.image_provider import ImageProvider
 
 logging.basicConfig(level=logging.INFO)
+
 
 class MainWindow(QObject):
     """Main application window class."""
@@ -30,28 +28,33 @@ class MainWindow(QObject):
 
         # Set Models in QML Context
         self.ui_engine.rootContext().setContextProperty(
-            "mainController", main_controller)
-        self.ui_engine.addImageProvider(
-            "imageProvider", self.image_provider)
+            "mainController", main_controller
+        )
+        self.ui_engine.addImageProvider("imageProvider", self.image_provider)
         self.ui_engine.rootContext().setContextProperty(
-            "imagePropsModel", main_controller.imagePropsModel)
+            "imagePropsModel", main_controller.imagePropsModel
+        )
         self.ui_engine.rootContext().setContextProperty(
-            "graphPropsModel", main_controller.graphPropsModel)
+            "graphPropsModel", main_controller.graphPropsModel
+        )
         self.ui_engine.rootContext().setContextProperty(
-            "imageListModel", main_controller.imageListModel)
+            "imageListModel", main_controller.imageListModel
+        )
 
         # Load UI
-        qml_dir = os.path.dirname(os.path.abspath(__file__))
-        qml_name = 'sgt_qml/MainWindow.qml'
-        qml_path = os.path.join(qml_dir, qml_name)
+        qml_dir = pathlib.Path(__file__).parent
+        qml_name = "view/MainWindow.qml"
+        qml_path = qml_dir / qml_name
         self.ui_engine.load(qml_path)
         if not self.ui_engine.rootObjects():
             sys.exit(-1)
+
 
 def pyside_app():
     """Initialize and run the PySide GUI application."""
     main_window = MainWindow()
     sys.exit(main_window.app.exec())
+
 
 if __name__ == "__main__":
     # Run the PySide application

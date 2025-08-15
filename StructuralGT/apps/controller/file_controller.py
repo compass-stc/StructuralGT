@@ -5,7 +5,7 @@ import sys
 import tempfile
 from typing import Optional
 
-from .handler import HandlerRegistry, NetworkHandler, PointNetworkHandler
+from ..utils.handler import HandlerRegistry, NetworkHandler, PointNetworkHandler
 
 ALLOWED_IMG_EXTENSIONS = ["*.jpg", "*.jpeg", "*.tif", "*.tiff"]
 ALLOWED_CSV_EXTENSIONS = ["*.csv"]

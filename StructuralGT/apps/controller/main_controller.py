@@ -18,16 +18,18 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 
 from StructuralGT import __version__
-from StructuralGT.networks import PointNetwork
-
-from .csv_handler import CSVHandler
 from .file_controller import FileController
-from .handler import HandlerRegistry, NetworkHandler, PointNetworkHandler
-from .list_model import ListModel
-from .table_model import TableModel
-from .task import BinarizeTask, ExtractGraphTask, GraphAnalysisTask
-from .task_controller import TaskController
+from .image_provider import ImageProvider
 from .view_controller import GraphViewController, ImageViewController
+from .task_controller import TaskController
+from ..utils.task import (
+    BinarizeTask,
+    ExtractGraphTask,
+    GraphAnalysisTask,
+)
+from ..utils.handler import PointNetworkHandler, HandlerRegistry
+from ..model.list_model import ListModel
+from ..model.table_model import TableModel
 
 
 class MainController(QObject):

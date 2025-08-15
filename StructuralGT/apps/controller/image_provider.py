@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 
 import cv2
@@ -6,8 +7,10 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from PIL import Image, ImageQt  # Import ImageQt for conversion
 from PySide6.QtGui import QPixmap
 from PySide6.QtQuick import QQuickImageProvider
+from typing import TYPE_CHECKING
 
-from .main_controller import MainController
+if TYPE_CHECKING:
+    from .main_controller import MainController
 
 
 class ImageProvider(QQuickImageProvider):

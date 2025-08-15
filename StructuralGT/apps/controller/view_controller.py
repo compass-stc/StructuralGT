@@ -15,7 +15,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 from PySide6.QtWidgets import QApplication
 
-from .handler import HandlerRegistry, NetworkHandler, PointNetworkHandler
+from ..utils.handler import HandlerRegistry, NetworkHandler, PointNetworkHandler
 
 
 class ImageViewController:

@@ -13,7 +13,7 @@ from StructuralGT.structural import (
     Size,
 )
 
-from .handler import HandlerRegistry, PointNetworkHandler
+from apps.utils import HandlerRegistry, PointNetworkHandler
 
 
 @dataclass

@@ -4,8 +4,8 @@ from typing import Optional
 
 from PySide6.QtCore import QObject, QThread, Signal, Slot
 
-from .handler import HandlerRegistry
-from .task import Task
+from ..utils.handler import HandlerRegistry
+from ..utils.task import Task
 
 
 class Worker(QObject):
