@@ -68,7 +68,7 @@ class Network:
         directory,
         binarized_dir="Binarized",
         depth=None,
-        prefix="slice",
+        prefix=None,
         dim=2,
     ):
         if dim == 2 and depth is not None:
@@ -104,7 +104,10 @@ class Network:
         else:
             self._2d = False
 
-        self.prefix = prefix
+        if prefix is None:
+            self.prefix = "slice"
+        else:
+            self.prefix = prefix
 
         image_stack = _image_stack()
         for slice_name in sorted(os.listdir(self.dir)):
@@ -115,7 +118,7 @@ class Network:
                 domain=_domain(depth),
                 _2d=self._2d,
             )
-            if dim == 2 and fname.isimg and self.prefix in fname:
+            if dim == 2 and fname.isimg and prefix in fname:
                 if len(image_stack) != 0:
                     warnings.warn(
                         "You have specified a 2D network but there are \
@@ -128,7 +131,7 @@ class Network:
                 _slice = plt.imread(self.dir + "/" + slice_name)
                 image_stack.append(_slice, slice_name)
             if dim == 3:
-                if fname.isinrange and fname.isimg and self.prefix in fname:
+                if fname.isinrange and fname.isimg and prefix in fname:
                     _slice = plt.imread(self.dir + "/" + slice_name)
                     image_stack.append(_slice, slice_name)
 
@@ -605,8 +608,8 @@ class Network:
             s.log["particles/" + label] = [np.nan] * N
 
         matrix = self.Gr.get_adjacency_sparse(
-                attribute=edge_weight[0] if edge_weight else None
-                )
+            attribute=edge_weight[0] if edge_weight else None
+        )
         rows, columns = matrix.nonzero()
         values = matrix.data
 
