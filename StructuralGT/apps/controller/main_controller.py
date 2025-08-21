@@ -68,6 +68,7 @@ class MainController(QObject):
         else:
             self.registry.add(handler)
             self.registry.select(self.registry.count() - 1)
+            self.networkListModel.reset_data(self.registry.list_for_ui())
             self.refreshImageSignal.emit()
 
     @Slot(str, float)
@@ -81,6 +82,7 @@ class MainController(QObject):
         else:
             self.registry.add(handler)
             self.registry.select(self.registry.count() - 1)
+            self.networkListModel.reset_data(self.registry.list_for_ui())
             self.refreshGraphSignal.emit()
 
     @Slot()
@@ -114,6 +116,12 @@ class MainController(QObject):
         self.image_view_ctrl.set_selected_slice_index(index)
         self.refresh_image_view()
 
+    @Slot(int)
+    def set_selected_index(self, index):
+        """Set the selected index of the image list."""
+        self.registry.select(index)
+        self.refresh_image_view()
+
     @Slot(QObject)
     def refresh_graph_view(self, container: QObject):
         """Refresh the graph in the GUI."""
@@ -123,6 +131,7 @@ class MainController(QObject):
             if self.registry.get_selected() is None:
                 return
             self.graph_view_ctrl.render_graph()
+            self.update_graph_model()
         except Exception as e:
             logging.exception(
                 "Graph Refresh Error: %s", e, extra={"user": "SGT Logs"}
@@ -212,6 +221,8 @@ class MainController(QObject):
                     graph_props.append([key, f"{value:.5f}"])
 
             self.graphPropsModel.reset_data(graph_props)
+
+        logging.info(f"Updated graph properties model: {graph_props}")
 
     @Slot(str, result=str)
     def get_file_extensions(self, option):

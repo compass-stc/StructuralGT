@@ -78,10 +78,7 @@ Rectangle {
     Connections {
         target: mainController
         function onImageRefreshedSignal() {
-            mainController.update_image_model();
             imgPropsTbl.visible = imagePropsModel.rowCount() > 0;
-
-            mainController.update_graph_model();
             graphPropsTbl.visible = graphPropsModel.rowCount() > 0;
         }
     }

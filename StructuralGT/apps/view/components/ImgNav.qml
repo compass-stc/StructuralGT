@@ -56,7 +56,7 @@ Rectangle {
                                     contextMenu.open()
                                 } else {
                                     imageListView.currentIndex = index
-                                    mainController.load_image(model.id)
+                                    mainController.set_selected_index(model.id)
                                 }
                             }
                         }

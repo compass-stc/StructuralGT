@@ -55,6 +55,7 @@ class ImageProvider(QQuickImageProvider):
                     "No extracted graph image available. Apply graph extraction first."
                 )
         self.main_controller.imageRefreshedSignal.emit()
+        self.main_controller.update_image_model()
 
     def requestPixmap(self, img_id, size, requested_size) -> QPixmap:
         """Return the current pixmap."""
