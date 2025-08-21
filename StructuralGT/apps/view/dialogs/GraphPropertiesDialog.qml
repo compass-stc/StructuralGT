@@ -18,14 +18,6 @@ Dialog {
     property alias chkAvgDegree: chkAvgDegree
     property alias chkNematicOrderParam: chkNematicOrderParam
     property alias chkEffectiveResistance: chkEffectiveResistance
-    property alias inputX0: inputX0
-    property alias inputX1: inputX1
-    property alias inputY0: inputY0
-    property alias inputY1: inputY1
-    property alias inputZ0: inputZ0
-    property alias inputZ1: inputZ1
-    property alias inputRj: inputRj
-    property alias inputAxis: inputAxis
 
     ColumnLayout {
         anchors.fill: parent
@@ -41,55 +33,7 @@ Dialog {
             CheckBox { id: chkAvgCloseness; text: "Average Closeness"; checked: true }
             CheckBox { id: chkAvgDegree; text: "Average Degree"; checked: true }
             CheckBox { id: chkNematicOrderParam; text: "Nematic Order Parameter"; checked: true }
-            CheckBox { id: chkEffectiveResistance; text: "Effective Resistance"; checked: false }
-
-            ColumnLayout {
-                visible: chkEffectiveResistance.checked
-                spacing: 8
-                Layout.leftMargin: 20
-
-                RowLayout {
-                    spacing: 6
-                    Label { text: "x"; Layout.preferredWidth: 10; color: "blue"; font.pixelSize: 12 }
-                    TextField { id: inputX0; placeholderText: "x0"; Layout.preferredWidth: 60 }
-                    TextField { id: inputX1; placeholderText: "x1"; Layout.preferredWidth: 60 }
-                }
-
-                RowLayout {
-                    spacing: 6
-                    Label { text: "y"; Layout.preferredWidth: 10; color: "blue"; font.pixelSize: 12 }
-                    TextField { id: inputY0; placeholderText: "y0"; Layout.preferredWidth: 60 }
-                    TextField { id: inputY1; placeholderText: "y1"; Layout.preferredWidth: 60 }
-                }
-
-                RowLayout {
-                    id: rowZ
-                    spacing: 6
-                    enabled: false
-                    Label { text: "z"; Layout.preferredWidth: 10; color: "blue"; font.pixelSize: 12 }
-                    TextField { id: inputZ0; placeholderText: "z0"; Layout.preferredWidth: 60 }
-                    TextField { id: inputZ1; placeholderText: "z1"; Layout.preferredWidth: 60 }
-                }
-
-                RowLayout {
-                    spacing: 6
-                    Label { text: "R_j"; Layout.preferredWidth: 20; color: "blue"; font.pixelSize: 12 }
-                    TextField { id: inputRj; placeholderText: "e.g. 1.0"; Layout.preferredWidth: 100 }
-                }
-
-                RowLayout {
-                    spacing: 6
-                    Label { text: "Axis"; Layout.preferredWidth: 20; color: "blue"; font.pixelSize: 12 }
-                    TextField { id: inputAxis; placeholderText: "e.g. 0.0"; Layout.preferredWidth: 100 }
-                }
-
-                Connections {
-                    target: mainController
-                    onImageChangedSignal: {
-                        rowZ.enabled = mainController.is_3d_img();
-                    }
-                }
-            }
+            CheckBox { id: chkEffectiveResistance; text: "Effective Resistance"; checked: false } // TODO: Implement input fields
         }
 
         RowLayout {
@@ -124,22 +68,7 @@ Dialog {
                         "Nematic Order Parameter": chkNematicOrderParam.checked
                     };
 
-                    if (chkEffectiveResistance.checked) {
-                        options["Effective Resistance"] = {
-                            "x0": inputX0.text,
-                            "x1": inputX1.text,
-                            "y0": inputY0.text,
-                            "y1": inputY1.text,
-                            "z0": inputZ0.text,
-                            "z1": inputZ1.text,
-                            "R_j": inputRj.text,
-                            "axis": inputAxis.text
-                        };
-                    } else {
-                        options["Effective Resistance"] = null;
-                    }
-
-                    mainController.run_graph_analysis(JSON.stringify(options));
+                    mainController.submit_graph_analysis_task(JSON.stringify(options));
                     dialogProperties.close();
                 }
 

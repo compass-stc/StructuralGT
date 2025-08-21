@@ -14,29 +14,6 @@ Rectangle {
         anchors.fill: parent
         spacing: 10
 
-        RowLayout {
-            spacing: 10
-            Layout.preferredHeight: 40
-            Layout.fillWidth: true
-            Layout.alignment: Qt.AlignHCenter
-
-            Button {
-                id: btnAddImage
-                Layout.preferredWidth: 80
-                Layout.preferredHeight: 30
-                text: "Add 32D"
-                onClicked: imageFileDialog.open()
-            }
-
-            Button {
-                id: btnAddImageFolder
-                Layout.preferredWidth: 80
-                Layout.preferredHeight: 30
-                text: "Add 3D"
-                onClicked: imageFolderDialog.open()
-            }
-        }
-
         ScrollView {
             id: scrollViewImgNav
             Layout.fillWidth: true
@@ -48,7 +25,7 @@ Rectangle {
             ListView {
                 id: imageListView
                 anchors.fill: parent
-                model: imageListModel
+                model: networkListModel
                 delegate: Item {
                     width: imageListView.width
                     height: 50
@@ -97,19 +74,6 @@ Rectangle {
                 }
             }
         }
-
-        FileDialog {
-            id: imageFileDialog
-            title: "Choose a 2D image"
-            onAccepted: mainController.add_image(file, false)
-        }
-
-        FolderDialog {
-            id: imageFolderDialog
-            title: "Choose folder for 3D image"
-            onAccepted: mainController.add_image(folder, true)
-        }
-
         property int contextMenuRow: -1
     }
 

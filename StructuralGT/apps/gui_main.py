@@ -38,7 +38,7 @@ class MainWindow(QObject):
             "graphPropsModel", main_controller.graphPropsModel
         )
         self.ui_engine.rootContext().setContextProperty(
-            "imageListModel", main_controller.imageListModel
+            "networkListModel", main_controller.networkListModel
         )
 
         # Load UI

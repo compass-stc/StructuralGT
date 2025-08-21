@@ -16,7 +16,7 @@ Rectangle {
             id: tabBar
             currentIndex: 0
             Layout.fillWidth: true
-            TabButton { text: "Images" }
+            TabButton { text: "Networks" }
             TabButton { text: "Properties" }
             TabButton { text: "Filters" }
             TabButton { text: "Graph" }

@@ -56,6 +56,10 @@ class TaskController(QObject):
         self._running: set[str] = set() # id of running tasks
         self._init_workers(max_workers)
 
+    def __del__(self):
+        for thread in self._threads:
+            thread.quit()
+
     def enqueue(self, task: Task):
         """Enqueue a new task."""
         self._task_queue.append(task)

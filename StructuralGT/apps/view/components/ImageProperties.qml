@@ -39,10 +39,10 @@ Rectangle {
                 Layout.topMargin: 20
                 text: "No image properties to show!"
                 color: "#808080"
-                visible: true
+                visible: !imgPropsTbl.visible
             }
 
-            ImagePropertyWidget{}
+            ImagePropertyWidget{ id: imgPropsTbl }
 
             Rectangle {
                 height: 1
@@ -68,22 +68,22 @@ Rectangle {
                 Layout.topMargin: 20
                 text: "No graph properties to show!"
                 color: "#808080"
-                visible: true
+                visible: !graphPropsTbl.visible
             }
-            GraphPropertyWidget{}
+            GraphPropertyWidget{ id: graphPropsTbl }
 
         }
     }
 
     Connections {
         target: mainController
+        function onImageRefreshedSignal() {
+            mainController.update_image_model();
+            imgPropsTbl.visible = imagePropsModel.rowCount() > 0;
 
-        function onImageChangedSignal() {
-            lblNoImageProps.visible = mainController.display_type() === "welcome" ? true : false;
-            lblNoGraphProps.visible = mainController.graph_loaded() ? false : true;
+            mainController.update_graph_model();
+            graphPropsTbl.visible = graphPropsModel.rowCount() > 0;
         }
-
-
     }
 
 }

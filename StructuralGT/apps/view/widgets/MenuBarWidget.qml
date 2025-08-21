@@ -15,7 +15,7 @@ MenuBar {
 
     Menu {
         title: "Properties"
-        MenuItem { id:mnuProperties; text: "Graph Properties"; enabled: false; onTriggered: dialogGraphProperties.open() }
+        MenuItem { id:mnuProperties; text: "Graph Properties"; enabled: true; onTriggered: dialogGraphProperties.open() }
     }
     Menu {
         title: "Help"
@@ -24,9 +24,5 @@ MenuBar {
 
     Connections {
         target: mainController
-
-        function onImageChangedSignal() {
-            mnuProperties.enabled = mainController.graph_loaded() ? true : false;
-        }
     }
 }

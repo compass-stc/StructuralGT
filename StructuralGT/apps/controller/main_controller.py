@@ -57,7 +57,7 @@ class MainController(QObject):
         # Create Models
         self.imagePropsModel = TableModel([])
         self.graphPropsModel = TableModel([])
-        self.imageListModel = ListModel([])
+        self.networkListModel = ListModel([])
 
     @Slot(str, int)
     def add_network(self, path: str, dim: int):
@@ -170,7 +170,7 @@ class MainController(QObject):
     @Slot()
     def update_image_model(self):
         """Update the image properties model with the selected image's properties."""
-        handler = self.file_controller.get_selected_handler()
+        handler = self.registry.get_selected()
 
         if handler is None or isinstance(handler, PointNetworkHandler):
             self.imagePropsModel.reset_data([])
@@ -178,28 +178,30 @@ class MainController(QObject):
 
         if handler.dim == 3:
             image_props = [
-                ["Name", f"{handler.path}"],
+                ["Name", f"{handler.input_dir}"],
                 ["Depth x Height x Width", f"{handler.network.image.shape[0]} x {handler.network.image.shape[1]} x {handler.network.image.shape[2]}"],
                 ["Dimensions", "3D"]
             ]
         else:
             image_props = [
-                ["Name", f"{handler.path.name}"],
+                ["Name", f"{handler.input_dir}"],
                 ["Height x Width", f"{handler.network.image.shape[0]} x {handler.network.image.shape[1]}"],
                 ["Dimensions", "2D"]
             ]
 
         self.imagePropsModel.reset_data(image_props)
+        logging.info(f"Updated image properties model: {image_props}")
+
 
     @Slot()
     def update_graph_model(self):
-        """Update the graph properties model with the selected image's graph properties."""
-        handler = self.file_controller.get_selected_handler()
+        """Update the graph properties model."""
+        handler = self.registry.get_selected()
 
         if handler is None:
             return
 
-        if handler.graph_loaded:
+        if  isinstance(handler, PointNetworkHandler) or handler.graph_loaded:
             graph_props = [
                 ["Edge Count", f"{handler.network.graph.ecount()}"],
                 ["Node Count", f"{handler.network.graph.vcount()}"],

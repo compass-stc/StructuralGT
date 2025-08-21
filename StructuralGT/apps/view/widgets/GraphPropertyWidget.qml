@@ -65,15 +65,5 @@ Item {
             }
         }
     }
-
-    Connections {
-        target: mainController
-
-        function onImageChangedSignal(){
-            graphPropsTbl.visible = mainController.graph_loaded() ? true : false;
-            mainController.update_graph_model();
-        }
-
-    }
 }
 

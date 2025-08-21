@@ -70,14 +70,4 @@ Item {
         }
 
     }
-
-    Connections {
-        target: mainController
-            function onImageChangedSignal() {
-                imgPropsTbl.visible = mainController.display_type() !== "welcome"
-                mainController.update_image_model();
-            }
-
-
-    }
 }
