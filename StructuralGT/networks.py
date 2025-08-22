@@ -1111,14 +1111,14 @@ class PointNetwork:
     Args:
         positions (:class:`numpy.ndarray`):
             The coordinates of the points in the point cloud.
-        cutoff (float):
-            The cutoff distance for creating edges between points.
+        edge_builder (dict or :class:`numpy.ndarray`):
+            The edge_builder distance for creating edges between points.
         periodic (bool):
             Whether to use periodic boundary conditions. Default is False.
     """
 
-    def __init__(self, positions, cutoff, periodic=False):
-        self.cutoff = cutoff
+    def __init__(self, positions, edge_builder, periodic=False):
+        self.edge_builder = edge_builder
         self.periodic = periodic
         self.dim = positions.shape[1]
         self.positions = positions
@@ -1147,18 +1147,23 @@ class PointNetwork:
 
         self.box = box
 
-        aq = freud.locality.AABBQuery(self.box, self.positions)
-        nlist = aq.query(
-            self.positions,
-            {"r_max": self.cutoff, "exclude_ii": True},
-        ).toNeighborList()
-        nlist.filter(nlist.query_point_indices < nlist.point_indices)
         self.graph = ig.Graph()
         self.graph.add_vertices(len(self.positions))
-        for i in range(len(nlist.point_indices)):
+        if isinstance(self.edge_builder, dict):
+            aq = freud.locality.AABBQuery(self.box, self.positions)
+            nlist = aq.query(
+                self.positions, self.edge_builder
+            ).toNeighborList()
+            nlist.filter(nlist.query_point_indices < nlist.point_indices)
+            _i, _j = nlist.point_indices, nlist.query_point_indices
+        else:
+            _i = self.edge_builder.T[0]
+            _j = self.edge_builder.T[1]
+
+        for i in range(len(_i)):
             self.graph.add_edge(
-                nlist.point_indices[i],
-                nlist.query_point_indices[i],
+                _i[i],
+                _j[i],
             )
 
         N = self.graph.vcount()
@@ -1217,7 +1222,6 @@ class PointNetwork:
                 s.log["particles/" + label] = attribute
 
         s.log["periodic"] = int(self.periodic)
-        s.log["cutoff"] = self.cutoff
         s.log["dim"] = self.dim
         s.log["box"] = self.box
 
@@ -1237,11 +1241,10 @@ class PointNetwork:
         """
 
         f = gsd.hoomd.open(name=filename, mode="r")[frame]
-        cutoff = f.log["cutoff"]
         G = ig.Graph(edges=f.bonds.group.tolist(), n=f.particles.N)
         positions = np.array(f.particles.position)
         positions = base.shift(positions, _2d=False)[0]
-        N = cls(positions, cutoff, periodic=False)
+        N = cls(positions, edge_builder, periodic=False)
         N.graph = G
         N.periodic = bool(f.log["periodic"][0])
         N.dim = f.log["dim"]
