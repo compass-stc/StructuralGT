@@ -1235,6 +1235,46 @@ class PointNetwork:
         with gsd.hoomd.open(name=filename, mode="w") as f_mod:
             f_mod.append(s)
 
+    def edge_labelling(self, attributes, labels, filename="edge_labelled.gsd"):
+        """Method saves a new :code:`.gsd` which labels the :attr:`graph`
+        attribute with the given edge attribute values.
+
+        Args:
+            attributes (list[:class:`numpy.ndarray`]):
+                A list of arrays of attribute values, with each array listing
+                attribute values in in ascending order of edge id.
+            label (list[str]):
+                A list of the labels to give the attribute in the file.
+            filename (str):
+                The file name to write.
+        """
+
+        if not isinstance(labels, list):
+            labels = [
+                labels,
+            ]
+            attributes = [
+                attributes,
+            ]
+
+        with gsd.hoomd.open(name=self.filename, mode="r") as f:
+            s = f[0]
+            for attribute, label in zip(attributes, labels):
+                if len(attribute) != s.bonds.N:
+                    raise ValueError(
+                        f"Attribute length {len(attribute)} "
+                        "does not match number of particles "
+                        "{s.bonds.N}."
+                    )
+                s.log["bonds/" + label] = attribute
+
+        s.log["periodic"] = int(self.periodic)
+        s.log["dim"] = self.dim
+        s.log["box"] = self.box
+
+        with gsd.hoomd.open(name=filename, mode="w") as f_mod:
+            f_mod.append(s)
+
     @classmethod
     def from_gsd(cls, filename, edge_builder, frame=0):
         """Alternative constructor for returning a PointNetwork object that is
