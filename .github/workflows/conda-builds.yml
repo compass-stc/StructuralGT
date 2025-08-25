@@ -25,10 +25,11 @@ jobs:
           environment-name: test
           environment-file: .github/workflows/conda-envs/env.yml
 
-      - name: Install package
+      - name: Build cpp modules
         shell: bash -l {0}  # conda stetup requires this special shell
         run: |
           python setup.py build_ext
+      - name: Install package
         shell: bash -l {0}  # conda stetup requires this special shell
         run: |
           pip install . --no-deps
