@@ -17,6 +17,7 @@ Small_path = "StructuralGT/pytest/data/Small/"
 AgNWN_path = "StructuralGT/pytest/data/AgNWN/"
 ANF_path = "StructuralGT/pytest/data/ANF/"
 PointNetwork_path = "StructuralGT/pytest/data/Seeds/"
+EdgeList_path = "StructuralGT/pytest/data/Bonds/"
 img_path = "StructuralGT/pytest/data/loose_img.tiff"
 
 
@@ -124,7 +125,7 @@ ATTR_VALUES = {
 
 
 class TestPointNetwork:
-    def test_write(self):
+    def test_write_cutoff(self):
         positions = pd.read_csv(PointNetwork_path + "seed_stats.csv")
         positions = positions[
             [
@@ -135,8 +136,8 @@ class TestPointNetwork:
         ]
         positions = positions.values
 
-        N = PointNetwork(positions, ATTR_VALUES["cutoff"])
-        N.point_to_skel()
+        N = PointNetwork(positions, {"r_max": ATTR_VALUES["cutoff"]})
+        N.set_graph()
 
         assert hasattr(N, "graph")
 
@@ -148,9 +149,36 @@ class TestPointNetwork:
             filename=PointNetwork_path + "labelled.gsd",
         )
 
+    def test_write_edgelist(self):
+        # Read edge list with whitespace as delimiter
+        df = pd.read_csv(
+            EdgeList_path + "Connectivity.dat", delim_whitespace=True
+        )
+        edge_list = df[["node1", "node2"]].values
+        edge_list -= 1  # Convert to 0-based indexing
+
+        # Read node positions
+        pos_df = pd.read_csv(
+            EdgeList_path + "Node_positions.dat", delim_whitespace=True
+        )
+        positions = pos_df[["x", "y", "z"]].values
+
+        N = PointNetwork(positions, edge_list)
+        N.set_graph()
+
+        assert hasattr(N, "graph")
+
+        N.node_labelling(
+            [np.ones(N.graph.vcount())],
+            ["Ones"],
+            filename=EdgeList_path + "labelled.gsd",
+        )
+
     def test_from_gsd(self):
-        N = PointNetwork.from_gsd(PointNetwork_path + "labelled.gsd")
+        N = PointNetwork.from_gsd(
+            PointNetwork_path + "labelled.gsd",
+            {"r_max": ATTR_VALUES["cutoff"]},
+        )
 
         assert ATTR_VALUES["periodic"] == N.periodic
-        assert ATTR_VALUES["cutoff"] == N.cutoff
         assert np.all(ATTR_VALUES["box"] == N.box)

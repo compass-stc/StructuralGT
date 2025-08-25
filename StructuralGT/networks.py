@@ -1123,7 +1123,7 @@ class PointNetwork:
         self.dim = positions.shape[1]
         self.positions = positions
 
-    def point_to_skel(self, filename="skel.gsd"):
+    def set_graph(self, filename="skel.gsd", weights=None):
         """Method saves a new :code:`.gsd` with the graph
         structure.
 
@@ -1165,6 +1165,13 @@ class PointNetwork:
                 _i[i],
                 _j[i],
             )
+
+        self.graph.vs["o"] = self.positions
+        if weights == ["Length"]:
+            self.graph.es["Length"] = [
+                np.linalg.norm(self.positions[i] - self.positions[j])
+                for i, j in self.graph.get_edgelist()
+            ]
 
         N = self.graph.vcount()
         bonds = np.array(self.graph.get_edgelist())
@@ -1229,7 +1236,7 @@ class PointNetwork:
             f_mod.append(s)
 
     @classmethod
-    def from_gsd(cls, filename, frame=0):
+    def from_gsd(cls, filename, edge_builder, frame=0):
         """Alternative constructor for returning a PointNetwork object that is
         stored in a :code:`.gsd` file.
 
