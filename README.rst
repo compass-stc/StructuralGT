@@ -29,6 +29,7 @@ sucessful when all dependencies are obtained with conda.
    git clone https://github.com/compass-stc/StructuralGT.git
    conda install -c conda-forge numpy scipy scikit-image matplotlib networkx opencv pandas gsd python-igraph pytest ipywidgets freud eigen cython igraph
    cd StructuralGT
+   python3 setup.py build_ext
    python3 -m pip install . --no-deps
 
 Alternatively, if building from source gives errors related to igraph, you can
