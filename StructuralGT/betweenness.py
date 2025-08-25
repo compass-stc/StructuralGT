@@ -9,14 +9,17 @@ from StructuralGT.util import _Compute
 import StructuralGT
 
 if StructuralGT.__C_FLAG__ is False:
-    raise RuntimeError("The betweenness module was never"
-                       " compiled. Try resinstalling StructuralGT, ensuring"
-                       " that the C_FLAG environment variable is not set to"
-                       " False.")
+    raise RuntimeError(
+        "The betweenness module was never"
+        " compiled. Try resinstalling StructuralGT, ensuring"
+        " that the C_FLAG environment variable is not set to"
+        " False."
+    )
 
-from StructuralGT import (_boundary_betweenness_cast,
-                          _random_boundary_betweenness_cast,
-                          _vertex_boundary_betweenness_cast)
+from . import _boundary_betweenness_cast
+from . import _random_boundary_betweenness_cast
+from . import _vertex_boundary_betweenness_cast
+
 
 class NodeBetweenness(_Compute):
     """Module for conventional vertex betweenness."""
@@ -32,7 +35,11 @@ class NodeBetweenness(_Compute):
                 The :class:`Network` object.
         """
 
-        self._node_betweenness = np.array(network.graph.betweenness()) / network.graph.vcount() / (network.graph.vcount() - 1 )
+        self._node_betweenness = (
+            np.array(network.graph.betweenness())
+            / network.graph.vcount()
+            / (network.graph.vcount() - 1)
+        )
 
     @_Compute._computed_property
     def node_betweenness(self):
@@ -42,13 +49,13 @@ class NodeBetweenness(_Compute):
 
            g(v) =\frac{1}{|N|(|N|-1)} \sum_{s\in N,t \in N} \frac{\sigma(s, t|v)}{\sigma(s, t)}
 
-        where :math:`N` is the set of nodes, 
+        where :math:`N` is the set of nodes,
         :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
         and :math:`\sigma(s, t|v)` is the number of those paths
         passing through node :math:`v` :cite:`Brandes2008`.
         """
         return self._node_betweenness
-    
+
     @_Compute._computed_property
     def average_node_betweenness(self):
         r"""Average node betweenness centrality.
@@ -58,6 +65,7 @@ class NodeBetweenness(_Compute):
            \bar{g} = \frac{1}{|N|} \sum_{v\in N} g(v)
         """
         return np.mean(self._node_betweenness)
+
 
 class NodeBoundaryBetweenness(_Compute):
     """A module for calculating different extension of the classical
@@ -81,8 +89,8 @@ class NodeBoundaryBetweenness(_Compute):
                 The set of target nodes, :math:`T`.
         """
 
-        num_edges = network.Gr.ecount()
-        _copy = copy.deepcopy(network.Gr)
+        num_edges = network.graph.ecount()
+        _copy = copy.deepcopy(network.graph)
 
         if self.edge_weight is None:
             weights = np.ones(num_edges, dtype=np.double)
@@ -139,8 +147,8 @@ class BoundaryBetweenness(_Compute):
                 The set of target nodes, :math:`T`.
         """
 
-        num_edges = network.Gr.ecount()
-        _copy = copy.deepcopy(network.Gr)
+        num_edges = network.graph.ecount()
+        _copy = copy.deepcopy(network.graph)
 
         if self.edge_weight is None:
             weights = np.ones(num_edges, dtype=np.double)
@@ -200,12 +208,12 @@ class RandomBoundaryBetweenness(_Compute):
                 random walks. If omitted, an unweighted network is used.
 
         """
-        _copy = copy.deepcopy(network.Gr)
+        _copy = copy.deepcopy(network.graph)
 
         # Add ghost node and edges from targets to ghost
         _copy.add_vertex(1)
         for target in targets:
-            _copy.add_edge(network.Gr.vcount() - 1, target)
+            _copy.add_edge(network.graph.vcount() - 1, target)
         num_edges = _copy.ecount()
 
         # When passing weight vector, must add additional weights for edges
@@ -213,10 +221,10 @@ class RandomBoundaryBetweenness(_Compute):
         if self.edge_weight is None:
             weights = np.ones(num_edges, dtype=np.double)
         else:
-            mean = np.mean(np.array(network.Gr.es[self.edge_weight]))
+            mean = np.mean(np.array(network.graph.es[self.edge_weight]))
 
             weights = np.append(
-                np.array(network.Gr.es[self.edge_weight], dtype=np.double),
+                np.array(network.graph.es[self.edge_weight], dtype=np.double),
                 np.full(len(targets), mean, dtype=np.double),
             ).astype(np.double)
             assert len(weights) == _copy.ecount()
@@ -231,8 +239,9 @@ class RandomBoundaryBetweenness(_Compute):
         )
 
         self._linear_betweenness = cast.linear_random_boundary_betweenness
-        self._nonlinear_betweenness =\
+        self._nonlinear_betweenness = (
             cast.nonlinear_random_boundary_betweenness
+        )
 
     @_Compute._computed_property
     def linear_betweenness(self):

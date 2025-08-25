@@ -1,7 +1,7 @@
-from RandomBetweennessCast cimport RandomBetweennessCast
+from StructuralGT.cpp.RandomBetweennessCast cimport RandomBetweennessCast
 from cpython.long cimport PyLong_AsVoidPtr
 import numpy as np
-
+import os
 from libcpp.vector cimport vector
 
 # Create a Cython extension type which holds a C++ instance
@@ -13,7 +13,7 @@ from libcpp.vector cimport vector
 # attribute be set as a std::vector
 cdef class PyCast:
     cdef RandomBetweennessCast c_cast  # Hold a C++ instance which we're wrapping
-    
+
     def __init__(self, long long ptr):
         self.c_cast = RandomBetweennessCast()
         self.c_cast.G_ptr = PyLong_AsVoidPtr(ptr)
@@ -24,7 +24,7 @@ cdef class PyCast:
 
         self.c_cast.sources_len = <long>len(sources)
         self.c_cast.targets_len = <long>len(targets)
-        
+
         cdef vector[int] sources_vec
         cdef vector[int] targets_vec
 
@@ -40,7 +40,7 @@ cdef class PyCast:
 
         self.c_cast.random_betweenness_compute()
 
-        
+
     @property
     def random_betweenness(self):
         _random_betweennesses = np.zeros((self.c_cast.num_edges),
@@ -49,5 +49,3 @@ cdef class PyCast:
             _random_betweennesses[i] = self.c_cast.betweennesses[i]
 
         return _random_betweennesses
-
-

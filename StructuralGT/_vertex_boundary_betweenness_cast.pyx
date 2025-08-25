@@ -1,4 +1,4 @@
-from BoundaryBetweennessCast cimport BoundaryBetweennessCast
+from StructuralGT.cpp.VertexBoundaryBetweennessCast cimport VertexBoundaryBetweennessCast
 from cpython.long cimport PyLong_AsVoidPtr
 import numpy as np
 
@@ -8,16 +8,16 @@ from libcpp.vector cimport vector
 # as an attribute and create a bunch of forwarding methods
 # Python extension type.
 cdef class PyCast:
-    cdef BoundaryBetweennessCast c_cast  # Hold a C++ instance which we're wrapping
-    
+    cdef VertexBoundaryBetweennessCast c_cast  # Hold a C++ instance which we're wrapping
+
     def __init__(self, long long ptr):
-        self.c_cast = BoundaryBetweennessCast()
+        self.c_cast = VertexBoundaryBetweennessCast()
         self.c_cast.G_ptr = PyLong_AsVoidPtr(ptr)
 
-    def boundary_betweenness_compute(self, long long[:] sources,
+    def vertex_boundary_betweenness_compute(self, long long[:] sources,
                                     long long[:] targets, int num_edges,
                                     double[:] weights):
-        
+
         self.c_cast.sources_len = <long>len(sources)
         self.c_cast.targets_len = <long>len(targets)
 
@@ -39,23 +39,22 @@ cdef class PyCast:
         cdef double[:] weights_memview = weights
         self.c_cast.weights_ptr = &weights_memview[0]
 
-        
+
         cdef long long[:] sources_memview = sources
         cdef long long[:] targets_memview = targets
         #cdef double[:] weights_memview = weights
-               
+
         self.c_cast.sources_ptr = &sources_memview[0]
         self.c_cast.targets_ptr = &targets_memview[0]
         self.c_cast.weights_ptr = &weights_memview[0]
 
-        self.c_cast.boundary_betweenness_compute()
+        self.c_cast.vertex_boundary_betweenness_compute()
 
     @property
-    def boundary_betweenness(self):
-        _boundary_betweennesses = np.zeros((self.c_cast.num_edges),
+    def vertex_boundary_betweenness(self):
+        _vertex_boundary_betweennesses = np.zeros((self.c_cast.num_vertices),
                                           dtype=np.double)
-        for i in range(self.c_cast.num_edges):
-            _boundary_betweennesses[i] = self.c_cast.betweennesses[i]
+        for i in range(self.c_cast.num_vertices):
+            _vertex_boundary_betweennesses[i] = self.c_cast.betweennesses[i]
 
-        return _boundary_betweennesses
-
+        return _vertex_boundary_betweennesses

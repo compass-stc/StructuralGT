@@ -1,4 +1,4 @@
-from AverageNodalConnectivityCast cimport AverageNodalConnectivityCast
+from StructuralGT.cpp.AverageNodalConnectivityCast cimport AverageNodalConnectivityCast
 from cpython.long cimport PyLong_AsVoidPtr
 import numpy as np
 
@@ -13,16 +13,14 @@ from libcpp.vector cimport vector
 # attribute be set as a std::vector
 cdef class PyCast:
     cdef AverageNodalConnectivityCast c_cast  # Hold a C++ instance which we're wrapping
-    
+
     def __init__(self, long long ptr):
         self.c_cast = AverageNodalConnectivityCast()
         self.c_cast.G_ptr = PyLong_AsVoidPtr(ptr)
 
     def average_nodal_connectivity_compute(self):
         self.c_cast.average_nodal_connectivity_compute()
-        
+
     @property
     def average_nodal_connectivity(self):
         return self.c_cast.anc
-
-

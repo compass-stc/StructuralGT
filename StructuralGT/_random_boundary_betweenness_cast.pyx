@@ -1,4 +1,4 @@
-from RandomBoundaryBetweennessCast cimport RandomBoundaryBetweennessCast
+from StructuralGT.cpp.RandomBoundaryBetweennessCast cimport RandomBoundaryBetweennessCast
 from cpython.long cimport PyLong_AsVoidPtr
 import numpy as np
 
@@ -13,7 +13,7 @@ from libcpp.vector cimport vector
 # attribute be set as a std::vector
 cdef class PyCast:
     cdef RandomBoundaryBetweennessCast c_cast  # Hold a C++ instance which we're wrapping
-    
+
     def __init__(self, long long ptr):
         self.c_cast = RandomBoundaryBetweennessCast()
         self.c_cast.G_ptr = PyLong_AsVoidPtr(ptr)
@@ -24,7 +24,7 @@ cdef class PyCast:
 
         self.c_cast.sources_len = <long>len(sources)
         self.c_cast.targets_len = <long>len(targets)
-        
+
         cdef vector[int] sources_vec
         cdef vector[int] targets_vec
         cdef vector[float] incoming_vec
@@ -49,7 +49,7 @@ cdef class PyCast:
         self.c_cast.weights_ptr = &weights_memview[0]
         self.c_cast.random_boundary_betweenness_compute()
 
-        
+
     @property
     def linear_random_boundary_betweenness(self):
         _betweennesses = np.zeros((self.c_cast.num_edges-self.c_cast.targets_len),
@@ -71,4 +71,3 @@ cdef class PyCast:
             _betweennesses[i] = self.c_cast.nonlinear_betweennesses[i]
 
         return _betweennesses
-

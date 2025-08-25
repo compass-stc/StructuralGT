@@ -5,18 +5,19 @@
 import json
 import os
 import platform
+import numpy
 
 from Cython.Build import cythonize
 from setuptools import Extension, find_packages, setup
 
 metadata = {}
 if os.environ.get("C_FLAG") is None or os.environ.get("C_FLAG") == "TRUE":
-    metadata['C_FLAG'] = True
+    metadata["C_FLAG"] = True
 elif os.environ.get("C_FLAG") == "FALSE":
-    metadata['C_FLAG'] = False
+    metadata["C_FLAG"] = False
 else:
     raise ValueError("Environment variable, C_FLAG, has an invalid value.")
-with open('StructuralGT/metadata.json', 'w') as json_file:
+with open("StructuralGT/metadata.json", "w") as json_file:
     json.dump(metadata, json_file)
 
 if os.getenv("CONDA_PREFIX") is not None:
@@ -25,7 +26,6 @@ elif os.getenv("CONDA_ENVS_PATH") is not None:
     PRE_PREFIX = os.path.join(os.getenv("CONDA_ENVS_PATH"), "latest")
 else:
     raise ValueError("Could not identify env prefix")
-#elif os.getenv("MAMBA_ROOT_PREFIX") is not None:
 
 if platform.system() == "Windows":
     PREFIX = os.path.join(PRE_PREFIX, "Library")
@@ -37,7 +37,7 @@ else:
     freud = "freud"
 
 
-if metadata['C_FLAG']:
+if metadata["C_FLAG"]:
     assert PREFIX is not None
     include_dirs = [
         os.path.join(PREFIX, "include", "igraph"),
@@ -52,28 +52,34 @@ if metadata['C_FLAG']:
             [
                 Extension(
                     name="StructuralGT._boundary_betweenness_cast",
-                    sources=["_boundary_betweenness_cast.pyx"],
+                    sources=["StructuralGT/_boundary_betweenness_cast.pyx"],
                     include_dirs=include_dirs,
                     language="c++",
                     extra_objects=[extra_obj],
                 ),
                 Extension(
                     name="StructuralGT._vertex_boundary_betweenness_cast",
-                    sources=["_vertex_boundary_betweenness_cast.pyx"],
+                    sources=[
+                        "StructuralGT/_vertex_boundary_betweenness_cast.pyx"
+                    ],
                     include_dirs=include_dirs,
                     language="c++",
                     extra_objects=[extra_obj],
                 ),
                 Extension(
                     name="StructuralGT._random_boundary_betweenness_cast",
-                    sources=["_random_boundary_betweenness_cast.pyx"],
+                    sources=[
+                        "StructuralGT/_random_boundary_betweenness_cast.pyx"
+                    ],
                     include_dirs=include_dirs,
                     language="c++",
                     extra_objects=[extra_obj],
                 ),
                 Extension(
                     name="StructuralGT._average_nodal_connectivity_cast",
-                    sources=["_average_nodal_connectivity_cast.pyx"],
+                    sources=[
+                        "StructuralGT/_average_nodal_connectivity_cast.pyx"
+                    ],
                     include_dirs=include_dirs,
                     language="c++",
                     extra_objects=[extra_obj],
@@ -88,7 +94,7 @@ if metadata['C_FLAG']:
             ]
         },
     )
-elif not metadata['C_FLAG']: 
+elif not metadata["C_FLAG"]:
     setup(
         name="StructuralGT",
         packages=find_packages(),
