@@ -89,6 +89,9 @@ Rectangle {
             enabled: true
             onClicked: {
                 mainController.refresh_image_view();
+                // mainController.refresh_graph_view();
+                mainController.update_image_model();
+                mainController.update_graph_model();
             }
         }
 

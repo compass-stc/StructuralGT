@@ -222,7 +222,7 @@ class MainController(QObject):
 
             self.graphPropsModel.reset_data(graph_props)
 
-        logging.info(f"Updated graph properties model: {graph_props}")
+            logging.info(f"Updated graph properties model: {graph_props}")
 
     @Slot(str, result=str)
     def get_file_extensions(self, option):

@@ -128,8 +128,9 @@ class GraphAnalysisTask(Task):
                 nematic_obj.compute(handler.network)
                 handler.properties["Nematic Order Parameter"] = \
                     nematic_obj.nematic_order_parameter
-            if self.options["Effective Resistance"]:
-                pass
+            # # TODO: implement this later
+            # if self.options["Effective Resistance"]:
+            #     pass
             return True
         except Exception as e:
             logging.error(f"Error occurred while analyzing graph: {e}")

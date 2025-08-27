@@ -69,7 +69,7 @@ Dialog {
                     };
 
                     mainController.submit_graph_analysis_task(JSON.stringify(options));
-                    dialogProperties.close();
+                    dialogGraphProperties.close();
                 }
 
                 Rectangle {
