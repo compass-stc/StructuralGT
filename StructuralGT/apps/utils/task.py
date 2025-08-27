@@ -76,10 +76,6 @@ class ExtractGraphTask(Task):
             ) else self.weights.strip()
             handler.network.set_graph(weight_type=weight_type, write="network.gsd")
             handler.graph_loaded = True
-            if hasattr(handler.network, 'Gr') and handler.network.Gr:
-                handler.properties["Node Count"] = handler.network.Gr.vcount()
-                handler.properties["Edge Count"] = handler.network.Gr.ecount()
-            handler.graph_loaded = True
             return True
         except Exception as e:
             logging.exception(f"Error occurred while extracting graph: {e}")
