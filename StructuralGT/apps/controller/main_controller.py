@@ -70,6 +70,7 @@ class MainController(QObject):
             self.registry.select(self.registry.count() - 1)
             self.networkListModel.reset_data(self.registry.list_for_ui())
             self.refreshImageSignal.emit()
+            self.refreshGraphSignal.emit()
 
     @Slot(str, float)
     def add_point_network(self, path: str, cutoff: float):

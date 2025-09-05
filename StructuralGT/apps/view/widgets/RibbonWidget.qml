@@ -15,6 +15,8 @@ Rectangle {
     border.color: "#c0c0c0"
     border.width: 1
 
+    property Item graphContainer
+
     RowLayout {
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
@@ -89,7 +91,7 @@ Rectangle {
             enabled: true
             onClicked: {
                 mainController.refresh_image_view();
-                // mainController.refresh_graph_view();
+                mainController.refresh_graph_view(graphContainer);
                 mainController.update_image_model();
                 mainController.update_graph_model();
             }

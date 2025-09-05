@@ -32,7 +32,7 @@ ApplicationWindow {
             Layout.preferredWidth: parent.width
             Layout.fillWidth: true
             Layout.fillHeight: true
-            RibbonWidget {}
+            RibbonWidget { graphContainer: recContent.graphPage }
         }
 
         Rectangle {

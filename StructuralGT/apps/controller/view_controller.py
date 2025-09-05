@@ -251,6 +251,7 @@ class GraphViewController:
 
             pipeline = import_file(gsd_file)
             pipeline.add_to_scene()
+            logging.info(f"Imported GSD file: {gsd_file}")
 
         except Exception as e:
             logging.error(f"Error rendering graph: {e}")
@@ -264,7 +265,7 @@ class GraphViewController:
 
         gsd_file = None
         if handler and isinstance(handler, NetworkHandler):
-            gsd_file = handler.input_dir + "Binarized/network.gsd"
+            gsd_file = pathlib.Path(handler.input_dir) / "Binarized/network.gsd"
         elif handler and isinstance(handler, PointNetworkHandler):
             gsd_file = pathlib.Path(handler.input_dir).parent / "skel.gsd"
 
