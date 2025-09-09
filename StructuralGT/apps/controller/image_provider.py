@@ -22,6 +22,21 @@ class ImageProvider(QQuickImageProvider):
         self.main_controller = main_controller
         self.main_controller.refreshImageSignal.connect(self.refresh)
 
+    def convert_to_gray(self, image: np.ndarray) -> np.ndarray:
+        """Convert an image to grayscale."""
+        if image.dtype != np.uint8:
+            image = (
+                255 * (image - np.min(image)) / (np.ptp(image) + 1e-8)
+            ).astype(np.uint8)
+        if len(image.shape) == 2:
+            return image  # Already grayscale
+        if len(image.shape) == 3:
+            if image.shape[2] == 3:
+                return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            if image.shape[2] == 4:
+                return cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY)
+        raise ValueError("Unsupported image shape for grayscale conversion.")
+
     def refresh(self):
         """Refresh the image in the QML view."""
         image_view_ctrl = self.main_controller.image_view_ctrl
@@ -33,6 +48,7 @@ class ImageProvider(QQuickImageProvider):
             self.pixmap = QPixmap()
         elif display_info["display_type"] == "raw":
             image = image_view_ctrl.get_raw_image()
+            image = self.convert_to_gray(image)
             self.pixmap = ImageQt.toqpixmap(Image.fromarray(image))
         elif display_info["display_type"] == "binarized":
             try:
