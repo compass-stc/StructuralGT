@@ -14,8 +14,8 @@ ColumnLayout {
 
     TabBar {
         id: tabBar
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.top
+        Layout.fillWidth: true
+        Layout.alignment: Qt.AlignHCenter
         onCurrentIndexChanged: {
             if (currentIndex === 0)      
                 mainController.set_display_type("raw");
