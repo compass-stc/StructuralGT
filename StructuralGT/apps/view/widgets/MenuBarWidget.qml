@@ -100,7 +100,7 @@ MenuBar {
     }
 
     Menu {
-        title: "Properties"
+        title: "Analysis"
         MenuItem { id:mnuProperties; text: "Graph Properties"; enabled: true; onTriggered: dialogGraphProperties.open() }
     }
     
