@@ -105,7 +105,7 @@ Rectangle {
     }
 
     Connections {
-        target: mainController
+        target: signalController
 
         function onImageChangedSignal() {
             // Force refresh

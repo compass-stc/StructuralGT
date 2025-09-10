@@ -6,20 +6,18 @@ from PySide6.QtCore import QObject, QThread, Signal, Slot
 
 from ..utils.handler import HandlerRegistry
 from ..utils.task import Task
+from .signal_controller import SIGNAL_CONTROLLER
 
 
 class Worker(QObject):
     """Worker for processing tasks."""
 
-    requestExec = Signal(object)  # Controller -> Worker        # noqa: N815
-    taskStarted = Signal(str) # Worker -> Controller            # noqa: N815
-    taskFinished = Signal(str, bool) # Worker -> Controller     # noqa: N815
-
     def __init__(self, registry: HandlerRegistry):
         super().__init__()
         self._registry = registry
         self._current_task: Optional[Task] = None
-        self.requestExec.connect(self.exec_task)
+        # Connect to SignalController signals
+        SIGNAL_CONTROLLER.connect_signal("requestExec", self.exec_task)
 
     def is_idle(self) -> bool:
         """Check if the worker is idle."""
@@ -33,7 +31,7 @@ class Worker(QObject):
             return
 
         self._current_task = task
-        self.taskStarted.emit(task.id)
+        SIGNAL_CONTROLLER.emit_signal("taskStarted", task.id)
 
         ok = False
         try:
@@ -42,7 +40,8 @@ class Worker(QObject):
             logging.exception(f"Error occurred while executing task {task.id}: {e}")
         finally:
             self._current_task = None
-            self.taskFinished.emit(task.id, ok)
+            SIGNAL_CONTROLLER.emit_signal("taskFinished", task.id, ok)
+
 
 class TaskController(QObject):
     """Class to manage and coordinate tasks."""
@@ -53,7 +52,8 @@ class TaskController(QObject):
         self._task_queue: deque[Task] = deque()
         self._workers: list[Worker] = []
         self._threads: list[QThread] = []
-        self._running: set[str] = set() # id of running tasks
+        self._running: set[str] = set()  # id of running tasks
+        self._task_map: dict[str, Task] = {}  # Map task ID to task object
         self._init_workers(max_workers)
 
     def __del__(self):
@@ -63,6 +63,7 @@ class TaskController(QObject):
     def enqueue(self, task: Task):
         """Enqueue a new task."""
         self._task_queue.append(task)
+        self._task_map[task.id] = task
         logging.info(f"Enqueued task: {task.id}")
         self._try_dispatch()
 
@@ -73,7 +74,7 @@ class TaskController(QObject):
             if worker is None:
                 break
             task = self._task_queue.popleft()
-            worker.requestExec.emit(task)
+            SIGNAL_CONTROLLER.emit_signal("requestExec", task)
 
     def _find_idle_worker(self) -> Optional[Worker]:
         """Find an idle worker."""
@@ -88,8 +89,9 @@ class TaskController(QObject):
             thread = QThread()
             worker = Worker(self._registry)
             worker.moveToThread(thread)
-            worker.taskStarted.connect(self._on_task_started)
-            worker.taskFinished.connect(self._on_task_finished)
+            # Connect to SignalController signals
+            SIGNAL_CONTROLLER.connect_signal("taskStarted", self._on_task_started)
+            SIGNAL_CONTROLLER.connect_signal("taskFinished", self._on_task_finished)
             thread.start()
             self._threads.append(thread)
             self._workers.append(worker)
@@ -107,4 +109,15 @@ class TaskController(QObject):
     def _on_task_finished(self, id: str, ok: bool):
         self._running.discard(id)
         logging.info(f"Finished task: {id}, success: {ok}")
+
+        # Get task object and emit task finished signal with task info
+        task = self._task_map.get(id)
+        if task:
+            logging.info(f"Emitting taskFinishedWithInfo signal for task: {task.type}")
+            SIGNAL_CONTROLLER.emit_signal("taskFinishedWithInfo", task, ok)
+            # Clean up task map
+            del self._task_map[id]
+        else:
+            logging.warning(f"Task {id} not found in task map")
+
         self._try_dispatch()

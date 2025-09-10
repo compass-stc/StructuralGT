@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .main_controller import MainController
+from .signal_controller import SIGNAL_CONTROLLER
 
 
 class ImageProvider(QQuickImageProvider):
@@ -20,14 +21,14 @@ class ImageProvider(QQuickImageProvider):
         super().__init__(QQuickImageProvider.ImageType.Pixmap)
         self.pixmap = QPixmap()
         self.main_controller = main_controller
-        self.main_controller.refreshImageSignal.connect(self.refresh)
+        SIGNAL_CONTROLLER.connect_signal("imageRefreshSignal", self.refresh)
 
     def convert_to_gray(self, image: np.ndarray) -> np.ndarray:
         """Convert an image to grayscale."""
         if image.dtype != np.uint8:
-            image = (
-                255 * (image - np.min(image)) / (np.ptp(image) + 1e-8)
-            ).astype(np.uint8)
+            image = (255 * (image - np.min(image)) / (np.ptp(image) + 1e-8)).astype(
+                np.uint8
+            )
         if len(image.shape) == 2:
             return image  # Already grayscale
         if len(image.shape) == 3:
@@ -56,9 +57,10 @@ class ImageProvider(QQuickImageProvider):
                 self.pixmap = ImageQt.toqpixmap(Image.fromarray(image))
             except Exception as e:
                 self.pixmap = QPixmap()
-                self.main_controller.showAlertSignal.emit(
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal",
                     "Image Error",
-                    "No binarized image available. Apply binarizer first."
+                    "No binarized image available. Apply binarizer first.",
                 )
         elif display_info["display_type"] == "extracted":
             try:
@@ -66,11 +68,12 @@ class ImageProvider(QQuickImageProvider):
                 self.pixmap = ImageQt.toqpixmap(Image.fromarray(image))
             except Exception as e:
                 self.pixmap = QPixmap()
-                self.main_controller.showAlertSignal.emit(
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal",
                     "Image Error",
-                    "No extracted graph image available. Apply graph extraction first."
+                    "No extracted graph image available. Apply graph extraction first.",
                 )
-        self.main_controller.imageRefreshedSignal.emit()
+        SIGNAL_CONTROLLER.emit_signal("imageRefreshedSignal")
         self.main_controller.update_image_model()
 
     def requestPixmap(self, img_id, size, requested_size) -> QPixmap:

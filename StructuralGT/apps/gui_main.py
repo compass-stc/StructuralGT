@@ -9,6 +9,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 from apps.controller.main_controller import MainController
 from apps.controller.image_provider import ImageProvider
+from apps.controller.signal_controller import SIGNAL_CONTROLLER
 
 logging.basicConfig(level=logging.INFO)
 
@@ -29,6 +30,9 @@ class MainWindow(QObject):
         # Set Models in QML Context
         self.ui_engine.rootContext().setContextProperty(
             "mainController", main_controller
+        )
+        self.ui_engine.rootContext().setContextProperty(
+            "signalController", SIGNAL_CONTROLLER
         )
         self.ui_engine.addImageProvider("imageProvider", self.image_provider)
         self.ui_engine.rootContext().setContextProperty(

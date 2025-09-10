@@ -17,9 +17,9 @@ Rectangle {
     }
 
     Connections {
-        target: mainController
+        target: signalController
 
-        onRefreshGraphSignal: {
+        function onGraphRefreshSignal() {
             mainController.refresh_graph_view(graphContainer);
         }
     }

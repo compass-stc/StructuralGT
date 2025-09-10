@@ -28,6 +28,7 @@ class Task:
         """Run the task."""
         raise NotImplementedError("Subclasses should implement this method.")
 
+
 class BinarizeTask(Task):
     """Task to binarize an image."""
 
@@ -53,6 +54,7 @@ class BinarizeTask(Task):
             logging.exception(f"Error occurred while running binarization: {e}")
             return False
 
+
 class ExtractGraphTask(Task):
     """Task to extract a graph from an image."""
 
@@ -71,15 +73,18 @@ class ExtractGraphTask(Task):
             return False
         try:
             handler.network.img_to_skel()
-            weight_type = None if (
-                not self.weights or self.weights.strip() == ""
-            ) else self.weights.strip()
+            weight_type = (
+                None
+                if (not self.weights or self.weights.strip() == "")
+                else self.weights.strip()
+            )
             handler.network.set_graph(weight_type=weight_type, write="network.gsd")
             handler.graph_loaded = True
             return True
         except Exception as e:
             logging.exception(f"Error occurred while extracting graph: {e}")
             return False
+
 
 class GraphAnalysisTask(Task):
     """Task to analyze the properties of a graph."""
@@ -103,8 +108,9 @@ class GraphAnalysisTask(Task):
             if self.options["Average Clustering Coefficient"]:
                 clustering_obj = Clustering()
                 clustering_obj.compute(handler.network)
-                handler.properties["Average Clustering Coefficient"] = \
+                handler.properties["Average Clustering Coefficient"] = (
                     clustering_obj.average_clustering_coefficient
+                )
             if self.options["Assortativity"]:
                 assortativity_obj = Assortativity()
                 assortativity_obj.compute(handler.network)
@@ -112,18 +118,19 @@ class GraphAnalysisTask(Task):
             if self.options["Average Closeness"]:
                 closeness_obj = Closeness()
                 closeness_obj.compute(handler.network)
-                handler.properties["Average Closeness"] = \
+                handler.properties["Average Closeness"] = (
                     closeness_obj.average_closeness
+                )
             if self.options["Average Degree"]:
                 degree_obj = Degree()
                 degree_obj.compute(handler.network)
-                handler.properties["Average Degree"] = \
-                    degree_obj.average_degree
+                handler.properties["Average Degree"] = degree_obj.average_degree
             if self.options["Nematic Order Parameter"]:
                 nematic_obj = Nematic()
                 nematic_obj.compute(handler.network)
-                handler.properties["Nematic Order Parameter"] = \
+                handler.properties["Nematic Order Parameter"] = (
                     nematic_obj.nematic_order_parameter
+                )
             # # TODO: implement this later
             # if self.options["Effective Resistance"]:
             #     pass

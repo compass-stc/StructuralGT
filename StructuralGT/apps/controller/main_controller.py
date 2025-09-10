@@ -1,45 +1,29 @@
 import json
 import logging
-import os
-import shutil
-import sys
-import tempfile
 import uuid
-from typing import TYPE_CHECKING
 
-import numpy as np
-import pandas as pd
-from ovito import scene
-from ovito.gui import create_qwidget
-from ovito.io import import_file
-from ovito.vis import Viewport
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Slot
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 
 from StructuralGT import __version__
-from .file_controller import FileController
-from .image_provider import ImageProvider
-from .view_controller import GraphViewController, ImageViewController
-from .task_controller import TaskController
+
+from ..model.list_model import ListModel
+from ..model.table_model import TableModel
+from ..utils.handler import HandlerRegistry, PointNetworkHandler
 from ..utils.task import (
     BinarizeTask,
     ExtractGraphTask,
     GraphAnalysisTask,
 )
-from ..utils.handler import PointNetworkHandler, HandlerRegistry
-from ..model.list_model import ListModel
-from ..model.table_model import TableModel
+from .file_controller import FileController
+from .signal_controller import SIGNAL_CONTROLLER
+from .task_controller import TaskController
+from .view_controller import GraphViewController, ImageViewController
 
 
 class MainController(QObject):
     """Exposes a method to refresh the image in QML."""
-
-    # Signals
-    refreshImageSignal = Signal()  # noqa: N815
-    imageRefreshedSignal = Signal()  # noqa: N815
-    showAlertSignal = Signal(str, str)  # noqa: N815
-    refreshGraphSignal = Signal()  # noqa: N815
 
     def __init__(self, qml_app: QApplication, qml_engine: QQmlApplicationEngine):
         super().__init__()
@@ -59,44 +43,79 @@ class MainController(QObject):
         self.graphPropsModel = TableModel([])
         self.networkListModel = ListModel([])
 
+        # Expose SignalController signals directly for QML access
+        self.imageRefreshSignal = SIGNAL_CONTROLLER.imageRefreshSignal
+        self.imageRefreshedSignal = SIGNAL_CONTROLLER.imageRefreshedSignal
+        self.imageChangedSignal = SIGNAL_CONTROLLER.imageChangedSignal
+        self.graphRefreshSignal = SIGNAL_CONTROLLER.graphRefreshSignal
+        self.alertShowSignal = SIGNAL_CONTROLLER.alertShowSignal
+
+        # Connect signals
+        self._connect_signals()
+
+    def _connect_signals(self):
+        """Connect signals to handlers."""
+        # Connect image refresh signal to update image model
+        SIGNAL_CONTROLLER.connect_signal("imageRefreshSignal", self.update_image_model)
+
+        # Connect graph refresh signal to update graph model
+        SIGNAL_CONTROLLER.connect_signal("graphRefreshSignal", self.update_graph_model)
+
+        # Connect task completion signals
+        SIGNAL_CONTROLLER.connect_signal(
+            "taskFinishedWithInfo", self._on_task_finished_with_info
+        )
+
+    @Slot(result=bool)
+    def img_loaded(self):
+        """Check if an image is loaded."""
+        handler = self.registry.get_selected()
+        return (
+            handler is not None
+            and hasattr(handler, "img_loaded")
+            and handler.img_loaded
+        )
+
     @Slot(str, int)
     def add_network(self, path: str, dim: int):
         """Add a network for the given path and dimension."""
         handler = self.file_ctrl.create_network_handler(path, dim)
         if handler is None:
-            self.showAlertSignal.emit("Network Error", "Error creating network.")
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Network Error", "Error creating network."
+            )
         else:
             self.registry.add(handler)
             self.registry.select(self.registry.count() - 1)
             self.networkListModel.reset_data(self.registry.list_for_ui())
-            self.refreshImageSignal.emit()
-            self.refreshGraphSignal.emit()
+            SIGNAL_CONTROLLER.emit_signal("imageRefreshSignal")
+            SIGNAL_CONTROLLER.emit_signal("graphRefreshSignal")
 
     @Slot(str, float)
     def add_point_network(self, path: str, cutoff: float):
         """Add a point network for the given path and dimension."""
         handler = self.file_ctrl.create_point_network_handler(path, cutoff)
         if handler is None:
-            self.showAlertSignal.emit(
-                "Point Network Error", "Error creating point network."
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal",
+                "Point Network Error",
+                "Error creating point network.",
             )
         else:
             self.registry.add(handler)
             self.registry.select(self.registry.count() - 1)
             self.networkListModel.reset_data(self.registry.list_for_ui())
-            self.refreshGraphSignal.emit()
+            SIGNAL_CONTROLLER.emit_signal("graphRefreshSignal")
 
     @Slot()
     def refresh_image_view(self):
         """Refresh the image in the GUI."""
         try:
-            self.refreshImageSignal.emit()
+            SIGNAL_CONTROLLER.emit_signal("imageRefreshSignal")
         except Exception as e:
-            logging.exception(
-                "Image Loading Error: %s", e, extra={"user": "SGT Logs"}
-            )
-            self.showAlertSignal.emit(
-                "Image Error", "Error loading image. Try again."
+            logging.exception("Image Loading Error: %s", e, extra={"user": "SGT Logs"})
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Image Error", "Error loading image. Try again."
             )
 
     @Slot(result=str)
@@ -134,11 +153,9 @@ class MainController(QObject):
             self.graph_view_ctrl.render_graph()
             self.update_graph_model()
         except Exception as e:
-            logging.exception(
-                "Graph Refresh Error: %s", e, extra={"user": "SGT Logs"}
-            )
-            self.showAlertSignal.emit(
-                "Graph Error", "Error refreshing graph. Try again."
+            logging.exception("Graph Refresh Error: %s", e, extra={"user": "SGT Logs"})
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Graph Error", "Error refreshing graph. Try again."
             )
 
     @Slot(str)
@@ -147,9 +164,7 @@ class MainController(QObject):
         # Assign unique ID
         id = str(uuid.uuid4())
         task = BinarizeTask(
-            id=id,
-            index=self.registry.get_selected_index(),
-            options=json.loads(options)
+            id=id, index=self.registry.get_selected_index(), options=json.loads(options)
         )
         self.task_ctrl.enqueue(task)
 
@@ -159,9 +174,7 @@ class MainController(QObject):
         # Assign unique ID
         id = str(uuid.uuid4())
         task = ExtractGraphTask(
-            id=id,
-            index=self.registry.get_selected_index(),
-            weights=weights
+            id=id, index=self.registry.get_selected_index(), weights=weights
         )
         self.task_ctrl.enqueue(task)
 
@@ -171,9 +184,7 @@ class MainController(QObject):
         # Assign unique ID
         id = str(uuid.uuid4())
         task = GraphAnalysisTask(
-            id=id,
-            index=self.registry.get_selected_index(),
-            options=json.loads(options)
+            id=id, index=self.registry.get_selected_index(), options=json.loads(options)
         )
         self.task_ctrl.enqueue(task)
 
@@ -189,19 +200,24 @@ class MainController(QObject):
         if handler.dim == 3:
             image_props = [
                 ["Name", f"{handler.input_dir}"],
-                ["Depth x Height x Width", f"{handler.network.image.shape[0]} x {handler.network.image.shape[1]} x {handler.network.image.shape[2]}"],
-                ["Dimensions", "3D"]
+                [
+                    "Depth x Height x Width",
+                    f"{handler.network.image.shape[0]} x {handler.network.image.shape[1]} x {handler.network.image.shape[2]}",
+                ],
+                ["Dimensions", "3D"],
             ]
         else:
             image_props = [
                 ["Name", f"{handler.input_dir}"],
-                ["Height x Width", f"{handler.network.image.shape[0]} x {handler.network.image.shape[1]}"],
-                ["Dimensions", "2D"]
+                [
+                    "Height x Width",
+                    f"{handler.network.image.shape[0]} x {handler.network.image.shape[1]}",
+                ],
+                ["Dimensions", "2D"],
             ]
 
         self.imagePropsModel.reset_data(image_props)
         logging.info(f"Updated image properties model: {image_props}")
-
 
     @Slot()
     def update_graph_model(self):
@@ -211,19 +227,59 @@ class MainController(QObject):
         if handler is None:
             return
 
-        if  isinstance(handler, PointNetworkHandler) or handler.graph_loaded:
+        # Check if graph is available (either loaded or for PointNetworkHandler)
+        if isinstance(handler, PointNetworkHandler) or (
+            hasattr(handler, "graph_loaded") and handler.graph_loaded
+        ):
             graph_props = [
                 ["Edge Count", f"{handler.network.graph.ecount()}"],
                 ["Node Count", f"{handler.network.graph.vcount()}"],
             ]
 
+            # Add analysis properties if they exist
             for key, value in handler.properties.items():
-                if value:
+                if value is not None and value != "":
                     graph_props.append([key, f"{value:.5f}"])
 
             self.graphPropsModel.reset_data(graph_props)
-
             logging.info(f"Updated graph properties model: {graph_props}")
+        else:
+            # No graph available, clear the model
+            self.graphPropsModel.reset_data([])
+            logging.info("No graph available, cleared graph properties model")
+
+    @Slot(object, bool)
+    def _on_task_finished_with_info(self, task, success: bool):
+        """Handle task completion with automatic UI updates."""
+        logging.info(f"Task finished: {task.type}, success: {success}")
+
+        if not success:
+            logging.warning(f"Task {task.type} failed, skipping UI updates")
+            return
+
+        task_type = task.type
+
+        if task_type == "binarize":
+            # Apply filter and switch to binarized view
+            self.image_view_ctrl.set_display_type("binarized")
+            SIGNAL_CONTROLLER.emit_signal("imageRefreshSignal")
+            logging.info("Binarize task completed, switched to binarized view")
+
+        elif task_type == "extract_graph":
+            # Extracted graph and switch to extracted graph view (for 2D case only)
+            handler = self.registry.get_selected()
+            if handler and hasattr(handler, "dim") and handler.dim == 2:
+                self.image_view_ctrl.set_display_type("extracted")
+                SIGNAL_CONTROLLER.emit_signal("imageRefreshSignal")
+                logging.info("Extract graph task completed, switched to extracted view")
+
+        elif task_type == "graph_analysis":
+            # Update graph properties model
+            logging.info("Graph analysis task completed, updating graph properties...")
+            self.update_graph_model()
+            # Trigger image refresh signal to update QML visibility
+            SIGNAL_CONTROLLER.emit_signal("imageRefreshedSignal")
+            logging.info("Graph properties updated successfully")
 
     @Slot(str, result=str)
     def get_file_extensions(self, option):

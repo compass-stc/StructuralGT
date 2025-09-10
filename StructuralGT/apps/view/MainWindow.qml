@@ -103,8 +103,8 @@ ApplicationWindow {
     }
 
     Connections {
-        target: mainController
-        function onShowAlertSignal(title, msg) {
+        target: signalController
+        function onAlertShowSignal(title, msg) {
             dialogAlert.title = title;
             dialogAlert.showMessage(msg);
         }

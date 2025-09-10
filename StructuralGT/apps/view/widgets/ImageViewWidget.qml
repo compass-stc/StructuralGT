@@ -192,7 +192,7 @@ ColumnLayout {
     }
 
     Connections {
-        target: mainController
+        target: signalController
 
         function onImageRefreshedSignal() {
             // Force refresh

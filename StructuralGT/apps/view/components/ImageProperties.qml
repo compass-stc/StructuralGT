@@ -76,7 +76,7 @@ Rectangle {
     }
 
     Connections {
-        target: mainController
+        target: signalController
         function onImageRefreshedSignal() {
             imgPropsTbl.visible = imagePropsModel.rowCount() > 0;
             graphPropsTbl.visible = graphPropsModel.rowCount() > 0;
