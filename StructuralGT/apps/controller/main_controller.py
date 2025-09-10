@@ -400,3 +400,108 @@ class MainController(QObject):
             "Copyright (C) 2018-2025, The Regents of the University of Michigan.<html><br/></html>"  # noqa: E501
             "License: GPL GNU v3<html><br/></html>"
         )
+
+    @Slot(str, str, result=bool)
+    def export_binarize_options(self, export_dir: str, filename: str) -> bool:
+        """Export binarization options for the selected network."""
+        try:
+            selected_index = self.registry.get_selected_index()
+            if selected_index < 0:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal", "Export Error", "No network selected for export."
+                )
+                return False
+
+            success = self.file_ctrl.export_binarize_options(
+                selected_index, export_dir, filename
+            )
+            if success:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal",
+                    "Export Success",
+                    f"Binarization options exported to: {export_dir}/{filename}.json",
+                )
+            else:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal",
+                    "Export Error",
+                    "Failed to export binarization options.",
+                )
+            return success
+
+        except Exception as e:
+            logging.error(f"Error in export_binarize_options: {e}")
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Export Error", f"Export failed: {str(e)}"
+            )
+            return False
+
+    @Slot(str, str, result=bool)
+    def export_extracted_graph(self, export_dir: str, filename: str) -> bool:
+        """Export extracted graph as image for the selected network."""
+        try:
+            selected_index = self.registry.get_selected_index()
+            if selected_index < 0:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal", "Export Error", "No network selected for export."
+                )
+                return False
+
+            success = self.file_ctrl.export_extracted_graph(
+                selected_index, export_dir, filename
+            )
+            if success:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal",
+                    "Export Success",
+                    f"Extracted graph exported to: {export_dir}/{filename}.png",
+                )
+            else:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal",
+                    "Export Error",
+                    "Failed to export extracted graph.",
+                )
+            return success
+
+        except Exception as e:
+            logging.error(f"Error in export_extracted_graph: {e}")
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Export Error", f"Export failed: {str(e)}"
+            )
+            return False
+
+    @Slot(str, str, result=bool)
+    def export_graph_properties(self, export_dir: str, filename: str) -> bool:
+        """Export graph properties for the selected network."""
+        try:
+            selected_index = self.registry.get_selected_index()
+            if selected_index < 0:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal", "Export Error", "No network selected for export."
+                )
+                return False
+
+            success = self.file_ctrl.export_graph_properties(
+                selected_index, export_dir, filename
+            )
+            if success:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal",
+                    "Export Success",
+                    f"Graph properties exported to: {export_dir}/{filename}.csv",
+                )
+            else:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal",
+                    "Export Error",
+                    "Failed to export graph properties.",
+                )
+            return success
+
+        except Exception as e:
+            logging.error(f"Error in export_graph_properties: {e}")
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Export Error", f"Export failed: {str(e)}"
+            )
+            return False

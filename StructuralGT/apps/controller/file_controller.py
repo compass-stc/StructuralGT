@@ -1,3 +1,4 @@
+import json
 import logging
 import pathlib
 import shutil
@@ -9,6 +10,7 @@ from ..utils.handler import HandlerRegistry, NetworkHandler, PointNetworkHandler
 
 ALLOWED_IMG_EXTENSIONS = ["*.jpg", "*.jpeg", "*.tif", "*.tiff"]
 ALLOWED_CSV_EXTENSIONS = ["*.csv"]
+ALLOWED_EXPORT_EXTENSIONS = ["*.json", "*.csv", "*.png"]
 
 
 class FileController:
@@ -34,6 +36,9 @@ class FileController:
         if option == "csv":
             pattern = " ".join(ALLOWED_CSV_EXTENSIONS)
             return f"CSV files ({pattern})"
+        if option == "export":
+            pattern = " ".join(ALLOWED_EXPORT_EXTENSIONS)
+            return f"Export files ({pattern})"
         return ""
 
     @staticmethod
@@ -54,9 +59,7 @@ class FileController:
         # Normalize the path
         return str(pathlib.Path(path).resolve())
 
-    def create_network_handler(
-            self, path: str, dim: int
-        ) -> NetworkHandler | None:
+    def create_network_handler(self, path: str, dim: int) -> NetworkHandler | None:
         """Create a NetworkHandler for the given path and dimension."""
         try:
             path = self.verify_path(path)
@@ -70,8 +73,8 @@ class FileController:
             return None
 
     def create_point_network_handler(
-            self, path: str, cutoff: float
-        ) -> PointNetworkHandler | None:
+        self, path: str, cutoff: float
+    ) -> PointNetworkHandler | None:
         """Create a PointNetworkHandler for the given path and cutoff."""
         try:
             path = self.verify_path(path)
@@ -106,3 +109,158 @@ class FileController:
     def rename_sgt_project(self, new_name: str) -> bool:
         """Rename the currently opened SGT project."""
         return True
+
+    def export_binarize_options(
+        self, index: int, export_dir: str, filename: str
+    ) -> bool:
+        """Export the binarization options for the selected NetworkHandler."""
+        try:
+            handler = self._registry.get(index)
+            if not handler:
+                logging.error(f"Handler with index {index} not found.")
+                return False
+
+            if isinstance(handler, PointNetworkHandler):
+                logging.warning(
+                    "Binarization options not applicable for PointNetworkHandler."
+                )
+                return False
+
+            if not hasattr(handler, "options") or not handler.options:
+                logging.warning("No binarization options available for export.")
+                return False
+
+            export_dir = self.verify_path(export_dir)
+            export_path = pathlib.Path(export_dir)
+            export_path.mkdir(parents=True, exist_ok=True)
+
+            # Save as JSON file
+            json_path = export_path / f"{filename}.json"
+            with open(json_path, "w") as f:
+                json.dump(handler.options, f, indent=2)
+
+            logging.info(f"Exported binarization options to: {json_path}")
+            return True
+
+        except Exception as e:
+            logging.error(f"Error exporting binarization options: {e}")
+            return False
+
+    def export_extracted_graph(
+        self, index: int, export_dir: str, filename: str
+    ) -> bool:
+        """Export the extracted graph as image for the selected NetworkHandler."""
+        try:
+            handler = self._registry.get(index)
+            if not handler:
+                logging.error(f"Handler with index {index} not found.")
+                return False
+
+            if not (hasattr(handler, "graph_loaded") and handler.graph_loaded):
+                logging.warning("No extracted graph available for export.")
+                return False
+
+            export_dir = self.verify_path(export_dir)
+            export_path = pathlib.Path(export_dir)
+            export_path.mkdir(parents=True, exist_ok=True)
+
+            # Get the extracted graph image from the handler
+            if hasattr(handler, "network") and hasattr(handler.network, "graph"):
+                # For 2D networks, we can get the extracted graph image
+                if handler.dim == 2 and hasattr(handler, "network"):
+                    try:
+                        import numpy as np
+                        from PIL import Image
+                        from matplotlib.backends.backend_agg import FigureCanvasAgg
+
+                        # Get the extracted graph image using the same method as image provider
+                        ax = handler.network.graph_plot()
+                        fig = ax.get_figure()
+                        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+
+                        canvas = FigureCanvasAgg(fig)
+                        canvas.draw()
+
+                        width, height = canvas.get_width_height()
+                        buf = canvas.buffer_rgba()
+                        image = np.asarray(buf, dtype=np.uint8).reshape(
+                            (height, width, 4)
+                        )
+
+                        # Convert RGBA to RGB
+                        if image.shape[2] == 4:
+                            image = image[:, :, :3]
+
+                        # Save as image
+                        image_path = export_path / f"{filename}.png"
+                        Image.fromarray(image).save(image_path)
+
+                        # Close the figure to free memory
+                        import matplotlib.pyplot as plt
+
+                        plt.close(fig)
+
+                        logging.info(f"Exported extracted graph image to: {image_path}")
+                        return True
+                    except Exception as e:
+                        logging.error(f"Error creating graph image: {e}")
+                        return False
+                else:
+                    logging.warning(
+                        "Graph image export only supported for 2D networks."
+                    )
+                    return False
+            else:
+                logging.warning("No graph available for image export.")
+                return False
+
+        except Exception as e:
+            logging.error(f"Error exporting extracted graph: {e}")
+            return False
+
+    def export_graph_properties(
+        self, index: int, export_dir: str, filename: str
+    ) -> bool:
+        """Export the graph properties for the selected NetworkHandler."""
+        try:
+            handler = self._registry.get(index)
+            if not handler:
+                logging.error(f"Handler with index {index} not found.")
+                return False
+
+            if not hasattr(handler, "properties") or not handler.properties:
+                logging.warning("No graph properties available for export.")
+                return False
+
+            export_dir = self.verify_path(export_dir)
+            export_path = pathlib.Path(export_dir)
+            export_path.mkdir(parents=True, exist_ok=True)
+
+            # Prepare data for CSV export
+            properties_data = []
+            for key, value in handler.properties.items():
+                if value is not None and value != "":
+                    properties_data.append([key, str(value)])
+
+            # Add basic graph info if available
+            if hasattr(handler, "network") and hasattr(handler.network, "graph"):
+                properties_data.insert(
+                    0, ["Edge Count", str(handler.network.graph.ecount())]
+                )
+                properties_data.insert(
+                    1, ["Node Count", str(handler.network.graph.vcount())]
+                )
+
+            # Write CSV file
+            csv_path = export_path / f"{filename}.csv"
+            with open(csv_path, "w") as f:
+                f.write("Property,Value\n")
+                for prop, val in properties_data:
+                    f.write(f"{prop},{val}\n")
+
+            logging.info(f"Exported graph properties to: {csv_path}")
+            return True
+
+        except Exception as e:
+            logging.error(f"Error exporting graph properties: {e}")
+            return False

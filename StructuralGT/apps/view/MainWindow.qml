@@ -87,6 +87,9 @@ ApplicationWindow {
     AlertDialog { id: dialogAlert }
     GraphPropertiesDialog { id: dialogGraphProperties }
     PointNetworkCutoffDialog { id: dialogPointNetworkCutoff }
+    
+    // Export dialog
+    ExportDialog { id: dialogExport }
 
     Platform.FolderDialog {
         id: imageFolderDialog
