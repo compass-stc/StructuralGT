@@ -32,11 +32,15 @@ Rectangle {
             }
 
             Button {
-                id: btnAddImageFolder
+                id: btnAdd2DImage
                 Layout.preferredWidth: 125
                 Layout.preferredHeight: 32
                 text: ""
-                onClicked: imageFolderDialog.open()
+                onClicked: {
+                    imageFolderDialog.open()
+                    // Store dimension for later use
+                    imageFolderDialog.dimension = 2
+                }
 
                 Rectangle {
                     anchors.fill: parent
@@ -44,7 +48,33 @@ Rectangle {
                     color: "#808080"
 
                     Label {
-                        text: "Add Network"
+                        text: "Add 2D Image"
+                        color: "white"
+                        font.bold: true
+                        font.pixelSize: 12
+                        anchors.centerIn: parent
+                    }
+                }
+            }
+
+            Button {
+                id: btnAdd3DImage
+                Layout.preferredWidth: 125
+                Layout.preferredHeight: 32
+                text: ""
+                onClicked: {
+                    imageFolderDialog.open()
+                    // Store dimension for later use
+                    imageFolderDialog.dimension = 3
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 5
+                    color: "#808080"
+
+                    Label {
+                        text: "Add 3D Image"
                         color: "white"
                         font.bold: true
                         font.pixelSize: 12

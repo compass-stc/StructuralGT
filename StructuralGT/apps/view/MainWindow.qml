@@ -87,12 +87,14 @@ ApplicationWindow {
     AlertDialog { id: dialogAlert }
     GraphPropertiesDialog { id: dialogGraphProperties }
     PointNetworkCutoffDialog { id: dialogPointNetworkCutoff }
-    NetworkDimensionDialog { id: dialogNetworkDimension }
 
     Platform.FolderDialog {
         id: imageFolderDialog
         title: "Select a Folder"
-        onAccepted: dialogNetworkDimension.open()
+        property int dimension: 2  // Default to 2D
+        onAccepted: {
+            mainController.add_network(folder, dimension)
+        }
     }
 
     QuickDialogs.FileDialog {
