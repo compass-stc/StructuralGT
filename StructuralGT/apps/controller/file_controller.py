@@ -1,6 +1,7 @@
 import json
 import logging
 import pathlib
+import pickle
 import shutil
 import sys
 import tempfile
@@ -94,21 +95,98 @@ class FileController:
         """Set the project root directory."""
         self._project_root = project_root
 
+    def save_sgt_project(self, project_path: str) -> bool:
+        """Save the current HandlerRegistry to a .sgtproj file."""
+        try:
+            project_path = self.verify_path(project_path)
+            project_file = pathlib.Path(project_path)
+
+            # Ensure the directory exists
+            project_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # Create project data structure with direct handler objects
+            project_data = {
+                "handlers": self._registry.get_all(),  # Direct handler objects
+                "selected_index": self._registry.get_selected_index(),
+            }
+
+            # Save to pickle file
+            with open(project_file, "wb") as f:
+                pickle.dump(project_data, f)
+
+            logging.info(f"Project saved to: {project_file}")
+            return True
+
+        except Exception as e:
+            logging.error(f"Error saving project: {e}")
+            return False
+
     def open_sgt_project(self, project_path: str) -> bool:
-        """Open an existing SGT project."""
-        return True
+        """Load a HandlerRegistry from a .sgtproj file."""
+        try:
+            project_path = self.verify_path(project_path)
+            project_file = pathlib.Path(project_path)
+
+            if not project_file.exists():
+                logging.error(f"Project file not found: {project_file}")
+                return False
+
+            # Load project data
+            with open(project_file, "rb") as f:
+                project_data = pickle.load(f)
+
+            # Clear current registry
+            self._registry.delete_all()
+
+            # Restore handlers directly from saved objects
+            handlers = project_data.get("handlers", [])
+            for handler in handlers:
+                self._registry.add(handler)
+
+            # Restore selected index
+            selected_index = project_data.get("selected_index", -1)
+            if 0 <= selected_index < self._registry.count():
+                self._registry.select(selected_index)
+
+            logging.info(f"Project loaded from: {project_file}")
+            return True
+
+        except Exception as e:
+            logging.error(f"Error loading project: {e}")
+            return False
 
     def close_sgt_project(self) -> bool:
         """Close the currently opened SGT project."""
-        return True
+        try:
+            self._registry.delete_all()
+            logging.info("Project closed")
+            return True
+        except Exception as e:
+            logging.error(f"Error closing project: {e}")
+            return False
 
-    def save_sgt_project(self) -> bool:
-        """Save the currently opened SGT project."""
-        return True
+    def rename_sgt_project(self, old_path: str, new_path: str) -> bool:
+        """Rename an SGT project file."""
+        try:
+            old_path = self.verify_path(old_path)
+            new_path = self.verify_path(new_path)
 
-    def rename_sgt_project(self, new_name: str) -> bool:
-        """Rename the currently opened SGT project."""
-        return True
+            old_file = pathlib.Path(old_path)
+            new_file = pathlib.Path(new_path)
+
+            if not old_file.exists():
+                logging.error(f"Project file not found: {old_file}")
+                return False
+
+            # Rename the file
+            old_file.rename(new_file)
+
+            logging.info(f"Project renamed from {old_file} to {new_file}")
+            return True
+
+        except Exception as e:
+            logging.error(f"Error renaming project: {e}")
+            return False
 
     def export_binarize_options(
         self, index: int, export_dir: str, filename: str

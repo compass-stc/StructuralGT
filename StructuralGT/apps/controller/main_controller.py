@@ -505,3 +505,109 @@ class MainController(QObject):
                 "alertShowSignal", "Export Error", f"Export failed: {str(e)}"
             )
             return False
+
+    @Slot(str, result=bool)
+    def save_project(self, project_path: str) -> bool:
+        """Save the current project to a .sgtproj file."""
+        try:
+            success = self.file_ctrl.save_sgt_project(project_path)
+            if success:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal",
+                    "Project Saved",
+                    f"Project saved to: {project_path}",
+                )
+            else:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal", "Save Error", "Failed to save project."
+                )
+            return success
+
+        except Exception as e:
+            logging.error(f"Error in save_project: {e}")
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Save Error", f"Save failed: {str(e)}"
+            )
+            return False
+
+    @Slot(str, result=bool)
+    def open_project(self, project_path: str) -> bool:
+        """Load a project from a .sgtproj file."""
+        try:
+            success = self.file_ctrl.open_sgt_project(project_path)
+            if success:
+                # Update UI models
+                self.networkListModel.reset_data(self.registry.list_for_ui())
+                self.update_image_model()
+                self.update_graph_model()
+
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal",
+                    "Project Loaded",
+                    f"Project loaded from: {project_path}",
+                )
+            else:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal", "Load Error", "Failed to load project."
+                )
+            return success
+
+        except Exception as e:
+            logging.error(f"Error in open_project: {e}")
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Load Error", f"Load failed: {str(e)}"
+            )
+            return False
+
+    @Slot(result=bool)
+    def close_project(self) -> bool:
+        """Close the current project."""
+        try:
+            success = self.file_ctrl.close_sgt_project()
+            if success:
+                # Clear UI models
+                self.networkListModel.reset_data([])
+                self.imagePropsModel.reset_data([])
+                self.graphPropsModel.reset_data([])
+
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal",
+                    "Project Closed",
+                    "Current project has been closed.",
+                )
+            else:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal", "Close Error", "Failed to close project."
+                )
+            return success
+
+        except Exception as e:
+            logging.error(f"Error in close_project: {e}")
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Close Error", f"Close failed: {str(e)}"
+            )
+            return False
+
+    @Slot(str, str, result=bool)
+    def rename_project(self, old_path: str, new_path: str) -> bool:
+        """Rename a project file."""
+        try:
+            success = self.file_ctrl.rename_sgt_project(old_path, new_path)
+            if success:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal",
+                    "Project Renamed",
+                    f"Project renamed to: {new_path}",
+                )
+            else:
+                SIGNAL_CONTROLLER.emit_signal(
+                    "alertShowSignal", "Rename Error", "Failed to rename project."
+                )
+            return success
+
+        except Exception as e:
+            logging.error(f"Error in rename_project: {e}")
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Rename Error", f"Rename failed: {str(e)}"
+            )
+            return False

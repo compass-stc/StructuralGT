@@ -90,6 +90,11 @@ ApplicationWindow {
     
     // Export dialog
     ExportDialog { id: dialogExport }
+    
+    // Project dialogs
+    OpenProjectDialog { id: dialogOpenProject }
+    SaveProjectDialog { id: dialogSaveProject }
+    SaveProjectAsDialog { id: dialogSaveProjectAs }
 
     Platform.FolderDialog {
         id: imageFolderDialog
