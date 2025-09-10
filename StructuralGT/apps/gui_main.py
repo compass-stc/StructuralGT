@@ -3,8 +3,9 @@
 import logging
 import sys
 import pathlib
+import signal
 
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QObject, QTimer
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtWidgets import QApplication
 from apps.controller.main_controller import MainController
@@ -23,26 +24,35 @@ class MainWindow(QObject):
         self.ui_engine = QQmlApplicationEngine()
 
         # Register Controller for Dynamic Updates
-        main_controller = MainController(qml_app=self.app, qml_engine=self.ui_engine)
+        self.main_controller = MainController(
+            qml_app=self.app, qml_engine=self.ui_engine
+        )
         # Register Image Provider
-        self.image_provider = ImageProvider(main_controller)
+        self.image_provider = ImageProvider(self.main_controller)
+
+        # Connect application about to quit signal
+        self.app.aboutToQuit.connect(self.cleanup)
+
+        # Set up signal handlers for graceful shutdown
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
 
         # Set Models in QML Context
         self.ui_engine.rootContext().setContextProperty(
-            "mainController", main_controller
+            "mainController", self.main_controller
         )
         self.ui_engine.rootContext().setContextProperty(
             "signalController", SIGNAL_CONTROLLER
         )
         self.ui_engine.addImageProvider("imageProvider", self.image_provider)
         self.ui_engine.rootContext().setContextProperty(
-            "imagePropsModel", main_controller.imagePropsModel
+            "imagePropsModel", self.main_controller.imagePropsModel
         )
         self.ui_engine.rootContext().setContextProperty(
-            "graphPropsModel", main_controller.graphPropsModel
+            "graphPropsModel", self.main_controller.graphPropsModel
         )
         self.ui_engine.rootContext().setContextProperty(
-            "networkListModel", main_controller.networkListModel
+            "networkListModel", self.main_controller.networkListModel
         )
 
         # Load UI
@@ -52,6 +62,26 @@ class MainWindow(QObject):
         self.ui_engine.load(qml_path)
         if not self.ui_engine.rootObjects():
             sys.exit(-1)
+
+    def cleanup(self):
+        """Clean up resources when application is closing."""
+        logging.info("Application is closing, cleaning up resources...")
+
+        # Clean up main controller
+        if hasattr(self, "main_controller"):
+            self.main_controller.cleanup()
+
+        # Clean up QML engine
+        if hasattr(self, "ui_engine"):
+            self.ui_engine.deleteLater()
+
+        logging.info("Application cleanup completed")
+
+    def _signal_handler(self, signal, frame):
+        """Handle system signals for shutdown."""
+        logging.info(f"Received signal {signal}, initiating shutdown...")
+        self.cleanup()
+        self.app.quit()
 
 
 def pyside_app():

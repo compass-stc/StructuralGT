@@ -66,6 +66,27 @@ class MainController(QObject):
             "taskFinishedWithInfo", self._on_task_finished_with_info
         )
 
+    def cleanup(self):
+        """Clean up resources when application is closing."""
+        logging.info("Cleaning up MainController...")
+
+        # Clean up task controller
+        if hasattr(self, "task_ctrl"):
+            self.task_ctrl.cleanup()
+
+        # Disconnect signals
+        SIGNAL_CONTROLLER.disconnect_signal(
+            "imageRefreshSignal", self.update_image_model
+        )
+        SIGNAL_CONTROLLER.disconnect_signal(
+            "graphRefreshSignal", self.update_graph_model
+        )
+        SIGNAL_CONTROLLER.disconnect_signal(
+            "taskFinishedWithInfo", self._on_task_finished_with_info
+        )
+
+        logging.info("MainController cleanup completed")
+
     @Slot(result=bool)
     def img_loaded(self):
         """Check if an image is loaded."""

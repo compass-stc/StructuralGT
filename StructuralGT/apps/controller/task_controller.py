@@ -57,8 +57,42 @@ class TaskController(QObject):
         self._init_workers(max_workers)
 
     def __del__(self):
+        self.cleanup()
+
+    def cleanup(self):
+        """Clean up all threads and workers."""
+        logging.info("Cleaning up TaskController...")
+
+        # Disconnect signals safely
+        try:
+            SIGNAL_CONTROLLER.disconnect_signal("taskStarted", self._on_task_started)
+            SIGNAL_CONTROLLER.disconnect_signal("taskFinished", self._on_task_finished)
+        except (RuntimeError, AttributeError):
+            # SignalController may have been deleted already
+            logging.debug(
+                "SignalController already deleted, skipping signal disconnection"
+            )
+
+        # Stop all threads
         for thread in self._threads:
-            thread.quit()
+            if thread.isRunning():
+                thread.quit()
+                thread.wait(3000)  # Wait up to 3 seconds for thread to finish
+                if thread.isRunning():
+                    logging.warning(
+                        f"Thread {thread} did not finish in time, terminating..."
+                    )
+                    thread.terminate()
+                    thread.wait(1000)  # Wait 1 more second after terminate
+
+        # Clear collections
+        self._threads.clear()
+        self._workers.clear()
+        self._task_queue.clear()
+        self._task_map.clear()
+        self._running.clear()
+
+        logging.info("TaskController cleanup completed")
 
     def enqueue(self, task: Task):
         """Enqueue a new task."""
