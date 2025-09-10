@@ -360,6 +360,7 @@ class MainController(QObject):
             handler = self.registry.get_selected()
             if handler and hasattr(handler, "dim") and handler.dim == 2:
                 self.image_view_ctrl.set_display_type("extracted")
+                self.update_graph_model()
                 SIGNAL_CONTROLLER.emit_signal("imageRefreshSignal")
                 logging.info("Extract graph task completed, switched to extracted view")
 
