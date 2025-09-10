@@ -16,9 +16,13 @@ class SignalController(QObject):
     requestExec = Signal(object)  # Controller -> Worker  # noqa: N815
     taskStarted = Signal(str)  # Worker -> Controller  # noqa: N815
     taskFinished = Signal(str, bool)  # Worker -> Controller  # noqa: N815
-    taskFinishedWithInfo = Signal(object, bool)  # Worker -> Controller with task object  # noqa: N815
+    taskFinishedWithInfo = Signal(
+        object, bool
+    )  # Worker -> Controller with task object  # noqa: N815
     # Error/Alert signals
     alertShowSignal = Signal(str, str)  # noqa: N815
+    # Import signals
+    importBinaryOptionsSignal = Signal(str)  # noqa: N815
 
     def __init__(self):
         super().__init__()
@@ -33,6 +37,9 @@ class SignalController(QObject):
         self._register_signal("taskFinished", self.taskFinished)
         self._register_signal("taskFinishedWithInfo", self.taskFinishedWithInfo)
         self._register_signal("alertShowSignal", self.alertShowSignal)
+        self._register_signal(
+            "importBinaryOptionsSignal", self.importBinaryOptionsSignal
+        )
 
     def _register_signal(self, name: str, signal: Signal):
         """Register a signal internally."""
@@ -54,6 +61,7 @@ class SignalController(QObject):
     def disconnect_signal(self, name: str, func) -> bool:
         """Disconnect a signal from a function."""
         return self._signals[name].disconnect(func)
+
 
 # Global signal controller instance
 SIGNAL_CONTROLLER = SignalController()

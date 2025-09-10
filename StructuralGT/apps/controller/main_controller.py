@@ -506,6 +506,24 @@ class MainController(QObject):
             )
             return False
 
+    @Slot(str)
+    def import_binary_options(self, file_path: str) -> None:
+        """Import binary options from JSON file."""
+        try:
+            with open(file_path, "r") as f:
+                options_str = f.read()
+            SIGNAL_CONTROLLER.importBinaryOptionsSignal.emit(options_str)
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal",
+                "Import Success",
+                f"Binary options imported from: {file_path}",
+            )
+        except Exception as e:
+            logging.error(f"Error importing binary options: {e}")
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Import Error", f"Failed to import options: {str(e)}"
+            )
+
     @Slot(str, result=bool)
     def save_project(self, project_path: str) -> bool:
         """Save the current project to a .sgtproj file."""

@@ -298,7 +298,32 @@ ColumnLayout {
         bLowpass.checked = false;
     }
 
+    function loadSelection(options) {
+        bThreshMethod.currentIndex = options.Thresh_method || 0;
+        bGamma.value = options.gamma || 1.0;
+        bMedianFilter.checked = options.md_filter === 1;
+        bGaussianBlur.checked = options.g_blur === 1;
+        bAutoLevel.checked = options.autolvl === 1;
+        bForegroundDark.checked = options.fg_color === 1;
+        bLaplacian.checked = options.laplacian === 1;
+        bScharr.checked = options.scharr === 1;
+        bSobel.checked = options.sobel === 1;
+        bLowpass.checked = options.lowpass === 1;
+        bAdaptiveKernel.value = options.asize ? (options.asize - 1) / 2 : 1;
+        bBlurKernel.value = options.bsize ? (options.bsize - 1) / 2 : 0;
+        bWindowSize.value = options.wsize ? (options.wsize - 1) / 2 : 0;
+        bThreshold.value = options.thresh || 128;
+    }
+
     Connections {
-        target: mainController
+        target: signalController
+        function onImportBinaryOptionsSignal(optionsStr) {
+            try {
+                var options = JSON.parse(optionsStr);
+                loadSelection(options);
+            } catch (e) {
+                console.error("BinaryFilterWidget: Error parsing JSON:", e);
+            }
+        }
     }
 }

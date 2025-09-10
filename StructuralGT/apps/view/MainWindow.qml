@@ -112,6 +112,16 @@ ApplicationWindow {
         onAccepted: dialogPointNetworkCutoff.open();
     }
 
+    QuickDialogs.FileDialog {
+        id: jsonFileDialog
+        title: "Import Binary Options"
+        nameFilters: ["JSON files (*.json)"]
+        onAccepted: {
+            var filePath = selectedFile.toString().replace("file://", "");
+            mainController.import_binary_options(filePath);
+        }
+    }
+
     Connections {
         target: signalController
         function onAlertShowSignal(title, msg) {

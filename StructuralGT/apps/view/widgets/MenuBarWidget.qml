@@ -51,6 +51,13 @@ MenuBar {
         }
         MenuSeparator{}
         Menu {
+            title: "Import"
+            MenuItem { 
+                text: "Binary Options"
+                onTriggered: jsonFileDialog.open()
+            }
+        }
+        Menu {
             title: "Export"
             MenuItem { 
                 text: "Binarize Options"
