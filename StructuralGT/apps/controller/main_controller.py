@@ -128,6 +128,75 @@ class MainController(QObject):
             self.networkListModel.reset_data(self.registry.list_for_ui())
             SIGNAL_CONTROLLER.emit_signal("graphRefreshSignal")
 
+    @Slot(int)
+    def delete_network(self, index: int):
+        """Delete a network from the registry."""
+        # Validate index
+        if index < 0 or index >= self.registry.count():
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Delete Error", f"Invalid network index: {index}"
+            )
+            return
+
+        # Get network info for logging
+        handler = self.registry.get(index)
+        network_name = handler.input_dir if handler else f"index {index}"
+
+        # Delete the network
+        if not self.registry.delete(index):
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal",
+                "Delete Error",
+                f"Failed to delete network at index {index}",
+            )
+            return
+
+        # Update the network list model
+        self.networkListModel.reset_data(self.registry.list_for_ui())
+
+        # Clear models if no networks left
+        if self.registry.count() == 0:
+            self.imagePropsModel.reset_data([])
+            self.graphPropsModel.reset_data([])
+            logging.info("All networks deleted, cleared property models")
+        else:
+            # Refresh current view if we still have networks
+            self.refresh_image_view()
+            self.update_graph_model()
+
+        logging.info(f"Deleted network: {network_name}")
+
+        # Show success message
+        SIGNAL_CONTROLLER.emit_signal(
+            "alertShowSignal",
+            "Delete Success",
+            f"Successfully deleted network: {network_name}",
+        )
+
+    @Slot()
+    def delete_all_networks(self):
+        """Delete all networks from the registry."""
+        if self.registry.count() == 0:
+            SIGNAL_CONTROLLER.emit_signal(
+                "alertShowSignal", "Delete Info", "No networks to delete"
+            )
+            return
+
+        # Delete all networks
+        self.registry.delete_all()
+
+        # Clear all models
+        self.networkListModel.reset_data([])
+        self.imagePropsModel.reset_data([])
+        self.graphPropsModel.reset_data([])
+
+        logging.info("All networks deleted")
+
+        # Show success message
+        SIGNAL_CONTROLLER.emit_signal(
+            "alertShowSignal", "Delete Success", "Successfully deleted all networks"
+        )
+
     @Slot()
     def refresh_image_view(self):
         """Refresh the image in the GUI."""

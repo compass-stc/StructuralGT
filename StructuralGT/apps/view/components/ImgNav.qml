@@ -70,7 +70,7 @@ Rectangle {
             MenuItem {
                 text: "Delete"
                 onTriggered: {
-                    mainController.delete_image(imageListView.currentIndex)
+                    mainController.delete_network(imageListView.currentIndex)
                 }
             }
         }
