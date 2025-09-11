@@ -94,7 +94,6 @@ ApplicationWindow {
     // Project dialogs
     OpenProjectDialog { id: dialogOpenProject }
     SaveProjectDialog { id: dialogSaveProject }
-    SaveProjectAsDialog { id: dialogSaveProjectAs }
 
     Platform.FolderDialog {
         id: imageFolderDialog

@@ -44,11 +44,6 @@ MenuBar {
             enabled: mainController.registry && mainController.registry.count() > 0
             onTriggered: dialogSaveProject.open()
         }
-        MenuItem { 
-            text: "Save Project As..."
-            enabled: mainController.registry && mainController.registry.count() > 0
-            onTriggered: dialogSaveProjectAs.open()
-        }
         MenuSeparator{}
         Menu {
             title: "Import"
