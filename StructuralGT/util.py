@@ -350,7 +350,7 @@ class _fname:
 
     def __init__(self, name, domain=_domain(None), _2d=False):
         if not os.path.exists(name):
-            raise ValueError("File does not exist.")
+            raise ValueError(f"File, {name}, does not exist.")
         self.name = name
         self.domain = domain
         self._2d = _2d
@@ -361,15 +361,21 @@ class _fname:
             base_name = os.path.splitext(os.path.split(self.name)[1])[0]
             if len(base_name) < 4:
                 raise ValueError(
-                    "For 3D networks, filenames must end in 4 digits, \
-                    indicating the depth of the slice."
+                    f"Attempting to analyze {name} but for 3D networks, "
+                    " filenames must end in 3 or 4 digits, indicating the "
+                    " depth of the slice."
                 )
-            self.num = base_name[-4::]
+
+            if not base_name[-4::].isnumeric():
+                self.num = base_name[-3::]
+            else:
+                self.num = base_name[-4::]
 
             if not self.num.isnumeric():
                 raise ValueError(
-                    "For 3D networks, filenames must end in 4 digits, \
-                    indicating the depth of the slice."
+                    f"Attempting to analyze {name} but for 3D networks, "
+                    " filenames must end in 3 or 4 digits, indicating the "
+                    " depth of the slice."
                 )
 
     @property
