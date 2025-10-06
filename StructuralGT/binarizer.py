@@ -85,7 +85,7 @@ class Binarizer:
         self.export_dir = export_dir
 
         item_layout = Layout(
-            display="flex", flex_flow="row", justify_content="space-between"
+            display="flex", flex_flow="row", justify_content="center"
         )
 
         Thresh_method = widgets.Dropdown(
@@ -99,8 +99,9 @@ class Binarizer:
         md_filter = widgets.Checkbox(
             description="Median filter", value=0, layout=item_layout
         )
-        autolvl = widgets.Checkbox(description="Autolevel", value=0,
-                                   layout=item_layout)
+        autolvl = widgets.Checkbox(
+            description="Autolevel", value=0, layout=item_layout
+        )
         g_blur = widgets.Checkbox(
             description="Gaussian Blur", value=0, layout=item_layout
         )
@@ -110,12 +111,15 @@ class Binarizer:
         laplacian = widgets.Checkbox(
             description="Laplacian", value=0, layout=item_layout
         )
-        scharr = widgets.Checkbox(description="Scharr", value=0,
-                                  layout=item_layout)
-        sobel = widgets.Checkbox(description="Sobel", value=0,
-                                 layout=item_layout)
-        lowpass = widgets.Checkbox(description="Lowpass", value=0,
-                                   layout=item_layout)
+        scharr = widgets.Checkbox(
+            description="Scharr", value=0, layout=item_layout
+        )
+        sobel = widgets.Checkbox(
+            description="Sobel", value=0, layout=item_layout
+        )
+        lowpass = widgets.Checkbox(
+            description="Lowpass", value=0, layout=item_layout
+        )
         thr = widgets.FloatSlider(
             description="Threshold",
             value=128,
@@ -124,18 +128,20 @@ class Binarizer:
             layout=item_layout,
         )
         asize = widgets.FloatSlider(
-            description="Adaptive threshold kernel",
+            description="Adaptive kernel",
             value=1,
             min=1,
-            max=2000,
+            max=200,
             layout=item_layout,
+            style={"description_width": "initial"},
         )
         bsize = widgets.FloatSlider(
-            description="Blurring kernel size",
+            description="Blurring kernel",
             value=0,
             min=0,
-            max=400,
+            max=200,
             layout=item_layout,
+            style={"description_width": "initial"},
         )
         wsize = widgets.FloatSlider(
             description="Window size",
@@ -144,8 +150,9 @@ class Binarizer:
             max=10,
             layout=item_layout,
         )
-        export = widgets.Checkbox(description="Export", value=0,
-                                  layout=item_layout)
+        export = widgets.Checkbox(
+            description="Export", value=0, layout=item_layout
+        )
 
         self.w = interactive(
             self.binarize_widget,
