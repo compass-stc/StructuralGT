@@ -15,12 +15,13 @@ class Size(_Compute):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @_Compute._network_cast
     def compute(self, network):
         """Calculates graph node count, edge count, diameter, density.
 
         Args:
-            network (:class:`Network`):
-                The :class:`Network` object.
+            network (:class:`Network` or :class:`igraph.Graph`):
+                The :class:`Network`  or :class:`igraph.Graph` object.
         """
 
         self._number_of_nodes = network.graph.vcount()
@@ -65,12 +66,13 @@ class Clustering(_Compute):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @_Compute._network_cast
     def compute(self, network):
         """Computes local and average clustering coefficients.
 
         Args:
-            network (:class:`Network`):
-                The :class:`Network` object.
+            network (:class:`Network` or :class:`igraph.Graph`):
+                The :class:`Network`  or :class:`igraph.Graph` object.
         """
 
         self._cc = network.graph.transitivity_local_undirected(mode="zero")
@@ -113,12 +115,13 @@ class Assortativity(_Compute):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @_Compute._network_cast
     def compute(self, network):
         """Calculates assortativity by degree.
 
         Args:
-            network (:class:`Network`):
-                The :class:`Network` object.
+            network (:class:`Network` or :class:`igraph.Graph`):
+                The :class:`Network`  or :class:`igraph.Graph` object.
         """
 
         self._assortativity = network.graph.assortativity_degree()
@@ -150,12 +153,13 @@ class Closeness(_Compute):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @_Compute._network_cast
     def compute(self, network):
         """Computes node closeness and average closeness.
 
         Args:
-            network (:class:`Network`):
-                The :class:`Network` object.
+            network (:class:`Network` or :class:`igraph.Graph`):
+                The :class:`Network`  or :class:`igraph.Graph` object.
         """
 
         self._closeness = network.graph.closeness(weights=self.edge_weight)
@@ -196,12 +200,13 @@ class Degree(_Compute):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @_Compute._network_cast
     def compute(self, network):
         """Computes node degree and average degree.
 
         Args:
-            network (:class:`Network`):
-                The :class:`Network` object.
+            network (:class:`Network` or :class:`igraph.Graph`):
+                The :class:`Network`  or :class:`igraph.Graph` object.
         """
 
         self._degree = network.graph.strength(weights=self.node_weight)

@@ -8,10 +8,12 @@ import StructuralGT
 from StructuralGT.util import _Compute
 
 if StructuralGT.__C_FLAG__ is False:
-    raise RuntimeError("The average nodal connectivity module was never"
-                       " compiled. Try resinstalling StructuralGT, ensuring"
-                       " that the C_FLAG environment variable is not set to"
-                       " False.")
+    raise RuntimeError(
+        "The average nodal connectivity module was never"
+        " compiled. Try resinstalling StructuralGT, ensuring"
+        " that the C_FLAG environment variable is not set to"
+        " False."
+    )
 
 from StructuralGT import _average_nodal_connectivity_cast
 
@@ -25,8 +27,14 @@ class AverageNodalConnectivity(_Compute):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @_Compute._network_cast
     def compute(self, network):
-        """Computes the average nodal connectivity."""
+        """Computes the average nodal connectivity.
+        Args:
+            network (:class:`Network` or :class:`igraph.Graph`):
+                The :class:`Network`  or :class:`igraph.Graph` object.
+        """
+
         _copy = copy.deepcopy(network.graph)
 
         cast = _average_nodal_connectivity_cast.PyCast(_copy._raw_pointer())

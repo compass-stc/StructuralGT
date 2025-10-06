@@ -27,12 +27,13 @@ class NodeBetweenness(_Compute):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @_Compute._network_cast
     def compute(self, network):
         r"""Compute node betweenness centralities of the graph.
 
         Args:
-            network (:class:`Network`):
-                The :class:`Network` object.
+            network (:class:`Network` or :class:`igraph.Graph`):
+                The :class:`Network`  or :class:`igraph.Graph` object.
         """
 
         self._node_betweenness = (
@@ -77,12 +78,13 @@ class NodeBoundaryBetweenness(_Compute):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @_Compute._network_cast
     def compute(self, network, sources, targets):
         r"""Compute different edge betweenness centralities of the graph.
 
         Args:
-            network (:class:`Network`):
-                The :class:`Network` object.
+            network (:class:`Network` or :class:`igraph.Graph`):
+                The :class:`Network`  or :class:`igraph.Graph` object.
             sources (list):
                 The set of source nodes, :math:`S`.
             targets (list):
@@ -135,12 +137,13 @@ class BoundaryBetweenness(_Compute):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @_Compute._network_cast
     def compute(self, network, sources, targets):
         r"""Compute different edge betweenness centralities of the graph.
 
         Args:
-            network (:class:`Network`):
-                The :class:`Network` object.
+            network (:class:`Network` or :class:`igraph.Graph`):
+                The :class:`Network`  or :class:`igraph.Graph` object.
             sources (list):
                 The set of source nodes, :math:`S`.
             targets (list):
@@ -193,12 +196,13 @@ class RandomBoundaryBetweenness(_Compute):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @_Compute._network_cast
     def compute(self, network, sources, targets):
         r"""Compute different edge betweenness centralities of the graph.
 
         Args:
-            network (:class:`Network`):
-                The :class:`Network` object.
+            network (:class:`Network` or :class:`igraph.Graph`):
+                The :class:`Network`  or :class:`igraph.Graph` object.
             sources (list):
                 The set of source nodes, :math:`S`.
             targets (list):

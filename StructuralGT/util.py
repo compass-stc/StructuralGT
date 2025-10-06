@@ -4,7 +4,7 @@
 
 import os
 from functools import wraps
-
+import igraph as ig
 import numpy as np
 
 from StructuralGT import base, error
@@ -88,16 +88,41 @@ class _Compute:
 
         return wrapper
 
+    @staticmethod
+    def _network_cast(method):
+        r"""Decorator that casts igraph.Graph to NetworkShell class
+        with a igraph.Graph attribute. Should be used to decorate certain
+        compute methods (e.g. Size.compute) that expect a Network
+        object but can also work with igraph.Graph objects.
+
+        Args:
+            method (callable): The compute method.
+
+        Returns:
+            Decorator decorating appropriate compute method.
+        """
+
+        def wrapper(self, network, *args, **kwargs):
+            if isinstance(network, ig.Graph):
+
+                class NetworkShell:
+                    def __init__(self, graph):
+                        self.graph = graph
+
+                network = NetworkShell(network)
+            method(self, network, *args, **kwargs)
+
+        return wrapper
+
 
 def _abs_path(network, name):
     if name[0] == "/":
         return name
-    else:
-        return network.stack_dir + "/" + name
+    return network.stack_dir + "/" + name
 
 
 class _image_stack:
-    """Class for holding images and the names of their respective files"""
+    """Class for holding images and the names of their respective files."""
 
     def __init__(self):
         self._images = []
@@ -125,8 +150,7 @@ class _image_stack:
         if self._index >= len(self):
             self._index = -1
             raise StopIteration
-        else:
-            return self._images[self._index], self._slice_names[self._index]
+        return self._images[self._index], self._slice_names[self._index]
 
 
 class _cropper:

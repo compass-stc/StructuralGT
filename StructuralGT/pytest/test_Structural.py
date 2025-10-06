@@ -22,6 +22,9 @@ class TestSize:
         ComputeModule = Size()
         ComputeModule.compute(testNetwork)
 
+        #Test _network_cast functionality
+        ComputeModule.compute(testNetwork.graph)
+
         return ComputeModule, testGraph
 
     def test_diameter(self, test_compute):
