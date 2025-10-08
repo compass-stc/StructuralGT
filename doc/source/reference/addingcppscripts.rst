@@ -7,7 +7,7 @@ Adding C++ Scripts
 Python Wrapper Method
 =====================
 
-This is the called by the user and should be a method of a :class:`Compute` subclass. These methods should create a deep copy of the graph, to pass to the C++ script. The graph is passed to the C++ script via its pointer, which can be accessed from igraph's :meth:`_raw_pointer` method.
+This is called by the user and should be a method of a :class:`Compute` subclass. These methods should create a deep copy of the graph to pass to the C++ script. The graph is passed to the C++ script via its pointer, which can be accessed from igraph's :meth:`_raw_pointer` method.
 
 Cython Module
 =============
