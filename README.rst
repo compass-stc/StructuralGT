@@ -115,4 +115,5 @@ To build the documentation, run the following commands in the source directory:
 or
 
 .. code:: bash
+
    sphinx-build -b html doc html
