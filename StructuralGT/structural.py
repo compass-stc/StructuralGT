@@ -108,7 +108,7 @@ class Clustering(_Compute):
 
 
 class Assortativity(_Compute):
-    """Assortativity refers to how related a node is to its neighbor's. In this
+    """Assortativity refers to how related a node is to its neighbors. In this
     module, similarity refers to similarity by degree.
     """
 
