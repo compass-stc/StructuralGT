@@ -242,7 +242,7 @@ class Network:
 
         Args:
             sub (optional, bool):
-                Whether to onlyh assign the largest connected component as the
+                Whether to only assign the largest connected component as the
                 :class:`igraph.Graph` object.
             weight_type (optional, List[str]):
                 List of weights to include for edges. Options include :code:`Length`,
@@ -406,7 +406,7 @@ class Network:
         if crop is not None and self.depth is not None:
             if crop[4] < self.depth[0] or crop[5] > self.depth[1]:
                 raise ValueError(
-                    "crop argument cannot be outwith the bounds of \
+                    "crop argument cannot be out of the bounds of \
                     the network's depth"
                 )
         if crop is not None and self.depth is None and not self._2d:
