@@ -16,7 +16,7 @@ class Size(_Compute):
         super().__init__(*args, **kwargs)
 
     @_Compute._network_cast
-    def compute(self, network):
+    def compute(self, network, edge_weight=None):
         """Calculates graph node count, edge count, diameter, density.
 
         Args:
@@ -26,7 +26,7 @@ class Size(_Compute):
 
         self._number_of_nodes = network.graph.vcount()
         self._number_of_edges = network.graph.ecount()
-        self._diameter = network.graph.diameter(weights=self.edge_weight)
+        self._diameter = network.graph.diameter(weights=edge_weight)
         self._density = network.graph.density()
 
     @_Compute._computed_property
@@ -154,7 +154,7 @@ class Closeness(_Compute):
         super().__init__(*args, **kwargs)
 
     @_Compute._network_cast
-    def compute(self, network):
+    def compute(self, network, edge_weight=None):
         """Computes node closeness and average closeness.
 
         Args:
@@ -162,7 +162,7 @@ class Closeness(_Compute):
                 The :class:`Network`  or :class:`igraph.Graph` object.
         """
 
-        self._closeness = network.graph.closeness(weights=self.edge_weight)
+        self._closeness = network.graph.closeness(weights=edge_weight)
         self._ac = np.mean(self._closeness)
 
     @_Compute._computed_property
