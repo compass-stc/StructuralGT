@@ -22,7 +22,6 @@ BoundaryBetweennessCast::BoundaryBetweennessCast() {}
 BoundaryBetweennessCast::~BoundaryBetweennessCast() {}
 
 void BoundaryBetweennessCast::boundary_betweenness_compute() {
-  // printf("Begin\n");
   igraph_t *g = (igraph_t *)this->G_ptr;
 
   num_edges = igraph_ecount(g);
@@ -43,12 +42,14 @@ void BoundaryBetweennessCast::boundary_betweenness_compute() {
   igraph_vector_init_array(&weights_vec, weights_arr, num_edges);
 
   igraph_edge_betweenness_subset(
-      g, &res,                             /*igraph_vector_t *res*/
-      igraph_ess_all(IGRAPH_EDGEORDER_ID), /*igraph_es_t eids*/
-      false,                               /*igraph_bool_t directed*/
+      g,
+      &weights_vec,
+      &res,                             /*igraph_vector_t *res*/
       ig_sources,                          /*igraph_vs_t sources*/
       ig_targets,                          /*igraph_vs_t targets*/
-      &weights_vec);                       /*igraph_vector_t *weights*/
+      igraph_ess_all(IGRAPH_EDGEORDER_ID), /*igraph_es_t eids*/
+      false,                               /*igraph_bool_t directed*/
+      false);
 
   betweennesses <<= res;
 

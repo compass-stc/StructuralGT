@@ -42,12 +42,14 @@ void VertexBoundaryBetweennessCast::vertex_boundary_betweenness_compute() {
   igraph_real_t *weights_arr = (double *)weights_ptr;
   igraph_vector_init_array(&weights_vec, weights_arr, num_edges);
 
-  igraph_betweenness_subset(g, &res,          /*igraph_vector_t *res*/
-                            igraph_vss_all(), /*igraph_es_t eids*/
-                            false,            /*igraph_bool_t directed*/
+  igraph_betweenness_subset(g,
+                            &weights_vec,
+                            &res,
                             ig_sources,       /*igraph_vs_t sources*/
                             ig_targets,       /*igraph_vs_t targets*/
-                            &weights_vec);    /*igraph_vector_t *weights*/
+                            igraph_vss_all(), /*igraph_es_t eids*/
+                            false,            /*igraph_bool_t directed*/
+                            false);            /*igraph_bool_t normalized*/
 
   betweennesses <<= res;
 

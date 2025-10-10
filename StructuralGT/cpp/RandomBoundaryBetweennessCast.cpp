@@ -62,22 +62,6 @@ void RandomBoundaryBetweennessCast::random_boundary_betweenness_compute() {
   std::vector<float> V(num_verts, 0);
   linear_betweennesses.resize(num_edges);
   igraph_integer_t from, to;
-  // Old method
-  /*
-  for (int s=0; s<sources_len; s++) {
-      for (int t=0; t<targets_len; t++) {
-          for (int i=0; i< num_verts; i++) {
-              V[i] = pinv(i, sources[s]) - pinv(i, targets[t]);
-          }
-          for (int i=0; i<num_edges; i++) {
-              igraph_edge(g, i, &from, &to);
-              linear_betweennesses[i] += abs(V[int(from)] -
-  V[int(to)])*igraph_sparsemat_get(&A, from, to);
-          }
-      }
-  }
-  */
-  // New method
   float V_from, V_to;
   for (int e = 0; e < num_edges; e++) {
     igraph_edge(g, e, &from, &to);
@@ -110,41 +94,8 @@ void RandomBoundaryBetweennessCast::random_boundary_betweenness_compute() {
    * to calculate the betweenness subset.
    */
   nonlinear_betweennesses.resize(num_edges);
-  bool skip = false;
   for (int i = 0; i < num_edges; i++) {
     igraph_edge(g, i, &from, &to);
-    // Skip edges connecting sources
-    /*
-    for (int s1=0; s1<sources_len; s1++) {
-        for (int s2=0; s2<sources_len; s2++) {
-            //printf("%i,%i,%i,%i\n",s1,s2,int(from),int(to));
-            if (((int(from) == sources[s1] && int(to) == sources[s2]) ||
-                (int(from) == sources[s2] && int(to) == sources[s1])) &&
-                !skip) {
-                skip = true;
-                break;
-            }
-        }
-    }
-    //Skip edges connecting targets
-    for (int t1=0; t1<targets_len; t1++) {
-        for (int t2=0; t2<targets_len; t2++) {
-            //printf("%i,%i,%i,%i\n",s1,s2,int(from),int(to));
-            if (((int(from) == targets[t1] && int(to) == targets[t2]) ||
-                (int(from) == targets[t2] && int(to) == targets[t1])) &&
-                !skip) {
-                skip = true;
-                break;
-            }
-        }
-    }
-    //Reset the skip flag
-    if (skip) {
-        skip = false;
-        continue;
-    }
-    */
-    /*So if edge neither connects two sources nor two targets, do this...*/
     nonlinear_betweennesses[i] =
         abs(V[int(from)] - V[int(to)]) * igraph_sparsemat_get(&A, from, to);
   }
