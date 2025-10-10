@@ -42,7 +42,6 @@ class Electronic(_Compute):
             weight_array = np.asarray(
                     network.graph.es["Conductance"]).astype(float)
             weight_array = weight_array[~np.isnan(weight_array)]
-            # self.edge_weights = weight_array
             weight_avg = np.mean(weight_array)
         else:
             network.graph_connected.es["Conductance"] = \

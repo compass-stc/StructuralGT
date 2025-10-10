@@ -3,7 +3,7 @@ Cython
 eigen
 freud>=3.1.0
 gsd>=3.0.0
-igraph
+igraph>=1.0.0
 ipywidgets
 matplotlib
 networkx

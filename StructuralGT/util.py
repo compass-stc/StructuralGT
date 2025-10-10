@@ -36,10 +36,8 @@ class _Compute:
             Flag representing whether the compute method has been called.
     """
 
-    def __init__(self, node_weight=None, edge_weight=None):
+    def __init__(self):
         self._called_compute = False
-        self.node_weight = node_weight
-        self.edge_weight = edge_weight
 
     def __getattribute__(self, attr):
         """Compute methods set a flag to indicate that quantities have been

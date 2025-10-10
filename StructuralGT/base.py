@@ -227,6 +227,33 @@ def dim_red(positions):
 
     return positions
 
+def G_to_gsd(G, gsd_name, box=False):
+    dim = len(G.vs[0]["o"])
+
+    positions = np.asarray(list(G.vs[i]["o"] for i in range(G.vcount())))
+    for i in range(G.ecount()):
+        positions = np.append(positions, G.es[i]["pts"], axis=0)
+
+    N = len(positions)
+    if dim == 2:
+        positions = np.append([np.zeros(N)], positions.T, axis=0).T
+
+    s = gsd.hoomd.Frame()
+    s.particles.N = N
+    s.particles.types = ["A"]
+    s.particles.typeid = ["0"] * N
+
+    if box:
+        L = list(max(positions.T[i]) for i in (0, 1, 2))
+        s.particles.position, _ = shift(
+            positions, _shift=(L[0] / 2, L[1] / 2, L[2] / 2)
+        )
+        s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
+    else:
+        s.particles.position, _ = shift(positions)
+
+    with gsd.hoomd.open(name=gsd_name, mode="w") as f:
+        f.append(s)
 
 def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
     """Function takes gsd rendering of a skeleton and returns the list of

@@ -79,7 +79,7 @@ class NodeBoundaryBetweenness(_Compute):
         super().__init__(*args, **kwargs)
 
     @_Compute._network_cast
-    def compute(self, network, sources, targets):
+    def compute(self, network, sources, targets, edge_weight=None):
         r"""Compute different edge betweenness centralities of the graph.
 
         Args:
@@ -89,15 +89,17 @@ class NodeBoundaryBetweenness(_Compute):
                 The set of source nodes, :math:`S`.
             targets (list):
                 The set of target nodes, :math:`T`.
+            edge_weight (optional, str):
+                The name of edge weights.
         """
 
         num_edges = network.graph.ecount()
         _copy = copy.deepcopy(network.graph)
 
-        if self.edge_weight is None:
+        if edge_weight is None:
             weights = np.ones(num_edges, dtype=np.double)
         else:
-            weights = np.array(_copy.es[self.edge_weight], dtype=np.double)
+            weights = np.array(_copy.es[edge_weight], dtype=np.double)
 
         cast = _vertex_boundary_betweenness_cast.PyCast(_copy._raw_pointer())
 
@@ -138,7 +140,7 @@ class BoundaryBetweenness(_Compute):
         super().__init__(*args, **kwargs)
 
     @_Compute._network_cast
-    def compute(self, network, sources, targets):
+    def compute(self, network, sources, targets, edge_weight=None):
         r"""Compute different edge betweenness centralities of the graph.
 
         Args:
@@ -148,15 +150,17 @@ class BoundaryBetweenness(_Compute):
                 The set of source nodes, :math:`S`.
             targets (list):
                 The set of target nodes, :math:`T`.
+            edge_weight (optional, str):
+                The name of edge weights.
         """
 
         num_edges = network.graph.ecount()
         _copy = copy.deepcopy(network.graph)
 
-        if self.edge_weight is None:
+        if edge_weight is None:
             weights = np.ones(num_edges, dtype=np.double)
         else:
-            weights = np.array(_copy.es[self.edge_weight], dtype=np.double)
+            weights = np.array(_copy.es[edge_weight], dtype=np.double)
 
         cast = _boundary_betweenness_cast.PyCast(_copy._raw_pointer())
 
@@ -197,7 +201,7 @@ class RandomBoundaryBetweenness(_Compute):
         super().__init__(*args, **kwargs)
 
     @_Compute._network_cast
-    def compute(self, network, sources, targets):
+    def compute(self, network, sources, targets, edge_weight=None):
         r"""Compute different edge betweenness centralities of the graph.
 
         Args:
@@ -207,10 +211,8 @@ class RandomBoundaryBetweenness(_Compute):
                 The set of source nodes, :math:`S`.
             targets (list):
                 The set of target nodes, :math:`T`.
-            weights (str, optional):
-                The name of the edge attribute to be used in weighting the
-                random walks. If omitted, an unweighted network is used.
-
+            edge_weight (optional, str):
+                The name of edge weights.
         """
         _copy = copy.deepcopy(network.graph)
 
@@ -222,13 +224,13 @@ class RandomBoundaryBetweenness(_Compute):
 
         # When passing weight vector, must add additional weights for edges
         # between targets and ghost node (added in cpp file)
-        if self.edge_weight is None:
+        if edge_weight is None:
             weights = np.ones(num_edges, dtype=np.double)
         else:
-            mean = np.mean(np.array(network.graph.es[self.edge_weight]))
+            mean = np.mean(np.array(network.graph.es[edge_weight]))
 
             weights = np.append(
-                np.array(network.graph.es[self.edge_weight], dtype=np.double),
+                np.array(network.graph.es[edge_weight], dtype=np.double),
                 np.full(len(targets), mean, dtype=np.double),
             ).astype(np.double)
             assert len(weights) == _copy.ecount()

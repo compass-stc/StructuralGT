@@ -201,12 +201,15 @@ class Degree(_Compute):
         super().__init__(*args, **kwargs)
 
     @_Compute._network_cast
-    def compute(self, network):
+    def compute(self, network, node_weight=None):
         """Computes node degree and average degree.
 
         Args:
             network (:class:`Network` or :class:`igraph.Graph`):
                 The :class:`Network`  or :class:`igraph.Graph` object.
+            node_weight (str, optional):
+                Name of node weights for calculcating weighted degree
+                (sometimes called "strength")
         """
 
         self._degree = network.graph.strength(weights=self.node_weight)

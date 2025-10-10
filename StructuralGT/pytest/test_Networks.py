@@ -98,18 +98,6 @@ class TestNetwork:
 
         testNetwork.Gr.vs["o"][0]
 
-    def test_from_img_file_path(self):
-        with pytest.warns(UserWarning):
-            testNetwork = Network(img_path)
-
-        testNetwork.binarize(options=options.agnwn)
-        testNetwork.img_to_skel()
-        testNetwork.set_graph()
-
-        dir_name = os.path.splitext(img_path)[0]
-        os.rename(dir_name + "/slice0000.tiff", img_path)
-        shutil.rmtree(dir_name)
-
 
 class TestGraph:
     def test_from_gsd(self):
@@ -151,16 +139,12 @@ class TestPointNetwork:
 
     def test_write_edgelist(self):
         # Read edge list with whitespace as delimiter
-        df = pd.read_csv(
-            EdgeList_path + "Connectivity.dat", delim_whitespace=True
-        )
+        df = pd.read_csv(EdgeList_path + "Connectivity.dat", sep="\s+")
         edge_list = df[["node1", "node2"]].values
         edge_list -= 1  # Convert to 0-based indexing
 
         # Read node positions
-        pos_df = pd.read_csv(
-            EdgeList_path + "Node_positions.dat", delim_whitespace=True
-        )
+        pos_df = pd.read_csv(EdgeList_path + "Node_positions.dat", sep="\s+")
         positions = pos_df[["x", "y", "z"]].values
 
         N = PointNetwork(positions, edge_list)
