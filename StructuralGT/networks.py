@@ -157,13 +157,16 @@ class Network:
         if not os.path.isdir(self.dir + self.binarized_dir):
             os.mkdir(self.dir + self.binarized_dir)
 
+        self.options = options
         if isinstance(options, str):
             options = self.dir + "/" + options
             with open(options) as f:
                 options = json.load(f)
+            self.options = options
         elif not isinstance(options, dict):
             try:
                 options.predict(self)
+                self.options = {"img_processing": "deeplearner"}
                 return
             except ImportError:
                 raise TypeError(
@@ -412,8 +415,7 @@ class Network:
         if crop is not None and self.depth is None and not self._2d:
             if len(self.image_stack) < crop[5] - crop[4]:
                 raise ValueError("Crop too large for image stack")
-            else:
-                self.depth = [crop[4], crop[5]]
+            self.depth = [crop[4], crop[5]]
 
         start = time.time()
 
@@ -444,6 +446,22 @@ class Network:
         )
         self.positions = positions
 
+        if debubble is not None:
+            self = base.debubble(self, debubble)
+            self.options["debubble"] = debubble
+
+        if merge_nodes is not None:
+            self = base.merge_nodes(self, merge_nodes)
+            self.options["merge_nodes"] = merge_nodes
+
+        if prune is not None:
+            self = base.prune(self, prune)
+            self.options["prune"] = prune
+
+        if remove_objects is not None:
+            self = base.remove_objects(self, remove_objects)
+            self.options["remove_objects"] = remove_objects
+
         with gsd.hoomd.open(name=self.gsd_name, mode="w") as f:
             s = gsd.hoomd.Frame()
             s.particles.N = len(positions)
@@ -467,18 +485,6 @@ class Network:
             len(positions),
             "voxels",
         )
-
-        if debubble is not None:
-            self = base.debubble(self, debubble)
-
-        if merge_nodes is not None:
-            self = base.merge_nodes(self, merge_nodes)
-
-        if prune is not None:
-            self = base.prune(self, prune)
-
-        if remove_objects is not None:
-            self = base.remove_objects(self, remove_objects)
 
         if rotate is not None:
             from scipy.spatial.transform import Rotation as R
@@ -526,14 +532,10 @@ class Network:
                 attributes,
             ]
 
-        if filename[0] == "/":
-            save_name = filename
-        else:
-            save_name = self.stack_dir + "/" + filename
-        if mode == "r+" and os.path.exists(save_name):
-            _mode = "r+"
-        else:
-            _mode = "w"
+        save_name = (
+            filename if filename[0] == "/" else self.stack_dir + "/" + filename
+        )
+        _mode = "r+" if mode == "r+" and os.path.exists(save_name) else "w"
 
         f = gsd.hoomd.open(name=save_name, mode=_mode)
         self.labelled_name = save_name
@@ -631,13 +633,12 @@ class Network:
 
         f.append(s)
 
-        _dict = {}
         for attr in ("stack_dir", "_2d", "dim", "cropper"):
-            _dict[attr] = str(getattr(self, attr))
+            self.options[attr] = str(getattr(self, attr))
 
         name = os.path.splitext(os.path.basename(filename))[0]
         with open(self.stack_dir + "/" + name + ".json", "w") as json_file:
-            json.dump(_dict, json_file)
+            json.dump(self.options, json_file)
 
     def node_plot(self, parameter=None, ax=None, depth=0, plot_img=True):
         """Superimpose the skeleton, image, and nodal graph theory parameters.
@@ -775,7 +776,7 @@ class Network:
             cb = colorbar(mappable, ax)
             cb.set_label("Value")
 
-        return fig, ax
+        return ax
 
     def graph_plot(self, ax=None, depth=0):
         """Superimpose the graph and original image.

@@ -2,14 +2,18 @@
 # This file is from the StructuralGT project, released under the BSD 3-Clause
 # License.
 
-import os
 import time
 
 import cv2 as cv
 import gsd.hoomd
 import numpy as np
-from skimage.morphology import (binary_closing, remove_small_objects,
-                                skeletonize)
+from skimage.morphology import (
+    binary_closing,
+    remove_small_objects,
+    skeletonize,
+    disk,
+    ball,
+)
 
 from StructuralGT import GetWeights_3d, error, skel_ID, sknwEdits
 
@@ -66,8 +70,9 @@ def connector(point1, point2):
     vec = point2 - point1
     edge = np.array([point1])
     for i in np.linspace(0, 1):
-        edge = np.append(edge,
-                         np.array([point1 + np.multiply(i, vec)]), axis=0)
+        edge = np.append(
+            edge, np.array([point1 + np.multiply(i, vec)]), axis=0
+        )
     edge = edge.astype(int)
     edge = np.unique(edge, axis=0)
 
@@ -78,12 +83,13 @@ def split(array, splitpoints):
     """Function which splits numpy array into list of arrays, according to
     the split points specified in splitpoints (which is a list of the array
     lengths."""
-    splitpoints = np.pad(splitpoints, (1, 1), "constant",
-                         constant_values=(0, 0))
+    splitpoints = np.pad(
+        splitpoints, (1, 1), "constant", constant_values=(0, 0)
+    )
     L = []
     k = 0
-    for i, j in zip(splitpoints[0: len(splitpoints)], splitpoints[1::]):
-        L.append(array[i + k: i + j + k])
+    for i, j in zip(splitpoints[0 : len(splitpoints)], splitpoints[1::]):
+        L.append(array[i + k : i + j + k])
         k += i
 
     return L
@@ -222,36 +228,6 @@ def dim_red(positions):
     return positions
 
 
-def G_to_gsd(G, gsd_name, box=False):
-    """Remove?"""
-    dim = len(G.vs[0]["o"])
-
-    positions = np.asarray(list(G.vs[i]["o"] for i in range(G.vcount())))
-    for i in range(G.ecount()):
-        positions = np.append(positions, G.es[i]["pts"], axis=0)
-
-    N = len(positions)
-    if dim == 2:
-        positions = np.append([np.zeros(N)], positions.T, axis=0).T
-
-    s = gsd.hoomd.Frame()
-    s.particles.N = N
-    s.particles.types = ["A"]
-    s.particles.typeid = ["0"] * N
-
-    if box:
-        L = list(max(positions.T[i]) for i in (0, 1, 2))
-        s.particles.position, _ = shift(
-            positions, _shift=(L[0] / 2, L[1] / 2, L[2] / 2)
-        )
-        s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
-    else:
-        s.particles.position, _ = shift(positions)
-
-    with gsd.hoomd.open(name=gsd_name, mode="w") as f:
-        f.append(s)
-
-
 def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
     """Function takes gsd rendering of a skeleton and returns the list of
     nodes and edges, as calculated by sknw.
@@ -301,8 +277,10 @@ def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
         positions = new_pos.T.astype(int)
 
     canvas = np.zeros(
-        list((max(positions.T[i]) + 1) for i in list(
-            range(min(positions.shape))))
+        list(
+            (max(positions.T[i]) + 1)
+            for i in list(range(min(positions.shape)))
+        )
     )
     canvas[tuple(list(positions.T))] = 1
     canvas = canvas.astype(int)
@@ -336,14 +314,12 @@ def debubble(g, elements):
         raise error.StructuralElementError
 
     start = time.time()
-    g.gsd_name = g.gsd_dir + "/debubbled_" + os.path.split(g.gsd_name)[1]
 
     canvas = g.img_bin
+    canvas = np.ceil(skeletonize(canvas) / 255).astype(np.uint8)
     for elem in elements:
-        canvas = skeletonize(canvas) / 255
-        canvas = binary_closing(canvas, footprint=elem)
-
-    g._skeleton = skeletonize(canvas) / 255
+        elem = disk(elem) if g._2d else ball(elem)
+        canvas = binary_closing(canvas, footprint=elem.astype(np.uint8))
 
     if g._2d:
         g._skeleton_3d = np.swapaxes(np.array([g._skeleton]), 2, 1)
@@ -371,7 +347,6 @@ def debubble(g, elements):
 # Currently works for 2D only (Is just a reproduction of Drew's method)
 def merge_nodes(g, disk_size):
     start = time.time()
-    g.gsd_name = g.gsd_dir + "/merged_" + os.path.split(g.gsd_name)[1]
 
     canvas = g._skeleton
     g._skeleton = skel_ID.merge_nodes(canvas, disk_size)
@@ -380,7 +355,7 @@ def merge_nodes(g, disk_size):
         g._skeleton_3d = np.swapaxes(np.array([g._skeleton]), 2, 1)
         g._skeleton_3d = np.asarray([g._skeleton])
     else:
-        g._skeleton_3d = np.asarray(g._skeleton)
+        raise TypeError("Node merging not supported for 3D networks")
 
     positions = np.asarray(np.where(g._skeleton_3d != 0)).T
     with gsd.hoomd.open(name=g.gsd_name, mode="w") as f:
@@ -401,7 +376,6 @@ def merge_nodes(g, disk_size):
 
 def prune(g, size):
     start = time.time()
-    g.gsd_name = g.gsd_dir + "/pruned_" + os.path.split(g.gsd_name)[1]
 
     canvas = g._skeleton
     g._skeleton = skel_ID.pruning(canvas, size)
@@ -431,7 +405,6 @@ def prune(g, size):
 
 def remove_objects(g, size):
     start = time.time()
-    g.gsd_name = g.gsd_dir + "/cleaned_" + os.path.split(g.gsd_name)[1]
 
     canvas = g._skeleton
     g._skeleton = remove_small_objects(canvas, size, connectivity=2)
@@ -460,7 +433,7 @@ def remove_objects(g, size):
 
 
 def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
-    _img_bin = g.img_bin[g.shift[0][1]::, g.shift[0][2]::]
+    _img_bin = g.img_bin[g.shift[0][1] : :, g.shift[0][2] : :]
     if not isinstance(weight_type, list) and weight_type is not None:
         raise TypeError("weight_type must be list, even if single element")
     for _type in weight_type:
@@ -470,8 +443,10 @@ def add_weights(g, weight_type=None, R_j=0, rho_dim=1):
                 ge, _img_bin, weight_type=_type, R_j=R_j, rho_dim=rho_dim
             )
             edge["pixel width"] = pix_width
-            if (_type == "VariableWidthConductance"
-                    or _type == "FixedWidthConductance"):
+            if (
+                _type == "VariableWidthConductance"
+                or _type == "FixedWidthConductance"
+            ):
                 _type_name = "Conductance"
             else:
                 _type_name = _type
