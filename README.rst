@@ -5,7 +5,7 @@ StructuralGT
 Overview
 ========
 A python package for the extraction and analysis of graphs from 2D and 3D experimental micrographs. Image processing techniques taken from `StructuralGT <https://github.com/drewvecchio/StructuralGT>`__.
-*StructuralGT* is available as an API based package, or GUI. Use `conda-forge <https://anaconda.org/conda-forge/structuralgt>`__ or the main GitHub branch for the API version, and the `GUI branch <https://github.com/compass-stc/StructuralGT/tree/DicksonOwuor-GUI>`__ for the GUI version.
+*StructuralGT* is available as an API-based or GUI-based package. Use `conda-forge <https://anaconda.org/conda-forge/structuralgt>`__ or the main GitHub branch for the API version, and the `GUI branch <https://github.com/compass-stc/StructuralGT/tree/DicksonOwuor-GUI>`__ for the GUI version.
 
 Installation guide
 ==================
@@ -16,12 +16,12 @@ platforms. Install with
 
    conda install conda-forge::structuralgt
 
-**StructuralGT** can also be built from source, via the
+**StructuralGT** can also be built from source via the
 `public repository <https://github.com/compass-stc/StructuralGT>`__.
 Prior to install, you will need to install some dependencies into your conda
 environment. Note that installation will most likely be
 successful if carried out in a new conda environment. While it is posisble to
-obtain some of these dependencies with pip, installation will most likely be
+obtain some of these dependencies with pip, installation is most likely to be
 sucessful when all dependencies are obtained with conda.
 
 .. code:: bash
@@ -57,7 +57,7 @@ included tests:
 Quickstart and examples repository
 ==================================
 
-To showcase the API, here is a simple example script used to predict the sheet resistance of silver nanowires, used in our recent publication :cite:`WuKadar2025`
+To showcase the API, here is a simple example script used to predict the sheet resistance of silver nanowires, used in our recent publication :cite:`WuKadar2025`.
 To learn how to implement this yourself, consult our
 `examples repository <https://github.com/compass-stc/StructuralGT-Examples>`__.
 
@@ -111,7 +111,9 @@ To build the documentation, run the following commands in the source directory:
     cd doc
     make html
     # Then open build/html/index.html
+
+or
+
 .. code:: bash
 
-   conda install sphinx furo nbsphinx jupyter_sphinx sphinxcontrib-bibtex sphinx-copybutton
    sphinx-build -b html doc html
