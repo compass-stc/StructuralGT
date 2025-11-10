@@ -187,6 +187,9 @@ class Network:
                 cmap=mpl.cm.gray,
             )
 
+        with open(self.stack_dir + "/options.json", "w") as json_file:
+            json.dump(self.options, json_file)
+
     def set_img_bin(self, crop):
         """Set the :attr:`img_bin` and :attr:`img_bin_3d` attributes.
 
@@ -416,6 +419,12 @@ class Network:
             if len(self.image_stack) < crop[5] - crop[4]:
                 raise ValueError("Crop too large for image stack")
             self.depth = [crop[4], crop[5]]
+
+        if not hasattr(self, 'options'):
+            _json = self.stack_dir + "/options.json"
+            with open(_json) as json_file:
+                data = json.load(json_file)
+            self.options = data
 
         start = time.time()
 
@@ -893,6 +902,7 @@ class Network:
         _json = N.stack_dir + "/" + name + ".json"
         with open(_json) as json_file:
             data = json.load(json_file)
+        N.options = data
 
         N.cropper = _cropper.from_string(N, domain=data["cropper"])
         N.dim = int(data["dim"])

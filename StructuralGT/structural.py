@@ -212,7 +212,7 @@ class Degree(_Compute):
                 (sometimes called "strength")
         """
 
-        self._degree = network.graph.strength(weights=self.node_weight)
+        self._degree = network.graph.strength(weights=node_weight)
         self._ad = np.mean(self._degree)
 
     @_Compute._computed_property
