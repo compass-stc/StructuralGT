@@ -1,8 +1,8 @@
 name: Draft PDF
 on:
-push:
-  branches:
-    - 'joss'
+  push:
+    branches:
+      - 'joss'
 
 jobs:
   paper:
