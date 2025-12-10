@@ -48,11 +48,11 @@ class NodeBetweenness(_Compute):
 
         .. math::
 
-           g(v) =\frac{1}{|N|(|N|-1)} \sum_{s\in N,t \in N} \frac{\sigma(s, t|v)}{\sigma(s, t)}
+           g(v) =\frac{1}{2N(N-1)} \sum_{s\in \mathscr{N},t \in \mathscr{N}} \frac{\sigma_{st}(e)}{\sigma_{st}}
 
-        where :math:`N` is the set of nodes,
-        :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
-        and :math:`\sigma(s, t|v)` is the number of those paths
+        where :math:`\mathscr{N}` is the set of nodes,
+        :math:`\sigma_{st}` is the number of shortest :math:`(s, t)` -paths,
+        and :math:`\sigma{st}(v)` is the number of those paths
         passing through node :math:`v` :cite:`Brandes2008`.
         """
         return self._node_betweenness
@@ -63,7 +63,7 @@ class NodeBetweenness(_Compute):
 
         .. math::
 
-           \bar{g} = \frac{1}{|N|} \sum_{v\in N} g(v)
+           \bar{g} = \frac{1}{N} \sum_{v\in \mathscr{N}} g(v)
         """
         return np.mean(self._node_betweenness)
 
@@ -86,9 +86,9 @@ class NodeBoundaryBetweenness(_Compute):
             network (:class:`Network` or :class:`igraph.Graph`):
                 The :class:`Network`  or :class:`igraph.Graph` object.
             sources (list):
-                The set of source nodes, :math:`S`.
+                The set of source nodes, :math:`\mathscr{S}`.
             targets (list):
-                The set of target nodes, :math:`T`.
+                The set of target nodes, :math:`\mathscr{T}`.
             edge_weight (optional, str):
                 The name of edge weights.
         """
@@ -119,12 +119,12 @@ class NodeBoundaryBetweenness(_Compute):
 
         .. math::
 
-           g_B(v) =\sum_{s\in S,t \in T} \frac{\sigma(s, t|e)}{\sigma(s, t)}
+           g_B(v) =\sum_{s\in \mathscr{S},t \in \mathscr{T}} \frac{\sigma_{st}(v)}{\sigma_{st}}
 
-        where :math:`S` is the set of sources, :math:`T` is the set of targets,
-        :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
-        and :math:`\sigma(s, t|e)` is the number of those paths
-        passing through edge :math:`e` :cite:`Brandes2008`.
+        where :math:`\mathscr{S}` is the set of sources, :math:`\mathscr{T}` is the set of targets,
+        :math:`\sigma_{st}` is the number of shortest :math:`(s, t)` -paths,
+        and :math:`\sigma_{st}(v)` is the number of those paths
+        passing through edge :math:`v` :cite:`Brandes2008`.
         """
         return self._vertex_boundary_betweenness
 
@@ -133,7 +133,7 @@ class BoundaryBetweenness(_Compute):
     """A module for calculating different extension of the classical
     edge betweenness centrality measure. In particular, calculates
     betweennesses which include geometric features of the network via weights
-    and boundary conditions.
+    and boundary conditions, as explained in :cite:`Reyes-Martinez2025`.
     """
 
     def __init__(self, *args, **kwargs):
@@ -147,9 +147,9 @@ class BoundaryBetweenness(_Compute):
             network (:class:`Network` or :class:`igraph.Graph`):
                 The :class:`Network`  or :class:`igraph.Graph` object.
             sources (list):
-                The set of source nodes, :math:`S`.
+                The set of source nodes, :math:`\mathscr{S}`.
             targets (list):
-                The set of target nodes, :math:`T`.
+                The set of target nodes, :math:`\mathscr{T}`.
             edge_weight (optional, str):
                 The name of edge weights.
         """
@@ -180,21 +180,18 @@ class BoundaryBetweenness(_Compute):
 
         .. math::
 
-           EBC_B(e) = \frac{1}{2|T|(|S|-1)} \sum_{s\in S,t \in T} \frac{\sigma(s, t|e)}{\sigma(s, t)}
+           EBC_B(e) = \frac{1}{2T(S-1)} \sum_{s\in \mathscr{S},t \in \mathscr{T}} \frac{\sigma_{st}(e)}{\sigma_{st}}
 
-        where :math:`S` is the set of sources, :math:`T` is the set of targets,
-        :math:`\sigma(s, t)` is the number of shortest :math:`(s, t)` -paths,
-        and :math:`\sigma(s, t|e)` is the number of those paths
+        where :math:`\mathscr{S}` is the set of sources, :math:`\mathscr{T}` is the set of targets,
+        :math:`\sigma_{st}` is the number of shortest :math:`(s, t)` -paths,
+        and :math:`\sigma_{st}(e)` is the number of those paths
         passing through edge :math:`e` :cite:`Brandes2008`.
         """
         return self._boundary_betweenness
 
 
 class RandomBoundaryBetweenness(_Compute):
-    """A module for calculating different extension of the classical
-    edge betweenness centrality measure. In particular, calculates
-    betweennesses which include geometric features of the network via weights
-    and boundary conditions.
+    """Calculates the random walk betweenness, as defined by Newman :cite:`Newman2005`.
     """
 
     def __init__(self, *args, **kwargs):
@@ -208,9 +205,9 @@ class RandomBoundaryBetweenness(_Compute):
             network (:class:`Network` or :class:`igraph.Graph`):
                 The :class:`Network`  or :class:`igraph.Graph` object.
             sources (list):
-                The set of source nodes, :math:`S`.
+                The set of source nodes, :math:`\mathscr{S}`.
             targets (list):
-                The set of target nodes, :math:`T`.
+                The set of target nodes, :math:`\mathscr{T}`.
             edge_weight (optional, str):
                 The name of edge weights.
         """
