@@ -52,7 +52,7 @@ class AverageNodalConnectivity(_Compute):
 
         .. math::
 
-            \bar{\kappa} = 2\frac{\sum_{i \neq j}\kappa(i,j)}{n(n-1)}
+            \bar{\kappa} = 2\frac{\sum_{i \neq j}\kappa(i,j)}{N(N-1)}
 
         """
         return self._average_nodal_connectivity

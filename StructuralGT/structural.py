@@ -54,8 +54,10 @@ class Size(_Compute):
 
         .. math::
 
-           \rho = \frac{2e}{n(n-1)}
+           \rho = \frac{2M}{N(N-1)}
 
+        Where :math:`N` and :math:`M` are the total number of nodes and
+        edges, respectively.
         """
         return self._density
 
@@ -101,7 +103,7 @@ class Clustering(_Compute):
 
         .. math::
 
-           \Delta = \frac{\sum_i{\delta}}{n}
+           \Delta = \frac{\sum_i{\delta_i}}{N}
 
         """
         return self._acc
