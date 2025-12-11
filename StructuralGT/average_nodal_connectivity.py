@@ -21,7 +21,7 @@ from StructuralGT import _average_nodal_connectivity_cast
 class AverageNodalConnectivity(_Compute):
     """A module for calculating the average nodal connectivity.
     Written separately because it is computationally very expensive, yet has
-    been shown to correlate well with material properties.REF
+    been shown to correlate well with material properties.:cite:`Vecchio2022`
     """
 
     def __init__(self, *args, **kwargs):
