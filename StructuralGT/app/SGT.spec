@@ -15,7 +15,7 @@ block_cipher = None
 # Get the project root directory
 # SPECPATH is automatically set by PyInstaller to the directory containing the spec file
 project_root = pathlib.Path(SPECPATH)
-app_dir = project_root / "app"
+app_dir = project_root / "src"
 
 # macOS specific settings
 app_name = "SGT"
@@ -26,16 +26,16 @@ bundle_identifier = "com.structuralgt.gui"
 # Data files to include
 datas = [
     # Settings file
-    (str(app_dir / "settings.json"), "app"),
+    (str(app_dir / "settings.json"), "src"),
     # QRC resource file
-    (str(app_dir / "view" / "resources" / "resources.qrc"), "app/view/resources"),
+    (str(app_dir / "view" / "resources" / "resources.qrc"), "src/view/resources"),
     # Style files
     (
         str(app_dir / "view" / "resources" / "style" / "custom_styles.qss"),
-        "app/view/resources/style",
+        "src/view/resources/style",
     ),
     # Icon directories
-    (str(app_dir / "view" / "resources" / "icons"), "app/view/resources/icons"),
+    (str(app_dir / "view" / "resources" / "icons"), "src/view/resources/icons"),
 ]
 
 # Collect PySide6 data files

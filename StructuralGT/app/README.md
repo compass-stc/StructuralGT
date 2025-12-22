@@ -18,7 +18,7 @@ micromamba activate SGT_GUI
 Start the application:
 
 ```bash
-python app/main.py
+python src/main.py
 ```
 
 ### Building
