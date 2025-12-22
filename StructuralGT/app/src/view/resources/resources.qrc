@@ -1,0 +1,31 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource prefix="/resources">
+    <file alias="style/custom_styles.qss">style/custom_styles.qss</file>
+    <file>icons/dark/cancel_icon.png</file>
+    <file>icons/dark/extract_graph.png</file>
+    <file>icons/dark/next.png</file>
+    <file>icons/dark/previous.png</file>
+    <file>icons/dark/dashboard.png</file>
+    <file>icons/dark/refresh.png</file>
+    <file>icons/dark/settings.png</file>
+    <file>icons/dark/zoom_in.png</file>
+    <file>icons/dark/zoom_out.png</file>
+    <file>icons/dark/undo_icon.png</file>
+    <file>icons/light/cancel_icon.png</file>
+    <file>icons/light/previous.png</file>
+    <file>icons/light/extract_graph.png</file>
+    <file>icons/light/next.png</file>
+    <file>icons/light/dashboard.png</file>
+    <file>icons/light/refresh.png</file>
+    <file>icons/light/settings.png</file>
+    <file>icons/light/undo_icon.png</file>
+    <file>icons/light/zoom_in.png</file>
+    <file>icons/light/zoom_out.png</file>
+    <file>icons/light/console.png</file>
+    <file>icons/dark/console.png</file>
+    <file>icons/light/monitor.png</file>
+    <file>icons/dark/monitor.png</file>
+    <file>icons/StructuralGT.png</file>
+  </qresource>
+</RCC>

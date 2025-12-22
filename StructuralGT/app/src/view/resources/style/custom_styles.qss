@@ -1,0 +1,83 @@
+/* Custom stylesheet overrides for StructuralGT GUI */
+/* This file will be appended to qdarktheme base theme */
+/* Custom styles defined here will override the base theme */
+
+/* 1. Remove hover underline from QCheckBox and QRadioButton */
+QCheckBox, QRadioButton {
+    border-top: 0px solid transparent !important;
+    border-bottom: 0px solid transparent !important;
+}
+
+QCheckBox:hover {
+    border-top: 0px solid transparent !important;
+    border-bottom: 0px solid transparent !important;
+}
+
+QRadioButton:hover {
+    border-top: 0px solid transparent !important;
+    border-bottom: 0px solid transparent !important;
+}
+
+/* 2. Fix QComboBox text display */
+QComboBox QAbstractItemView {
+    min-width: 120px !important;
+}
+
+QComboBox::item {
+    min-width: 120px !important;
+}
+
+/* 3. Fix QPushButton background */
+QPushButton {
+    background-color: transparent !important;
+}
+
+QPushButton:hover {
+    background-color: #33808080 !important;
+}
+
+QPushButton:pressed {
+    background-color: #4D808080 !important;
+}
+
+/* Remove green background from default buttons (like QFileDialog buttons) */
+QPushButton:default {
+    background-color: transparent !important;
+}
+
+QPushButton:default:hover {
+    background-color: #33808080 !important;
+}
+
+QPushButton:default:pressed {
+    background-color: #4D808080 !important;
+}
+
+/* 4. Hide QSizeGrip */
+QSizeGrip {
+    width: 0;
+    height: 0;
+    image: none;
+    background: transparent;
+    border: none;
+}
+
+QStatusBar > .QSizeGrip {
+    width: 0;
+    height: 0;
+    image: none;
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+/* 5. Fix QLabel background */
+QLabel {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+QLabel:!window {
+    background: transparent !important;
+    background-color: transparent !important;
+}
