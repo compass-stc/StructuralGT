@@ -1,0 +1,238 @@
+# -*- mode: python ; coding: utf-8 -*-
+"""
+PyInstaller spec file for SGT (macOS)
+Optimized for macOS .app bundle with OVITO support
+"""
+
+import os
+import sys
+import pathlib
+from PyInstaller.utils.hooks import collect_data_files
+
+# Block cipher for encryption
+block_cipher = None
+
+# Get the project root directory
+# SPECPATH is automatically set by PyInstaller to the directory containing the spec file
+project_root = pathlib.Path(SPECPATH)
+app_dir = project_root / "app"
+
+# macOS specific settings
+app_name = "SGT"
+icon_path = app_dir / "view" / "resources" / "icons" / "StructuralGT.icns"
+icon_file = str(icon_path) if icon_path.exists() else None
+bundle_identifier = "com.structuralgt.gui"
+
+# Data files to include
+datas = [
+    # Settings file
+    (str(app_dir / "settings.json"), "app"),
+    # QRC resource file
+    (str(app_dir / "view" / "resources" / "resources.qrc"), "app/view/resources"),
+    # Style files
+    (
+        str(app_dir / "view" / "resources" / "style" / "custom_styles.qss"),
+        "app/view/resources/style",
+    ),
+    # Icon directories
+    (str(app_dir / "view" / "resources" / "icons"), "app/view/resources/icons"),
+]
+
+# Collect PySide6 data files
+try:
+    pyside6_datas = collect_data_files(
+        "PySide6", includes=["**/*.qml", "**/*.qm", "**/*.dylib"]
+    )
+    datas.extend(pyside6_datas)
+except Exception:
+    pass
+
+# Include entire lib/ovito directory from conda/mamba environment
+# This ensures all OVITO native libraries and plugins are available
+env_base = None
+if "CONDA_PREFIX" in os.environ:
+    env_base = pathlib.Path(os.environ["CONDA_PREFIX"])
+elif "MAMBA_ROOT_PREFIX" in os.environ:
+    mamba_root = pathlib.Path(os.environ["MAMBA_ROOT_PREFIX"])
+    env_name = os.environ.get("CONDA_DEFAULT_ENV", "SGT_GUI")
+    env_base = pathlib.Path(mamba_root, "envs", env_name)
+    # Fallback to explicit SGT_GUI if default env doesn't work
+    if not pathlib.Path(env_base, "lib", "ovito").exists():
+        env_base = pathlib.Path(mamba_root, "envs", "SGT_GUI")
+
+if env_base:
+    lib_ovito_dir = pathlib.Path(env_base, "lib", "ovito")
+    if lib_ovito_dir.exists():
+        # Include entire lib/ovito directory structure as data
+        datas.append((lib_ovito_dir, "lib/ovito"))
+        print(f"[SPEC] Including entire lib/ovito directory from: {lib_ovito_dir}")
+    else:
+        print(f"[SPEC] WARNING: lib/ovito directory not found at {lib_ovito_dir}")
+else:
+    print(
+        f"[SPEC] WARNING: Could not determine conda/mamba environment base for OVITO"
+    )
+
+# Collect StructuralGT metadata.json
+try:
+    import StructuralGT
+
+    structuralgt_path = pathlib.Path(StructuralGT.__file__).parent
+    metadata_json = pathlib.Path(structuralgt_path, "metadata.json")
+    if metadata_json.exists():
+        datas.append((metadata_json, "StructuralGT"))
+except Exception:
+    pass
+
+# Hidden imports (modules that PyInstaller might miss)
+hiddenimports = [
+    # PySide6
+    "PySide6.QtCore",
+    "PySide6.QtGui",
+    "PySide6.QtWidgets",
+    "PySide6.QtOpenGL",
+    "PySide6.QtOpenGLWidgets",
+    # StructuralGT
+    "StructuralGT",
+    "StructuralGT.networks",
+    "StructuralGT.electronic",
+    "StructuralGT.geometric",
+    "StructuralGT.structural",
+    # OVITO
+    "ovito",
+    "ovito.gui",
+    "ovito.vis",
+    "ovito.io",
+    "ovito.scene",
+    "ovito.data",
+    "ovito.modifiers",
+    "ovito.pipeline",
+    "ovito.qt_compat",
+    "ovito.plugins",
+    "ovito.plugins.ovito_bindings",
+    "ovito.io._import_file_func",
+    "ovito.gui._create_qwidget",
+    "ovito.vis._viewport",
+    # Other dependencies
+    "numpy",
+    "pandas",
+    "cv2",
+    "matplotlib",
+    "matplotlib.pyplot",
+    "scipy",
+    "skimage",
+    "networkx",
+    "gsd",
+    "igraph",
+    "freud",
+    "qdarktheme",
+    "pyqtdarktheme",
+    # IPython (required by StructuralGT)
+    "IPython",
+    "IPython.display",
+]
+
+# Binary files (will be populated by PyInstaller's analysis)
+# Also explicitly include OVITO .so/.dylib files as binaries
+binaries = []
+
+if env_base:
+    lib_ovito_dir = pathlib.Path(env_base, "lib", "ovito")
+    if lib_ovito_dir.exists():
+        # Include .so and .dylib files as binaries for macOS
+        import glob
+
+        lib_ovito_str = str(lib_ovito_dir)
+        for ext in ["*.so", "*.dylib"]:
+            # glob.glob needs string path, not Path object
+            pattern = os.path.join(lib_ovito_str, "**", ext)
+            for binary_path in glob.glob(pattern, recursive=True):
+                binary_path_obj = pathlib.Path(binary_path)
+                # Calculate relative path from lib/ovito
+                rel_path = binary_path_obj.relative_to(lib_ovito_dir)
+                target_dir = rel_path.parent
+                if str(target_dir) == ".":
+                    target_path = "lib/ovito"
+                else:
+                    target_path = os.path.join("lib", "ovito", str(target_dir)).replace(
+                        os.sep, "/"
+                    )
+                binaries.append((binary_path, target_path))
+                print(
+                    f"[SPEC]   Including binary: {binary_path_obj.name} -> {target_path}"
+                )
+
+# Analysis phase
+a = Analysis(
+    [str(app_dir / "main.py")],
+    pathex=[str(app_dir)],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[
+        "tkinter",
+        "matplotlib.tests",
+        "numpy.tests",
+        "pandas.tests",
+        "scipy.tests",
+        "jupyter",
+        "notebook",
+    ],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=True,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+# Create executable in onedir mode
+exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,  # Exclude binaries to put in directory mode
+    name=app_name,
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    console=False,  # GUI application
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=icon_file,
+)
+
+# Collect all files into a directory
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name=app_name,
+)
+
+# Bundle the collected directory into a .app bundle (onedir mode)
+app = BUNDLE(
+    coll,
+    name=f"{app_name}.app",
+    icon=icon_file,
+    bundle_identifier=bundle_identifier,
+    info_plist={
+        "NSPrincipalClass": "NSApplication",
+        "NSHighResolutionCapable": "True",
+        "CFBundleShortVersionString": "1.0.0",
+        "CFBundleVersion": "1.0.0",
+        "NSHumanReadableCopyright": "Copyright © 2025",
+        "LSMinimumSystemVersion": "10.13",
+    },
+)
