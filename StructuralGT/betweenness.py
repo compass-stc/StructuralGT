@@ -48,7 +48,7 @@ class NodeBetweenness(_Compute):
 
         .. math::
 
-           g(v) =\frac{1}{2N(N-1)} \sum_{s\in \mathscr{N},t \in \mathscr{N}} \frac{\sigma_{st}(e)}{\sigma_{st}}
+           BC(v) =\frac{1}{2N(N-1)} \sum_{s\in \mathscr{N},t \in \mathscr{N}} \frac{\sigma_{st}(e)}{\sigma_{st}}
 
         where :math:`\mathscr{N}` is the set of nodes,
         :math:`\sigma_{st}` is the number of shortest :math:`(s, t)` -paths,
@@ -63,7 +63,7 @@ class NodeBetweenness(_Compute):
 
         .. math::
 
-           \bar{g} = \frac{1}{N} \sum_{v\in \mathscr{N}} g(v)
+           \bar{BC} = \frac{1}{N} \sum_{v\in \mathscr{N}} BC(v)
         """
         return np.mean(self._node_betweenness)
 
