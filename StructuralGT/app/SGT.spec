@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file for SGT (macOS)
-Optimized for macOS .app bundle with OVITO support
+PyInstaller spec file for SGT (macOS, Windows, Linux)
+Optimized for cross-platform builds with OVITO support
 """
 
 import os
@@ -12,43 +12,50 @@ from PyInstaller.utils.hooks import collect_data_files
 # Block cipher for encryption
 block_cipher = None
 
-# Get the project root directory
-# SPECPATH is automatically set by PyInstaller to the directory containing the spec file
+# Detect platform
+is_macos = sys.platform == "darwin"
+is_windows = sys.platform == "win32"
+
 project_root = pathlib.Path(SPECPATH)
 app_dir = project_root / "src"
 
-# macOS specific settings
+# Platform-specific settings
 app_name = "SGT"
-icon_path = app_dir / "view" / "resources" / "icons" / "StructuralGT.icns"
-icon_file = str(icon_path) if icon_path.exists() else None
-bundle_identifier = "com.structuralgt.gui"
+if is_macos:
+    icon_path = app_dir / "view" / "resources" / "icons" / "StructuralGT.icns"
+    bundle_identifier = "com.structuralgt.gui"
+elif is_windows:
+    icon_path = app_dir / "view" / "resources" / "icons" / "StructuralGT.ico"
+    bundle_identifier = None
+else:
+    icon_path = app_dir / "view" / "resources" / "icons" / "StructuralGT.png"
+    bundle_identifier = None
 
-# Data files to include
+icon_file = str(icon_path) if icon_path.exists() else None
+
 datas = [
-    # Settings file
     (str(app_dir / "settings.json"), "src"),
-    # QRC resource file
     (str(app_dir / "view" / "resources" / "resources.qrc"), "src/view/resources"),
-    # Style files
     (
         str(app_dir / "view" / "resources" / "style" / "custom_styles.qss"),
         "src/view/resources/style",
     ),
-    # Icon directories
     (str(app_dir / "view" / "resources" / "icons"), "src/view/resources/icons"),
 ]
 
-# Collect PySide6 data files
 try:
-    pyside6_datas = collect_data_files(
-        "PySide6", includes=["**/*.qml", "**/*.qm", "**/*.dylib"]
-    )
+    if is_macos:
+        pyside6_includes = ["**/*.qml", "**/*.qm", "**/*.dylib"]
+    elif is_windows:
+        pyside6_includes = ["**/*.qml", "**/*.qm", "**/*.dll"]
+    else:
+        pyside6_includes = ["**/*.qml", "**/*.qm", "**/*.so"]
+    
+    pyside6_datas = collect_data_files("PySide6", includes=pyside6_includes)
     datas.extend(pyside6_datas)
 except Exception:
     pass
 
-# Include entire lib/ovito directory from conda/mamba environment
-# This ensures all OVITO native libraries and plugins are available
 env_base = None
 if "CONDA_PREFIX" in os.environ:
     env_base = pathlib.Path(os.environ["CONDA_PREFIX"])
@@ -56,14 +63,20 @@ elif "MAMBA_ROOT_PREFIX" in os.environ:
     mamba_root = pathlib.Path(os.environ["MAMBA_ROOT_PREFIX"])
     env_name = os.environ.get("CONDA_DEFAULT_ENV", "SGT_GUI")
     env_base = pathlib.Path(mamba_root, "envs", env_name)
-    # Fallback to explicit SGT_GUI if default env doesn't work
-    if not pathlib.Path(env_base, "lib", "ovito").exists():
+    if is_windows:
+        ovito_check_path = pathlib.Path(env_base, "Library", "ovito")
+    else:
+        ovito_check_path = pathlib.Path(env_base, "lib", "ovito")
+    if not ovito_check_path.exists():
         env_base = pathlib.Path(mamba_root, "envs", "SGT_GUI")
 
 if env_base:
-    lib_ovito_dir = pathlib.Path(env_base, "lib", "ovito")
+    if is_windows:
+        lib_ovito_dir = pathlib.Path(env_base, "Library", "ovito")
+    else:
+        lib_ovito_dir = pathlib.Path(env_base, "lib", "ovito")
+    
     if lib_ovito_dir.exists():
-        # Include entire lib/ovito directory structure as data
         datas.append((lib_ovito_dir, "lib/ovito"))
         print(f"[SPEC] Including entire lib/ovito directory from: {lib_ovito_dir}")
     else:
@@ -132,23 +145,29 @@ hiddenimports = [
     "IPython.display",
 ]
 
-# Binary files (will be populated by PyInstaller's analysis)
-# Also explicitly include OVITO .so/.dylib files as binaries
 binaries = []
 
 if env_base:
-    lib_ovito_dir = pathlib.Path(env_base, "lib", "ovito")
+    if is_windows:
+        lib_ovito_dir = pathlib.Path(env_base, "Library", "ovito")
+    else:
+        lib_ovito_dir = pathlib.Path(env_base, "lib", "ovito")
+    
     if lib_ovito_dir.exists():
-        # Include .so and .dylib files as binaries for macOS
         import glob
 
         lib_ovito_str = str(lib_ovito_dir)
-        for ext in ["*.so", "*.dylib"]:
-            # glob.glob needs string path, not Path object
+        if is_macos:
+            binary_extensions = ["*.so", "*.dylib"]
+        elif is_windows:
+            binary_extensions = ["*.dll"]
+        else:
+            binary_extensions = ["*.so"]
+        
+        for ext in binary_extensions:
             pattern = os.path.join(lib_ovito_str, "**", ext)
             for binary_path in glob.glob(pattern, recursive=True):
                 binary_path_obj = pathlib.Path(binary_path)
-                # Calculate relative path from lib/ovito
                 rel_path = binary_path_obj.relative_to(lib_ovito_dir)
                 target_dir = rel_path.parent
                 if str(target_dir) == ".":
@@ -189,18 +208,17 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-# Create executable in onedir mode
 exe = EXE(
     pyz,
     a.scripts,
     [],
-    exclude_binaries=True,  # Exclude binaries to put in directory mode
+    exclude_binaries=True,
     name=app_name,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=False,  # GUI application
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -209,7 +227,6 @@ exe = EXE(
     icon=icon_file,
 )
 
-# Collect all files into a directory
 coll = COLLECT(
     exe,
     a.binaries,
@@ -221,18 +238,20 @@ coll = COLLECT(
     name=app_name,
 )
 
-# Bundle the collected directory into a .app bundle (onedir mode)
-app = BUNDLE(
-    coll,
-    name=f"{app_name}.app",
-    icon=icon_file,
-    bundle_identifier=bundle_identifier,
-    info_plist={
-        "NSPrincipalClass": "NSApplication",
-        "NSHighResolutionCapable": "True",
-        "CFBundleShortVersionString": "1.0.0",
-        "CFBundleVersion": "1.0.0",
-        "NSHumanReadableCopyright": "Copyright © 2025",
-        "LSMinimumSystemVersion": "10.13",
-    },
-)
+if is_macos:
+    app = BUNDLE(
+        coll,
+        name=f"{app_name}.app",
+        icon=icon_file,
+        bundle_identifier=bundle_identifier,
+        info_plist={
+            "NSPrincipalClass": "NSApplication",
+            "NSHighResolutionCapable": "True",
+            "CFBundleShortVersionString": "1.0.0",
+            "CFBundleVersion": "1.0.0",
+            "NSHumanReadableCopyright": "Copyright © 2025",
+            "LSMinimumSystemVersion": "10.13",
+        },
+    )
+else:
+    app = coll

@@ -10,21 +10,38 @@ import importlib.machinery
 # Set OVITO GUI mode environment variable BEFORE importing ovito
 os.environ["OVITO_GUI_MODE"] = "1"
 
+# Platform-specific binary extensions
+# Hard-coded based on logs: macOS/Linux use .so, Windows uses .dll
+if sys.platform == "win32":
+    OVITO_BINDINGS_EXT = ".dll"
+elif sys.platform == "darwin":
+    # macOS: based on logs, uses .so
+    OVITO_BINDINGS_EXT = ".so"
+else:
+    # Linux
+    OVITO_BINDINGS_EXT = ".so"
+
 if hasattr(sys, "_MEIPASS"):
     _MEIPASS = sys._MEIPASS
 
     correct_plugins_path = None
-    for path in [
+    binding_file_name = None
+
+    search_paths = [
         pathlib.Path(_MEIPASS, "lib", "ovito", "plugins"),
         pathlib.Path(_MEIPASS, "ovito", "plugins"),
-    ]:
-        if path.exists() and (path / "ovito_bindings.so").exists():
+    ]
+
+    for path in search_paths:
+        binding_file = path / f"ovito_bindings{OVITO_BINDINGS_EXT}"
+        if path.exists() and binding_file.exists():
             correct_plugins_path = str(path)
+            binding_file_name = f"ovito_bindings{OVITO_BINDINGS_EXT}"
             break
 
-    if not correct_plugins_path:
+    if not correct_plugins_path or not binding_file_name:
         raise RuntimeError(
-            f"Could not find ovito plugins directory in {_MEIPASS}"
+            f"Could not find ovito plugins directory or binding file in {_MEIPASS}"
         )
 
     import ovito
@@ -41,8 +58,8 @@ if hasattr(sys, "_MEIPASS"):
     # Set correct __path__ for PyInstaller
     plugins_module.__path__ = [correct_plugins_path]
 
-    # Load ovito_bindings.so directly
-    binding_file = pathlib.Path(correct_plugins_path) / "ovito_bindings.so"
+    # Load ovito_bindings binary directly
+    binding_file = pathlib.Path(correct_plugins_path) / binding_file_name
     if binding_file.exists():
         try:
             loader = importlib.machinery.ExtensionFileLoader(
