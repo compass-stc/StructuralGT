@@ -4,8 +4,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
 import pathlib
 from typing import Optional
 
-# Import OVITO using the loader module
-from view.widgets.ovito_loader import ovito as ov
+import ovito as ov
 from service.main_controller import MainController
 
 
