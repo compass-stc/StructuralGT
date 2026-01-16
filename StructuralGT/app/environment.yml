@@ -1,10 +1,11 @@
 name: SGT_GUI
 channels:
-  - https://conda.ovito.org
   - conda-forge
+  - nodefaults
+channel_priority: strict
 dependencies:
   - python=3.12
-  - ovito=3.12.4
+  - https://conda.ovito.org::ovito=3.12.4
   - pyside6
   - numpy
   - scipy

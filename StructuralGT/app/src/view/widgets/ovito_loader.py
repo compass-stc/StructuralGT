@@ -11,14 +11,13 @@ import importlib.machinery
 os.environ["OVITO_GUI_MODE"] = "1"
 
 # Platform-specific binary extensions
-# Hard-coded based on logs: macOS/Linux use .so, Windows uses .dll
+# Windows: Library/bin/ovito_bindings.pyd
+# macOS/Linux: lib/ovito/plugins/ovito_bindings.so
 if sys.platform == "win32":
-    OVITO_BINDINGS_EXT = ".dll"
+    OVITO_BINDINGS_EXT = ".pyd"
 elif sys.platform == "darwin":
-    # macOS: based on logs, uses .so
     OVITO_BINDINGS_EXT = ".so"
 else:
-    # Linux
     OVITO_BINDINGS_EXT = ".so"
 
 if hasattr(sys, "_MEIPASS"):

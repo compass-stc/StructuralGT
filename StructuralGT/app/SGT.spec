@@ -72,15 +72,15 @@ elif "MAMBA_ROOT_PREFIX" in os.environ:
 
 if env_base:
     if is_windows:
-        lib_ovito_dir = pathlib.Path(env_base, "Library", "ovito")
+        lib_ovito_dir = pathlib.Path(env_base, "Lib", "site-packages", "ovito")
     else:
         lib_ovito_dir = pathlib.Path(env_base, "lib", "ovito")
     
     if lib_ovito_dir.exists():
-        datas.append((lib_ovito_dir, "lib/ovito"))
-        print(f"[SPEC] Including entire lib/ovito directory from: {lib_ovito_dir}")
+        datas.append((lib_ovito_dir, "ovito"))
+        print(f"[SPEC] Including ovito directory from: {lib_ovito_dir}")
     else:
-        print(f"[SPEC] WARNING: lib/ovito directory not found at {lib_ovito_dir}")
+        print(f"[SPEC] WARNING: ovito directory not found at {lib_ovito_dir}")
 else:
     print(
         f"[SPEC] WARNING: Could not determine conda/mamba environment base for OVITO"
@@ -148,38 +148,43 @@ hiddenimports = [
 binaries = []
 
 if env_base:
+    import glob
+    
     if is_windows:
-        lib_ovito_dir = pathlib.Path(env_base, "Library", "ovito")
+        lib_ovito_bin = pathlib.Path(env_base, "Library", "bin")
+        if lib_ovito_bin.exists():
+            patterns = [
+                "ovito*.pyd",
+                "ovito*.dll",
+                "embree*.dll",
+                "anari*.dll",
+                "ospray*.dll",
+                "OpenImageDenoise*.dll",
+            ]
+            for pattern in patterns:
+                for binary_path in glob.glob(os.path.join(str(lib_ovito_bin), pattern)):
+                    binary_path_obj = pathlib.Path(binary_path)
+                    binaries.append((binary_path, "lib/ovito/plugins"))
+                    print(f"[SPEC]   Including binary: {binary_path_obj.name} -> lib/ovito/plugins")
     else:
         lib_ovito_dir = pathlib.Path(env_base, "lib", "ovito")
-    
-    if lib_ovito_dir.exists():
-        import glob
-
-        lib_ovito_str = str(lib_ovito_dir)
-        if is_macos:
-            binary_extensions = ["*.so", "*.dylib"]
-        elif is_windows:
-            binary_extensions = ["*.dll"]
-        else:
-            binary_extensions = ["*.so"]
-        
-        for ext in binary_extensions:
-            pattern = os.path.join(lib_ovito_str, "**", ext)
-            for binary_path in glob.glob(pattern, recursive=True):
-                binary_path_obj = pathlib.Path(binary_path)
-                rel_path = binary_path_obj.relative_to(lib_ovito_dir)
-                target_dir = rel_path.parent
-                if str(target_dir) == ".":
-                    target_path = "lib/ovito"
-                else:
-                    target_path = os.path.join("lib", "ovito", str(target_dir)).replace(
-                        os.sep, "/"
+        if lib_ovito_dir.exists():
+            lib_ovito_str = str(lib_ovito_dir)
+            binary_extensions = ["*.so", "*.dylib"] if is_macos else ["*.so"]
+            
+            for ext in binary_extensions:
+                pattern = os.path.join(lib_ovito_str, "**", ext)
+                for binary_path in glob.glob(pattern, recursive=True):
+                    binary_path_obj = pathlib.Path(binary_path)
+                    rel_path = binary_path_obj.relative_to(lib_ovito_dir)
+                    target_dir = rel_path.parent
+                    target_path = (
+                        "lib/ovito"
+                        if str(target_dir) == "."
+                        else os.path.join("lib", "ovito", str(target_dir)).replace(os.sep, "/")
                     )
-                binaries.append((binary_path, target_path))
-                print(
-                    f"[SPEC]   Including binary: {binary_path_obj.name} -> {target_path}"
-                )
+                    binaries.append((binary_path, target_path))
+                    print(f"[SPEC]   Including binary: {binary_path_obj.name} -> {target_path}")
 
 # Analysis phase
 a = Analysis(
