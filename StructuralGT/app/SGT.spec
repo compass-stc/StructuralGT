@@ -75,6 +75,33 @@ if env_base:
         
         datas.append((str(temp_ovito_package), "ovito"))
         print(f"[SPEC] Including ovito (patched)")
+    
+    cv2_dir = site_packages / "cv2"
+    if cv2_dir.exists():
+        temp_cv2_dir = pathlib.Path(tempfile.mkdtemp())
+        temp_cv2_package = temp_cv2_dir / "cv2"
+        shutil.copytree(cv2_dir, temp_cv2_package, ignore=shutil.ignore_patterns('*.pyd', '*.dll', '*.so', '*.dylib'))
+        
+        config_version_py = temp_cv2_package / f"config-{sys.version_info[0]}.{sys.version_info[1]}.py"
+        if config_version_py.exists():
+            content = config_version_py.read_text(encoding="utf-8")
+            python_version = f"{sys.version_info[0]}.{sys.version_info[1]}"
+            pattern = r"os\.path\.join\([^)]*(?:site-packages|envs)[^)]*\)"
+            replacement = f'os.path.join(os.path.dirname(__file__), "python-{python_version}")'
+            content = re.sub(pattern, replacement, content)
+            config_version_py.write_text(content, encoding="utf-8")
+        
+        config_py = temp_cv2_package / "config.py"
+        if config_py.exists():
+            content = config_py.read_text(encoding="utf-8")
+            if 'site-packages' in content or 'envs' in content:
+                pattern = r"os\.path\.join\([^)]*(?:site-packages|envs)[^)]*\)"
+                replacement = "os.path.dirname(__file__)"
+                content = re.sub(pattern, replacement, content)
+                config_py.write_text(content, encoding="utf-8")
+        
+        datas.append((str(temp_cv2_package), "cv2"))
+        print(f"[SPEC] Including cv2 (patched)")
 
 try:
     import StructuralGT
