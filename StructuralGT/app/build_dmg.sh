@@ -8,7 +8,7 @@ mkdir -p "dist/dmg"
 
 create-dmg \
     --volname "$APP_NAME" \
-    --volicon "app/view/resources/icons/StructuralGT.icns" \
+    --volicon "src/view/resources/icons/StructuralGT.icns" \
     --window-pos 200 120 \
     --window-size 800 400 \
     --icon-size 100 \
