@@ -37,21 +37,14 @@ bash build_dmg.sh
 
 ### Screenshots
 
-<!-- Add your screenshots to the screenshots/ directory and reference them here -->
-
-<details>
-<summary>Click to view screenshots</summary>
-
 #### Main window with project management
 
 ![Main Window](screenshots/main_window.png)
 
 #### Analysis and visualization interface
 
-![Analysis View](screenshots/analysis_view.png)
+![Binarize View](screenshots/binarize_view.png)
 
-#### Network graph visualization interface
+![Graph Extraction View](screenshots/graph_extraction_view.png)
 
-![Graph View](screenshots/graph_view.png)
-
-</details>
+![Properties View](screenshots/properties_view.png)
