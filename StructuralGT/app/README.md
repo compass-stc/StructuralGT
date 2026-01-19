@@ -42,22 +42,16 @@ bash build_dmg.sh
 <details>
 <summary>Click to view screenshots</summary>
 
-#### Main Interface
+#### Main window with project management
 
 ![Main Window](screenshots/main_window.png)
 
-*Main application window with project management*
-
-#### Analysis Features
+#### Analysis and visualization interface
 
 ![Analysis View](screenshots/analysis_view.png)
 
-*Analysis and visualization interface*
-
-#### Graph Visualization
+#### Network graph visualization interface
 
 ![Graph View](screenshots/graph_view.png)
-
-*Network graph visualization*
 
 </details>
