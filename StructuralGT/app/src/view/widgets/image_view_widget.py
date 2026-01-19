@@ -29,9 +29,7 @@ class ImageViewWidget(QWidget):
         self.editable = False
         self.setVisible(False)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self._current_display_type = (
-            "Raw Image"  # "Raw Image", "Binarized Image"
-        )
+        self._current_display_type = "Raw Image"  # "Raw Image", "Binarized Image"
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 0, 5, 0)
@@ -48,9 +46,7 @@ class ImageViewWidget(QWidget):
         self.zoom_in_button.setStyleSheet("background-color: transparent;")
 
         self.zoom_out_button = QToolButton()
-        self.zoom_out_button.setIcon(
-            QIcon(get_icon_path("zoom_out.png", theme))
-        )
+        self.zoom_out_button.setIcon(QIcon(get_icon_path("zoom_out.png", theme)))
         self.zoom_out_button.setToolTip("Zoom Out")
         self.zoom_out_button.setStyleSheet("background-color: transparent;")
 
@@ -66,9 +62,7 @@ class ImageViewWidget(QWidget):
 
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
-        self.image_label.setSizePolicy(
-            QSizePolicy.Ignored, QSizePolicy.Ignored
-        )
+        self.image_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
 
         self.scroll_area.setWidget(self.image_label)
 
@@ -110,12 +104,8 @@ class ImageViewWidget(QWidget):
         self._zoom = 1.0
         self._original_pixmap = QPixmap()
 
-        self.zoom_in_button.clicked.connect(
-            lambda: self.set_zoom(self._zoom + 0.1)
-        )
-        self.zoom_out_button.clicked.connect(
-            lambda: self.set_zoom(self._zoom - 0.1)
-        )
+        self.zoom_in_button.clicked.connect(lambda: self.set_zoom(self._zoom + 0.1))
+        self.zoom_out_button.clicked.connect(lambda: self.set_zoom(self._zoom - 0.1))
 
         self.prev_button.clicked.connect(self._on_prev_slice)
         self.next_button.clicked.connect(self._on_next_slice)
@@ -176,9 +166,7 @@ class ImageViewWidget(QWidget):
 
         handler = self.controller.get_selected_handler()
         if handler is not None:
-            handler["ui_properties"]["display_type"] = (
-                self._current_display_type
-            )
+            handler["ui_properties"]["display_type"] = self._current_display_type
 
         self._update_image()
 
@@ -216,15 +204,11 @@ class ImageViewWidget(QWidget):
             height, width = image.shape
             if image.dtype != np.uint8:
                 image = (
-                    (image - image.min())
-                    / (image.max() - image.min() + 1e-10)
-                    * 255
+                    (image - image.min()) / (image.max() - image.min() + 1e-10) * 255
                 )
                 image = image.astype(np.uint8)
                 image = np.ascontiguousarray(image)
-            q_image = QImage(
-                image.data, width, height, width, QImage.Format_Grayscale8
-            )
+            q_image = QImage(image.data, width, height, width, QImage.Format_Grayscale8)
         elif len(image.shape) == 3:
             height, width, channels = image.shape
             if channels == 3:
@@ -324,8 +308,6 @@ class ImageViewWidget(QWidget):
     def refresh_ui(self, theme: str):
         """Refresh the icons of the image view widget."""
         self.zoom_in_button.setIcon(QIcon(get_icon_path("zoom_in.png", theme)))
-        self.zoom_out_button.setIcon(
-            QIcon(get_icon_path("zoom_out.png", theme))
-        )
+        self.zoom_out_button.setIcon(QIcon(get_icon_path("zoom_out.png", theme)))
         self.prev_button.setIcon(QIcon(get_icon_path("previous.png", theme)))
         self.next_button.setIcon(QIcon(get_icon_path("next.png", theme)))

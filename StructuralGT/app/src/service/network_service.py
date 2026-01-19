@@ -16,9 +16,7 @@ class NetworkService:
     """Network service for StructuralGT GUI."""
 
     @staticmethod
-    def add_network(
-        handler_registry: HandlerRegistry, folder_path: str, dim: int
-    ):
+    def add_network(handler_registry: HandlerRegistry, folder_path: str, dim: int):
         """Add a NetworkHandler to the handler registry."""
         network_handler = NetworkHandler(folder_path, dim=dim)
         handler_registry.add(network_handler)
@@ -140,10 +138,8 @@ class NetworkService:
         if handler is not None:
             graph_properties = handler["network_properties"].copy()
             if options["diameter"] or options["density"]:
-                diameter, density = (
-                    NetworkService.compute_diameter_and_density(
-                        handler_registry
-                    )
+                diameter, density = NetworkService.compute_diameter_and_density(
+                    handler_registry
                 )
                 if options["diameter"]:
                     graph_properties["diameter"] = diameter
@@ -159,9 +155,7 @@ class NetworkService:
                     average_clustering_coefficient
                 )
             if options["assortativity"]:
-                assortativity = NetworkService.compute_assortativity(
-                    handler_registry
-                )
+                assortativity = NetworkService.compute_assortativity(handler_registry)
                 graph_properties["assortativity"] = assortativity
             if options["average_closeness"]:
                 average_closeness = NetworkService.compute_average_closeness(
@@ -169,24 +163,16 @@ class NetworkService:
                 )
                 graph_properties["average_closeness"] = average_closeness
             if options["average_degree"]:
-                average_degree = NetworkService.compute_average_degree(
-                    handler_registry
-                )
+                average_degree = NetworkService.compute_average_degree(handler_registry)
                 graph_properties["average_degree"] = average_degree
             if options["nematic_order_parameter"]:
                 nematic_order_parameter = (
-                    NetworkService.compute_nematic_order_parameter(
-                        handler_registry
-                    )
+                    NetworkService.compute_nematic_order_parameter(handler_registry)
                 )
-                graph_properties["nematic_order_parameter"] = (
-                    nematic_order_parameter
-                )
+                graph_properties["nematic_order_parameter"] = nematic_order_parameter
             if options["effective_resistance"]:
-                effective_resistance = (
-                    NetworkService.compute_effective_resistance(
-                        handler_registry
-                    )
+                effective_resistance = NetworkService.compute_effective_resistance(
+                    handler_registry
                 )
                 graph_properties["effective_resistance"] = effective_resistance
             handler["network_properties"] = graph_properties

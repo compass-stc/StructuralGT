@@ -47,9 +47,7 @@ class PropertiesWidget(QWidget):
         layout.addWidget(self.image_label)
 
         self.image_table = QTableView(self)
-        self.image_table.setSizePolicy(
-            QSizePolicy.Expanding, QSizePolicy.Fixed
-        )
+        self.image_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.image_table.setContentsMargins(5, 5, 5, 5)
         self.image_table.horizontalHeader().setVisible(False)
         self.image_table.verticalHeader().setVisible(False)
@@ -72,9 +70,7 @@ class PropertiesWidget(QWidget):
         layout.addWidget(self.graph_label)
 
         self.graph_table = QTableView(self)
-        self.graph_table.setSizePolicy(
-            QSizePolicy.Expanding, QSizePolicy.Fixed
-        )
+        self.graph_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.graph_table.setContentsMargins(5, 5, 5, 5)
         self.graph_table.horizontalHeader().setVisible(False)
         self.graph_table.verticalHeader().setVisible(False)
@@ -89,9 +85,7 @@ class PropertiesWidget(QWidget):
 
         # Export Button
         self.export_button = QPushButton("Export All", self)
-        self.export_button.setSizePolicy(
-            QSizePolicy.Expanding, QSizePolicy.Fixed
-        )
+        self.export_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.export_button.setMaximumWidth(self.parent().width() / 2)
         self.export_button.clicked.connect(self._on_export_button_clicked)
         layout.addWidget(self.export_button, alignment=Qt.AlignCenter)
@@ -118,9 +112,7 @@ class PropertiesWidget(QWidget):
                 graph_properties = self._get_graph_properties(handler)
                 properties = image_properties + graph_properties
                 with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                    df = pd.DataFrame(
-                        properties, columns=["Property", "Value"]
-                    )
+                    df = pd.DataFrame(properties, columns=["Property", "Value"])
                     df.to_excel(writer, index=False, sheet_name="Properties")
 
     def _on_compute_finished(self, success: bool):
@@ -212,16 +204,13 @@ class PropertiesWidget(QWidget):
                 dim = handler["ui_properties"].get("dim", 2)
                 if dim == 2:
                     # 2D: width x height
-                    data.append(
-                        ["Size", f"{image_shape[1]} × {image_shape[0]}"]
-                    )
+                    data.append(["Size", f"{image_shape[1]} × {image_shape[0]}"])
                 else:
                     # 3D: width x height x depth
                     data.append(
                         [
                             "Size",
-                            f"{image_shape[2]} × {image_shape[1]} ×"
-                            f"{image_shape[0]}",
+                            f"{image_shape[2]} × {image_shape[1]} ×{image_shape[0]}",
                         ]
                     )
             else:

@@ -86,9 +86,7 @@ class HandlerListModel(QAbstractListModel):
             return Path(input_dir).name
         return "Unknown"
 
-    def _get_thumbnail(
-        self, handler: Handler, index: int
-    ) -> Optional[QPixmap]:
+    def _get_thumbnail(self, handler: Handler, index: int) -> Optional[QPixmap]:
         """Get the thumbnail for the given handler."""
         if index in self._thumbnail_cache:
             return self._thumbnail_cache[index]
@@ -98,9 +96,7 @@ class HandlerListModel(QAbstractListModel):
             image_array = network.image
             thumbnail = self._generate_thumbnail(image_array)
         elif isinstance(network, PointNetwork):
-            thumbnail = (
-                None  # TODO: Determine the thumbnail for point networks
-            )
+            thumbnail = None  # TODO: Determine the thumbnail for point networks
         else:
             return None
 
@@ -109,29 +105,45 @@ class HandlerListModel(QAbstractListModel):
             return thumbnail
         return None
 
-    def _generate_thumbnail(
-        self, image_array: np.ndarray
-    ) -> Optional[QPixmap]:
+    def _generate_thumbnail(self, image_array: np.ndarray) -> Optional[QPixmap]:
         """Generate the thumbnail for 2D and 3D images."""
         if image_array is None or image_array.size == 0:
             return None
 
         dim = len(image_array.shape)
-        if dim != 2 and dim != 3:
+        if dim == 3:
+            image = image_array[:, :, 0]
+        elif dim == 2:
+            image = image_array
+        else:
             return None
 
-        image = image_array[0, :, :] if dim == 3 else image_array
-        image = cv2.normalize(
-            image, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U
-        )
+        image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+
+        h, w = image.shape
+        if h == 0 or w == 0:
+            return None
+
+        if w >= h:
+            new_w = self._thumbnail_size
+            new_h = max(1, int(self._thumbnail_size * h / w))
+        else:
+            new_h = self._thumbnail_size
+            new_w = max(1, int(self._thumbnail_size * w / h))
+
         thumbnail = cv2.resize(
             image,
-            (self._thumbnail_size, self._thumbnail_size),
+            (new_w, new_h),
             interpolation=cv2.INTER_AREA,
         )
 
-        h, w = thumbnail.shape
-        q_image = QImage(thumbnail.data, w, h, w, QImage.Format_Grayscale8)
+        q_image = QImage(
+            thumbnail.data,
+            new_w,
+            new_h,
+            new_w,
+            QImage.Format_Grayscale8,
+        )
         return QPixmap.fromImage(q_image)
 
     def _get_handler_type(self, handler: Handler) -> str:

@@ -133,12 +133,8 @@ class ProjectWidget(QWidget):
         self.list_widget = QListWidget(self)
         self.list_widget.setStyleSheet("background-color: transparent;")
         self.list_widget.itemClicked.connect(self._on_item_clicked)
-        self.list_widget.setContextMenuPolicy(
-            Qt.ContextMenuPolicy.CustomContextMenu
-        )
-        self.list_widget.customContextMenuRequested.connect(
-            self._on_context_menu
-        )
+        self.list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.list_widget.customContextMenuRequested.connect(self._on_context_menu)
 
         self.button_network = QPushButton()
         self.button_network.setText("+ Image")
@@ -206,9 +202,7 @@ class ProjectWidget(QWidget):
 
         menu = QMenu(self)
         delete_action = menu.addAction("Delete")
-        delete_action.triggered.connect(
-            lambda: self._on_delete_item(handler_index)
-        )
+        delete_action.triggered.connect(lambda: self._on_delete_item(handler_index))
 
         menu.exec(self.list_widget.mapToGlobal(position))
 

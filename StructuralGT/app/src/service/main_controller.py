@@ -92,9 +92,7 @@ class MainController(QObject):
             self.alert_signal.emit("Failed to add Point Network", repr(e))
             return
         self.handler_changed_signal.emit()
-        pipeline = UIService.get_selected_extracted_graph(
-            self.handler_registry
-        )
+        pipeline = UIService.get_selected_extracted_graph(self.handler_registry)
         self.extract_graph_finished_signal.emit(pipeline)
         self.change_view_signal.emit("Extracted Graph Only")
         return
@@ -104,9 +102,7 @@ class MainController(QObject):
         try:
             NetworkService.delete_network(self.handler_registry, index)
         except Exception as e:
-            self.alert_signal.emit(
-                "Failed to delete Network/Point Network", repr(e)
-            )
+            self.alert_signal.emit("Failed to delete Network/Point Network", repr(e))
             return
         self.handler_changed_signal.emit()
         if self.handler_registry.count() == 0:
@@ -145,9 +141,7 @@ class MainController(QObject):
         try:
             UIService.set_selected_slice_index(self.handler_registry, index)
         except Exception as e:
-            self.alert_signal.emit(
-                "Failed to set selected slice index", repr(e)
-            )
+            self.alert_signal.emit("Failed to set selected slice index", repr(e))
             return
         self.handler_changed_signal.emit()
         return
@@ -155,19 +149,13 @@ class MainController(QObject):
     def get_selected_slice_raw_image(self, index: int) -> Optional[np.ndarray]:
         """Get the selected slice raw image from the selected handler."""
         try:
-            image = UIService.get_selected_slice_raw_image(
-                self.handler_registry, index
-            )
+            image = UIService.get_selected_slice_raw_image(self.handler_registry, index)
         except Exception as e:
-            self.alert_signal.emit(
-                "Failed to get selected slice raw image", repr(e)
-            )
+            self.alert_signal.emit("Failed to get selected slice raw image", repr(e))
             return None
         return image
 
-    def get_selected_slice_binarized_image(
-        self, index: int
-    ) -> Optional[np.ndarray]:
+    def get_selected_slice_binarized_image(self, index: int) -> Optional[np.ndarray]:
         """Get the selected slice binarized image from the selected handler."""
         try:
             image = UIService.get_selected_slice_binarized_image(
@@ -183,13 +171,9 @@ class MainController(QObject):
     def get_selected_extracted_graph(self) -> Optional[str]:
         """Get the selected extracted graph from the selected handler."""
         try:
-            pipeline = UIService.get_selected_extracted_graph(
-                self.handler_registry
-            )
+            pipeline = UIService.get_selected_extracted_graph(self.handler_registry)
         except Exception as e:
-            self.alert_signal.emit(
-                "Failed to get selected extracted graph", repr(e)
-            )
+            self.alert_signal.emit("Failed to get selected extracted graph", repr(e))
             return None
         return pipeline
 
@@ -219,9 +203,7 @@ class MainController(QObject):
 
             if error:
                 logger.error(f"Task {task.task_id} failed: {error}")
-                self.alert_signal.emit(
-                    "Failed to binarize network", repr(error)
-                )
+                self.alert_signal.emit("Failed to binarize network", repr(error))
                 self.binarize_finished_signal.emit(False)
             else:
                 self.handler_changed_signal.emit()
@@ -294,15 +276,11 @@ class MainController(QObject):
         if not handler or handler["tasks"]["Compute Graph Properties"]:
             return
 
-        task = Task(
-            task_id=str(uuid.uuid4()), task_type="Compute Graph Properties"
-        )
+        task = Task(task_id=str(uuid.uuid4()), task_type="Compute Graph Properties")
         handler["tasks"]["Compute Graph Properties"] = task
         task.status = "Running"
         self.task_changed_signal.emit()
-        logger.info(
-            f"Task {task.task_id} created for graph properties computation"
-        )
+        logger.info(f"Task {task.task_id} created for graph properties computation")
 
         def on_finished(result, error=None):
             """Send signals to the main thread."""

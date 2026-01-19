@@ -45,20 +45,14 @@ class RibbonBar(QWidget):
         # Toggle pane button
         theme = self.main_window.settings_service.get("theme")
         self.toggle_panel_button = QToolButton()
-        self.toggle_panel_button.setIcon(
-            QIcon(get_icon_path("dashboard.png", theme))
-        )
+        self.toggle_panel_button.setIcon(QIcon(get_icon_path("dashboard.png", theme)))
         self.toggle_panel_button.setToolTip("Show/Hide Left Pane")
-        self.toggle_panel_button.setStyleSheet(
-            "background-color: transparent;"
-        )
+        self.toggle_panel_button.setStyleSheet("background-color: transparent;")
         self.toggle_panel_button.clicked.connect(self._toggle_left_panel)
 
         # Combo box for view
         self.combo_box = QComboBox()
-        self.combo_box.addItems(
-            ["Raw Image", "Binarized Image", "Extracted Graph"]
-        )
+        self.combo_box.addItems(["Raw Image", "Binarized Image", "Extracted Graph"])
         self.combo_box.currentTextChanged.connect(self.change_view_signal)
         self.combo_box.setDisabled(True)
 
@@ -75,13 +69,9 @@ class RibbonBar(QWidget):
         self.extract_graph_button.setIcon(
             QIcon(get_icon_path("extract_graph.png", theme))
         )
-        self.extract_graph_button.setStyleSheet(
-            "background-color: transparent;"
-        )
+        self.extract_graph_button.setStyleSheet("background-color: transparent;")
         self.extract_graph_button.setDisabled(True)
-        self.extract_graph_button.clicked.connect(
-            self._on_extract_graph_clicked
-        )
+        self.extract_graph_button.clicked.connect(self._on_extract_graph_clicked)
 
         main_layout.addLayout(left_layout)
         left_layout.addWidget(self.toggle_panel_button)
@@ -102,9 +92,7 @@ class RibbonBar(QWidget):
 
     def refresh_ui(self, theme: str):
         """Refresh the ribbon bar widget."""
-        self.toggle_panel_button.setIcon(
-            QIcon(get_icon_path("dashboard.png", theme))
-        )
+        self.toggle_panel_button.setIcon(QIcon(get_icon_path("dashboard.png", theme)))
         self.refresh_button.setIcon(QIcon(get_icon_path("refresh.png", theme)))
         self.extract_graph_button.setIcon(
             QIcon(get_icon_path("extract_graph.png", theme))

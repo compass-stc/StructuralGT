@@ -19,9 +19,7 @@ def select_folder(parent=None) -> Optional[str]:
     return None
 
 
-def select_file(
-    parent=None, file_filter: Optional[str] = None
-) -> Optional[str]:
+def select_file(parent=None, file_filter: Optional[str] = None) -> Optional[str]:
     """Open file selection dialog and return selected file path."""
     dialog = QFileDialog(parent)
     dialog.setFileMode(QFileDialog.FileMode.ExistingFile)

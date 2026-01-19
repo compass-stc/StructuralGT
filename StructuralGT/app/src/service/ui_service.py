@@ -19,9 +19,7 @@ class UIService:
         return
 
     @staticmethod
-    def set_selected_slice_index(
-        handler_registry: HandlerRegistry, index: int
-    ):
+    def set_selected_slice_index(handler_registry: HandlerRegistry, index: int):
         """Set the selected handler at the given slice index."""
         handler = handler_registry.get_selected()
         if handler and isinstance(handler, NetworkHandler):
@@ -57,9 +55,7 @@ class UIService:
                 index + 1 if dim == 3 else index
             )  # FIXME: This is restricted by StructuralGT library
             binarized_filename = f"slice{str(index).zfill(4)}.tiff"
-            image_path = (
-                pathlib.Path(input_dir) / "Binarized" / binarized_filename
-            )
+            image_path = pathlib.Path(input_dir) / "Binarized" / binarized_filename
             image = cv2.imread(str(image_path))
         return image
 
@@ -73,9 +69,7 @@ class UIService:
         if handler:
             input_dir = handler["paths"]["input_dir"]
             if isinstance(handler, NetworkHandler):
-                gsd_file = (
-                    pathlib.Path(input_dir) / "Binarized" / "network.gsd"
-                )
+                gsd_file = pathlib.Path(input_dir) / "Binarized" / "network.gsd"
             elif isinstance(handler, PointNetworkHandler):
                 gsd_file = pathlib.Path(input_dir).parent / "skel.gsd"
         return str(gsd_file)
@@ -96,12 +90,7 @@ class UIService:
         if hasattr(sys, "_MEIPASS"):
             base_path = pathlib.Path(sys._MEIPASS)
             style_file = (
-                base_path
-                / "app"
-                / "view"
-                / "resources"
-                / "style"
-                / "custom_styles.qss"
+                base_path / "app" / "view" / "resources" / "style" / "custom_styles.qss"
             )
         # Normal environment
         else:

@@ -33,12 +33,8 @@ def show_alert(title: str, message: str, parent=None):
     message_text.setReadOnly(True)
     message_text.setMaximumHeight(400)
     message_text.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
-    message_text.setVerticalScrollBarPolicy(
-        Qt.ScrollBarPolicy.ScrollBarAsNeeded
-    )
-    message_text.setHorizontalScrollBarPolicy(
-        Qt.ScrollBarPolicy.ScrollBarAsNeeded
-    )
+    message_text.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+    message_text.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
     layout.addWidget(message_text)
 
     button_box = QDialogButtonBox(QDialogButtonBox.Ok, dialog)

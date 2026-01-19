@@ -101,9 +101,7 @@ class PointNetworkHandler(Handler):
         positions = positions[["x", "y", "z"]].values
         self["network"] = PointNetwork(positions, cutoff)
         self["network"].point_to_skel(
-            filename=str(
-                pathlib.Path(self["paths"]["input_dir"]).parent / "skel.gsd"
-            )
+            filename=str(pathlib.Path(self["paths"]["input_dir"]).parent / "skel.gsd")
         )
         self["ui_properties"]["cutoff"] = cutoff
         self["ui_properties"]["dim"] = 3
@@ -188,9 +186,7 @@ class HandlerRegistry:
         """Get list of valid handler indices."""
         with self._handlers_lock:
             return [
-                i
-                for i, handler in enumerate(self._handlers)
-                if handler is not None
+                i for i, handler in enumerate(self._handlers) if handler is not None
             ]
 
     def task_count(self) -> int:
@@ -200,7 +196,5 @@ class HandlerRegistry:
             for handler in self._handlers:
                 if handler is not None:
                     tasks = handler["tasks"]
-                    count += sum(
-                        1 for task in tasks.values() if task is not None
-                    )
+                    count += sum(1 for task in tasks.values() if task is not None)
             return count

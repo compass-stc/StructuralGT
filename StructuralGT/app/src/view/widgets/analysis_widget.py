@@ -30,18 +30,14 @@ class AnalysisWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self.binarizer_widget = BinarizerWidget(
-            controller=controller, parent=self
-        )
+        self.binarizer_widget = BinarizerWidget(controller=controller, parent=self)
         layout.addWidget(self.binarizer_widget, alignment=Qt.AlignTop)
         layout.addSpacing(10)
 
         self.compute_graph_properties_widget = ComputeGraphPropertiesWidget(
             controller=controller, parent=self
         )
-        layout.addWidget(
-            self.compute_graph_properties_widget, alignment=Qt.AlignTop
-        )
+        layout.addWidget(self.compute_graph_properties_widget, alignment=Qt.AlignTop)
         layout.addStretch(1)
 
 
@@ -196,9 +192,7 @@ class BinarizerWidget(QWidget):
         self.threshold_combo.currentTextChanged.connect(self._trigger_binarize)
         self.gamma_slider.valueChanged.connect(self._trigger_binarize)
         self.threshold_slider.valueChanged.connect(self._trigger_binarize)
-        self.adaptive_kernel_slider.valueChanged.connect(
-            self._trigger_binarize
-        )
+        self.adaptive_kernel_slider.valueChanged.connect(self._trigger_binarize)
         self.blur_kernel_slider.valueChanged.connect(self._trigger_binarize)
         self.window_size_slider.valueChanged.connect(self._trigger_binarize)
         self.median_filter_checkbox.toggled.connect(self._trigger_binarize)
@@ -272,12 +266,8 @@ class ComputeGraphPropertiesWidget(QWidget):
             "Average Closeness Centrality", self
         )
         self.average_degree_checkbox = QCheckBox("Average Degree", self)
-        self.nematic_order_checkbox = QCheckBox(
-            "Nematic Order Parameter", self
-        )
-        self.effective_resistance_checkbox = QCheckBox(
-            "Effective Resistance", self
-        )
+        self.nematic_order_checkbox = QCheckBox("Nematic Order Parameter", self)
+        self.effective_resistance_checkbox = QCheckBox("Effective Resistance", self)
 
         self.extract_button = QPushButton("Extract Graph", self)
         self.compute_button = QPushButton("Compute", self)
@@ -319,9 +309,7 @@ class ComputeGraphPropertiesWidget(QWidget):
             "average_closeness": self.average_closeness_checkbox.isChecked(),
             "average_degree": self.average_degree_checkbox.isChecked(),
             "nematic_order_parameter": self.nematic_order_checkbox.isChecked(),
-            "effective_resistance": (
-                self.effective_resistance_checkbox.isChecked(),
-            ),
+            "effective_resistance": (self.effective_resistance_checkbox.isChecked(),),
         }
 
 

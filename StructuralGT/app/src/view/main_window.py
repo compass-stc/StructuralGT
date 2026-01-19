@@ -40,9 +40,7 @@ from model.handler import HandlerRegistry
 class MainWindow(QMainWindow):
     """Main window for StructuralGT GUI."""
 
-    def __init__(
-        self, controller: MainController, settings_service: SettingsService
-    ):
+    def __init__(self, controller: MainController, settings_service: SettingsService):
         """Initialize the main window."""
         super().__init__()
         self.controller = controller
@@ -113,9 +111,7 @@ class MainWindow(QMainWindow):
     def _apply_theme(self):
         custom_styles = UIService.get_custom_styles()
         theme = self.settings_service.get("theme")
-        stylesheet = UIService.load_theme(
-            theme=theme, custom_styles=custom_styles
-        )
+        stylesheet = UIService.load_theme(theme=theme, custom_styles=custom_styles)
         QApplication.instance().setStyleSheet(stylesheet)
         # Refresh icons after theme change
         self._refresh_all_ui(theme)
@@ -166,9 +162,7 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self):
         # UI Signals
-        self.ribbon_widget.toggle_panel_signal.connect(
-            self._on_toggle_left_panel
-        )
+        self.ribbon_widget.toggle_panel_signal.connect(self._on_toggle_left_panel)
         self.ribbon_widget.change_view_signal.connect(self._on_change_view)
         self.ribbon_widget.refresh_signal.connect(self._on_refresh)
         self.right_panel.welcome_page.folder_selected_signal.connect(
@@ -187,9 +181,7 @@ class MainWindow(QMainWindow):
         self.controller.handler_changed_signal.connect(
             self.right_panel.image_view.refresh
         )
-        self.controller.binarize_finished_signal.connect(
-            self._on_binarize_finished
-        )
+        self.controller.binarize_finished_signal.connect(self._on_binarize_finished)
         self.controller.extract_graph_finished_signal.connect(
             self._on_extract_graph_finished
         )
@@ -249,15 +241,11 @@ class MainWindow(QMainWindow):
             # Refresh image view if showing binarized image
             if self.right_panel.image_view.isVisible():
                 handler = self.controller.get_selected_handler()
-                if (
-                    handler
-                    and handler["ui_properties"]["display_type"] == "Raw Image"
-                ):
+                if handler and handler["ui_properties"]["display_type"] == "Raw Image":
                     self._on_change_view("Binarized Image")
                 if (
                     handler
-                    and handler["ui_properties"]["display_type"]
-                    == "Binarized Image"
+                    and handler["ui_properties"]["display_type"] == "Binarized Image"
                 ):
                     self.right_panel.image_view.refresh()
 
@@ -267,8 +255,7 @@ class MainWindow(QMainWindow):
             handler = self.controller.get_selected_handler()
             if (
                 handler
-                and handler["ui_properties"]["display_type"]
-                == "Binarized Image"
+                and handler["ui_properties"]["display_type"] == "Binarized Image"
             ):
                 self._on_change_view("Extracted Graph")
             self.right_panel.graph_view.set_pipeline(pipeline)
@@ -303,18 +290,14 @@ class LeftPanel(QWidget):
         self.project_widget = ProjectWidget(controller, self)
         self.properties_widget = PropertiesWidget(controller, self)
 
-        self.analysis_widget = AnalysisWidget(
-            controller=controller, parent=self
-        )
+        self.analysis_widget = AnalysisWidget(controller=controller, parent=self)
         analysis_scroll = QScrollArea(self)
         analysis_scroll.setWidget(self.analysis_widget)
         analysis_scroll.setWidgetResizable(True)
         analysis_scroll.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
-        analysis_scroll.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded
-        )
+        analysis_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         self.tabs.addTab(self.project_widget, "Project")
         self.tabs.addTab(self.properties_widget, "Properties")
@@ -376,9 +359,7 @@ class StatusBar(QStatusBar):
 
         theme = self.main_window.settings_service.get("theme")
         self.settings_button = QToolButton()
-        self.settings_button.setIcon(
-            QIcon(get_icon_path("settings.png", theme))
-        )
+        self.settings_button.setIcon(QIcon(get_icon_path("settings.png", theme)))
         self.settings_button.setToolTip("Settings")
         self.settings_button.setStyleSheet("background-color: transparent;")
         self.settings_button.clicked.connect(self._on_settings_clicked)
@@ -403,9 +384,7 @@ class StatusBar(QStatusBar):
 
     def refresh_ui(self, theme: str):
         """Refresh the UI of the status bar."""
-        self.settings_button.setIcon(
-            QIcon(get_icon_path("settings.png", theme))
-        )
+        self.settings_button.setIcon(QIcon(get_icon_path("settings.png", theme)))
         self.console_button.setIcon(QIcon(get_icon_path("console.png", theme)))
         self.monitor_button.setIcon(QIcon(get_icon_path("monitor.png", theme)))
 
