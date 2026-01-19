@@ -45,7 +45,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.controller = controller
         self.settings_service = settings_service
-        self.setWindowTitle("StructualGT")
+        self.setWindowTitle("StructuralGT")
         self.setGeometry(100, 100, 1080, 800)
         self.setMinimumSize(800, 600)
 

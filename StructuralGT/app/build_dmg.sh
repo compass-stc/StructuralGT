@@ -1,8 +1,8 @@
 #!/bin/bash
 
-APP_NAME="SGT"
-APP_PATH="dist/SGT.app"
-DMG_PATH="dist/dmg/SGT.dmg"
+APP_NAME="StructuralGT"
+APP_PATH="dist/StructuralGT.app"
+DMG_PATH="dist/dmg/StructuralGT.dmg"
 
 mkdir -p "dist/dmg"
 
@@ -12,8 +12,8 @@ create-dmg \
     --window-pos 200 120 \
     --window-size 800 400 \
     --icon-size 100 \
-    --icon "SGT.app" 200 190 \
-    --hide-extension "SGT.app" \
+    --icon "StructuralGT.app" 200 190 \
+    --hide-extension "StructuralGT.app" \
     --app-drop-link 600 185 \
     "$DMG_PATH" \
     "$APP_PATH"

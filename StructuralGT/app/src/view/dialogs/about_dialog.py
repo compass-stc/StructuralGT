@@ -44,7 +44,7 @@ class AboutDialog(QDialog):
             "2. Dickson Owuor<br/>"
             "3. Alain Kadar<br/><br/>"
             "This version of GUI is developed by Haoxuan Zeng.<br/>"
-            "GitHub: <a href='https://github.com/HaoxuanZeng/SGT_GUI'>github.com/HaoxuanZeng/SGT_GUI</a><br/><br/>"  # noqa: E501
+            "GitHub: <a href='https://github.com/compass-stc/StructuralGT'>github.com/compass-stc/StructuralGT</a><br/><br/>"  # noqa: E501
             "Copyright (C) 2018-2025, The Regents of the University of Michigan.<br/>"  # noqa: E501
             "License: BSD 3-Clause License<br/>"
         )

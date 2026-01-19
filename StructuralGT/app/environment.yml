@@ -1,4 +1,4 @@
-name: SGT_GUI
+name: StructuralGT_GUI
 channels:
   - https://conda.ovito.org
   - conda-forge

@@ -10,7 +10,7 @@ Install dependencies using micromamba (or conda):
 
 ```bash
 micromamba env create -f environment.yml
-micromamba activate SGT_GUI
+micromamba activate StructuralGT_GUI
 ```
 
 ### Usage
@@ -26,7 +26,7 @@ python src/main.py
 Build the application bundle:
 
 ```bash
-pyinstaller SGT.spec
+pyinstaller StructuralGT.spec
 ```
 
 Create a DMG file (macOS):

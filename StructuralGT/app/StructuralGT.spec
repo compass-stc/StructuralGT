@@ -12,7 +12,7 @@ is_windows = sys.platform == "win32"
 project_root = pathlib.Path(SPECPATH)
 app_dir = project_root / "src"
 
-app_name = "SGT"
+app_name = "StructuralGT"
 icon_path = app_dir / "view" / "resources" / "icons" / (
     "StructuralGT.icns" if is_macos else
     "StructuralGT.ico" if is_windows else
@@ -42,7 +42,7 @@ env_base = None
 if "CONDA_PREFIX" in os.environ:
     env_base = pathlib.Path(os.environ["CONDA_PREFIX"])
 elif "MAMBA_ROOT_PREFIX" in os.environ:
-    env_base = pathlib.Path(os.environ["MAMBA_ROOT_PREFIX"], "envs", os.environ.get("CONDA_DEFAULT_ENV", "SGT_GUI"))
+    env_base = pathlib.Path(os.environ["MAMBA_ROOT_PREFIX"], "envs", os.environ.get("CONDA_DEFAULT_ENV", "StructuralGT_GUI"))
 
 if env_base:
     import sysconfig
