@@ -1,0 +1,27 @@
+name: StructuralGT_GUI
+channels:
+  - https://conda.ovito.org
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.12
+  - https://conda.ovito.org::ovito=3.12.4
+  - pyside6
+  - numpy
+  - scipy
+  - scikit-image
+  - matplotlib
+  - networkx
+  - opencv
+  - openpyxl
+  - pandas
+  - gsd
+  - python-igraph
+  - pytest
+  - ipywidgets
+  - freud
+  - structuralgt
+  - pip
+  - pyinstaller
+  - pip:
+    - pyqtdarktheme
