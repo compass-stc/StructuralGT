@@ -188,22 +188,6 @@ def build_sknw(ske, multi=False, iso=True, ring=True, full=True):
     return build_graph(nodes, edges, multi, full)
 
 
-# draw the graph
-# Not yet igraph compatible
-def draw_graph(img, graph, cn=255, ce=128):
-    acc = np.cumprod((1,) + img.shape[::-1][:-1])[::-1]
-    img = img.ravel()
-    for s, e in graph.edges():
-        eds = graph[s][e]
-        if not graph.is_simple():
-            for i in eds:
-                pts = eds[i]["pts"]
-                img[np.dot(pts, acc)] = ce
-        else:
-            img[np.dot(eds["pts"], acc)] = ce
-    for idx in graph.nodes():
-        pts = graph.nodes[idx]["pts"]
-        img[np.dot(pts, acc)] = cn
 
 
 if __name__ == "__main__":
