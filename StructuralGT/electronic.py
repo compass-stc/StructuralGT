@@ -94,9 +94,8 @@ class Electronic(_Compute):
 
         # Write skeleton connected to external node
         connected_name = (
-            os.path.split(network.gsd_name)[0]
-            + "/connected_"
-            + os.path.split(network.gsd_name)[1]
+            network.skel_name.parent
+            / ("connected_" + str(network.skel_name.name))
         )
         base.G_to_gsd(network.graph_connected, connected_name)
 
