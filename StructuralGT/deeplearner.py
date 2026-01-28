@@ -384,7 +384,7 @@ def save_parameters(filename,keys,vals):
 
 # Load parameters from a filename. Any missing values from param_types will be filled with default values.
 def load_parameters(filename,param_types):
-    assert os.path.exists(filename+'.txt')
+    assert Path(filename+'.txt').exists()
     config = configparser.ConfigParser()
     config.read(filename+'.txt')
 
@@ -513,7 +513,7 @@ def list_imgs_and_sizes(img_names,imgs):
 # want is indicees of desired images (None -> all files), count is total number of names returned (always a subset of want/all)
 def get_image_list(folder, want = None, count=-1):
 
-    assert os.path.exists(folder)
+    assert Path(folder).exists()
     names = []
     for _file in os.listdir(folder):
         if base.Q_img(_file):
@@ -688,7 +688,7 @@ def CreateGenerator(img_path, root, param, want=None, count=-1, train_test_predi
     # if training or testing, we need masks, find names
     if train_test_predict < 2:
         mask_folder = root+'/masks' #!!!!!!!!!!!!!!!!!!
-        assert os.path.exists(mask_folder)
+        assert Path(mask_folder).exists()
         mask_names = find_matching_masks(img_names, get_image_list(mask_folder))
         masks = load_image_list(mask_folder,mask_names, integerize=True,RGB_to_gray = True)
         if chatter:
@@ -698,7 +698,7 @@ def CreateGenerator(img_path, root, param, want=None, count=-1, train_test_predi
 
     # look for AOIs, load them (allow only 1's and 0's)
     AOI_folder = root+'/areas_of_interest' #!!!!!!!!!!!!!!!!!!
-    if not os.path.exists(AOI_folder):
+    if not Path(AOI_folder).exists():
         os.mkdir(AOI_folder)
 
     AOI_names = find_matching_masks(img_names, get_image_list(AOI_folder), raise_issues=False,use_default=True)
@@ -839,7 +839,7 @@ class deeplearner:
         self.train_img_count = train_img_count
         self.test_img_count = test_img_count
 
-        if not os.path.exists(self.model_dir):
+        if not Path(self.model_dir).exists():
             os.mkdir(self.model_dir)
 
         self.output_dir = self.root + '/' + model_dir
