@@ -984,7 +984,8 @@ class GeometricGraph:
 
     def __init__(self, filename, frame=0):
         f = gsd.hoomd.open(name=filename, mode="r")[frame]
-        _json = os.path.splitext(filename)[0] + ".json"
+        filename = Path(filename)
+        _json = filename.stem + ".json"
         with open(_json) as json_file:
             data = json.load(json_file)
 

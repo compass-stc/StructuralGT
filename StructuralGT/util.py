@@ -367,14 +367,14 @@ class _fname:
     def __init__(self, name, domain=_domain(None), _2d=False):
         if not Path(name).exists():
             raise ValueError(f"File, {name}, does not exist.")
-        self.name = name
+        self.name = Path(name)
         self.domain = domain
         self._2d = _2d
 
         if self._2d:
             self.num = "0000"
         else:
-            base_name = name.stem
+            base_name = str(self.name.stem)
             if len(base_name) < 4:
                 raise ValueError(
                     f"Attempting to analyze {name} but for 3D networks, "
@@ -415,7 +415,7 @@ class _fname:
         """bool: Returns true iff the filename suffix is a supported image
         file type.
         """
-        return base.Q_img(self.name)
+        return base.Q_img(str(self.name))
 
     def __contains__(self, item):
         if item is None:
