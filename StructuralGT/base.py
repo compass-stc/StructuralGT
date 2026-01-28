@@ -24,9 +24,8 @@ def read(name, read_type):
     """
     out = cv.imread(name, read_type)
     if out is None:
-        raise ValueError(name + " does not exist")
-    else:
-        return out
+        raise ValueError(str(name) + " does not exist")
+    return out
 
 
 def Q_img(name):

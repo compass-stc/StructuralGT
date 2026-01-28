@@ -2,7 +2,7 @@
 # This file is from the StructuralGT project, released under the BSD 3-Clause
 # License.
 
-import os
+from pathlib import Path
 from functools import wraps
 import igraph as ig
 import numpy as np
@@ -111,12 +111,6 @@ class _Compute:
             method(self, network, *args, **kwargs)
 
         return wrapper
-
-
-def _abs_path(network, name):
-    if name[0] == "/":
-        return name
-    return network.stack_dir + "/" + name
 
 
 class _image_stack:
@@ -371,16 +365,16 @@ class _fname:
     """
 
     def __init__(self, name, domain=_domain(None), _2d=False):
-        if not os.path.exists(name):
+        if not Path(name).exists():
             raise ValueError(f"File, {name}, does not exist.")
-        self.name = name
+        self.name = Path(name)
         self.domain = domain
         self._2d = _2d
 
         if self._2d:
             self.num = "0000"
         else:
-            base_name = os.path.splitext(os.path.split(self.name)[1])[0]
+            base_name = str(self.name.stem)
             if len(base_name) < 4:
                 raise ValueError(
                     f"Attempting to analyze {name} but for 3D networks, "
@@ -421,11 +415,10 @@ class _fname:
         """bool: Returns true iff the filename suffix is a supported image
         file type.
         """
-        return base.Q_img(self.name)
+        return base.Q_img(str(self.name))
 
     def __contains__(self, item):
         if item is None:
             return True
-        else:
-            """str: Returns leading string of the filename."""
-            return item in os.path.splitext(os.path.basename(self.name))[0]
+        """str: Returns leading string of the filename."""
+        return item in self.name.stem

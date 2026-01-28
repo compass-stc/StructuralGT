@@ -3,7 +3,7 @@
 # License.
 
 import json
-import os
+from pathlib import Path
 
 import cv2 as cv
 import matplotlib.pyplot as plt
@@ -63,8 +63,8 @@ class Binarizer:
 
         if export:
             if self.export_dir is None:
-                self.export_dir = os.path.split(self.filename)[0]
-            with open(self.export_dir + "/img_options.json", "w") as fp:
+                self.export_dir = self.filename.parent
+            with open(self.export_dir / "img_options.json", "w") as fp:
                 json.dump(options, fp)
 
         _, binary_image, _ = process_image.binarize(gray_image, options)
@@ -81,7 +81,7 @@ class Binarizer:
                 no arguement given, exports to parent directory of image.
         """
 
-        self.filename = filename
+        self.filename = Path(filename)
         self.export_dir = export_dir
 
         item_layout = Layout(

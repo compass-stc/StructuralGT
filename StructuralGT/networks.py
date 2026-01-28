@@ -5,6 +5,7 @@
 import copy
 import json
 import os
+from pathlib import Path
 import time
 import warnings
 from collections.abc import Sequence
@@ -22,7 +23,6 @@ from skimage.morphology import skeletonize
 
 from StructuralGT import base, error, process_image
 from StructuralGT.util import (
-    _abs_path,
     _cropper,
     _domain,
     _fname,
@@ -71,6 +71,8 @@ class Network:
         prefix=None,
         dim=2,
     ):
+        self.directory = Path(directory)
+        self.binarized_dir = Path(binarized_dir)
         if dim == 2 and depth is not None:
             raise error.InvalidArgumentsError(
                 "Cannot specify depth arguement for 2D networks. \
@@ -78,25 +80,22 @@ class Network:
                 network."
             )
 
-        if not os.path.exists(directory):
+        if not self.directory.exists():
             raise FileNotFoundError("The path you provided does not exist")
 
-        if not os.path.isdir(directory):
+        if not self.directory.is_dir():
             warnings.warn(
                 "You have not provided a directory so "
                 "StructuralGT will create one and move the image and "
                 "all subsequent results inside of it.",
                 UserWarning,
             )
-            dir_name = os.path.splitext(directory)[0]
-            if not os.path.exists(dir_name):
-                os.mkdir(dir_name)
-            os.rename(directory, dir_name + "/slice0000.tiff")
-            directory = dir_name
+            os.mkdir(self.directory.parent)
+            os.rename(self.directory,
+                      self.directory.parent / "slice0000.tiff")
 
-        self.dir = directory
-        self.binarized_dir = "/" + binarized_dir
-        self.stack_dir = os.path.normpath(self.dir + self.binarized_dir)
+        self.dir = Path(directory)
+        self.stack_dir = self.dir / self.binarized_dir
         self.depth = depth
         self.dim = dim
         if self.dim == 2:
@@ -114,7 +113,7 @@ class Network:
             if not base.Q_img(slice_name):
                 continue
             fname = _fname(
-                self.dir + "/" + slice_name,
+                str(self.dir / slice_name),
                 domain=_domain(depth),
                 _2d=self._2d,
             )
@@ -128,11 +127,11 @@ class Network:
                         UserWarning,
                     )
                     break
-                _slice = plt.imread(self.dir + "/" + slice_name)
+                _slice = plt.imread(self.dir / slice_name)
                 image_stack.append(_slice, slice_name)
             if dim == 3:
                 if fname.isinrange and fname.isimg and prefix in fname:
-                    _slice = plt.imread(self.dir + "/" + slice_name)
+                    _slice = plt.imread(self.dir / slice_name)
                     image_stack.append(_slice, slice_name)
 
         self.image_stack = image_stack
@@ -154,12 +153,12 @@ class Network:
                 specified, the network's parent directory will be searched for
                 a file called :code:`img_options.json`, containing the options.
         """
-        if not os.path.isdir(self.dir + self.binarized_dir):
-            os.mkdir(self.dir + self.binarized_dir)
+        if not self.stack_dir.is_dir():
+            os.mkdir(self.stack_dir)
 
         self.options = options
         if isinstance(options, str):
-            options = self.dir + "/" + options
+            options = self.dir / options
             with open(options) as f:
                 options = json.load(f)
             self.options = options
@@ -176,18 +175,18 @@ class Network:
                 )
 
         for _, name in self.image_stack:
-            fname = _fname(self.dir + "/" + name, _2d=self._2d)
-            gray_image = cv.imread(self.dir + "/" + name, cv.IMREAD_GRAYSCALE)
+            fname = _fname(str(self.dir / name), _2d=self._2d)
+            gray_image = cv.imread(self.dir / name, cv.IMREAD_GRAYSCALE)
             _, img_bin, _ = process_image.binarize(gray_image, options)
             if self._2d:
                 fname.num = "0000"
             plt.imsave(
-                self.stack_dir + "/" + self.prefix + fname.num + ".tiff",
+                self.stack_dir / (self.prefix + fname.num + ".tiff"),
                 img_bin,
                 cmap=mpl.cm.gray,
             )
 
-        with open(self.stack_dir + "/options.json", "w") as json_file:
+        with open(self.stack_dir / "options.json", "w") as json_file:
             json.dump(self.options, json_file)
 
     def set_img_bin(self, crop):
@@ -214,18 +213,14 @@ class Network:
             if not base.Q_img(fname):
                 continue
             fname = _fname(
-                self.stack_dir + "/" + fname,
+                str(self.stack_dir / fname),
                 domain=_domain(self.cropper._3d),
                 _2d=self._2d,
             )
             if fname.isimg and fname.isinrange:
                 img_bin[i - self.cropper.surface] = (
                     base.read(
-                        self.stack_dir
-                        + "/"
-                        + self.prefix
-                        + fname.num
-                        + ".tiff",
+                        self.stack_dir / (self.prefix  + fname.num + ".tiff"),
                         cv.IMREAD_GRAYSCALE,
                     )[self.cropper._2d]
                     / 255
@@ -275,7 +270,7 @@ class Network:
                                  img_to_skel before calling set_graph."
             )
 
-        G = base.gsd_to_G(self.gsd_name, _2d=self._2d, sub=sub)
+        G = base.gsd_to_G(self.skel_name, _2d=self._2d, sub=sub)
 
         self.Gr = G
         self.write_name = write
@@ -420,16 +415,19 @@ class Network:
                 raise ValueError("Crop too large for image stack")
             self.depth = [crop[4], crop[5]]
 
-        if not hasattr(self, 'options'):
-            _json = self.stack_dir + "/options.json"
+        if not hasattr(self, "options"):
+            _json = self.stack_dir / "options.json"
             with open(_json) as json_file:
                 data = json.load(json_file)
             self.options = data
 
         start = time.time()
-
-        self.gsd_name = _abs_path(self, name)
-        self.gsd_dir = os.path.split(self.gsd_name)[0]
+        skel_name = Path(name)
+        self.skel_name = (
+            skel_name
+            if skel_name.is_absolute()
+            else self.stack_dir / skel_name
+        )
 
         if rotate is not None:
             self.inner_cropper = _cropper(self, domain=crop)
@@ -471,7 +469,7 @@ class Network:
             self = base.remove_objects(self, remove_objects)
             self.options["remove_objects"] = remove_objects
 
-        with gsd.hoomd.open(name=self.gsd_name, mode="w") as f:
+        with gsd.hoomd.open(name=self.skel_name, mode="w") as f:
             s = gsd.hoomd.Frame()
             s.particles.N = len(positions)
             if box:
@@ -541,10 +539,11 @@ class Network:
                 attributes,
             ]
 
+        filename = Path(filename)
         save_name = (
-            filename if filename[0] == "/" else self.stack_dir + "/" + filename
+            filename if filename.is_absolute() else self.stack_dir / filename
         )
-        _mode = "r+" if mode == "r+" and os.path.exists(save_name) else "w"
+        _mode = "r+" if mode == "r+" and save_name.exists() else "w"
 
         f = gsd.hoomd.open(name=save_name, mode=_mode)
         self.labelled_name = save_name
@@ -645,8 +644,7 @@ class Network:
         for attr in ("stack_dir", "_2d", "dim", "cropper"):
             self.options[attr] = str(getattr(self, attr))
 
-        name = os.path.splitext(os.path.basename(filename))[0]
-        with open(self.stack_dir + "/" + name + ".json", "w") as json_file:
+        with open(self.stack_dir / Path(filename.stem + ".json"), "w") as json_file:
             json.dump(self.options, json_file)
 
     def node_plot(self, parameter=None, ax=None, depth=0, plot_img=True):
@@ -882,10 +880,10 @@ class Network:
         given as `.../dir/Binarized/name.gsd`.
         """
 
-        assert os.path.exists(filename)
-        _dir = os.path.abspath(filename)
-        _dir = os.path.split(os.path.split(filename)[0])[0]
-        binarized_dir = os.path.split(os.path.split(filename)[0])[-1]
+        filename = Path(filename)
+        assert filename.exists()
+        _dir = filename.absolute().parents[1]
+        binarized_dir = filename.absolute().parents[0].stem
         N = cls(
             _dir,
             depth=depth,
@@ -898,8 +896,7 @@ class Network:
         else:
             N._2d = False
 
-        name = os.path.splitext(os.path.basename(filename))[0]
-        _json = N.stack_dir + "/" + name + ".json"
+        _json = N.stack_dir / (filename.stem + ".json")
         with open(_json) as json_file:
             data = json.load(json_file)
         N.options = data
@@ -987,7 +984,8 @@ class GeometricGraph:
 
     def __init__(self, filename, frame=0):
         f = gsd.hoomd.open(name=filename, mode="r")[frame]
-        _json = os.path.splitext(filename)[0] + ".json"
+        filename = Path(filename)
+        _json = filename.stem + ".json"
         with open(_json) as json_file:
             data = json.load(json_file)
 
