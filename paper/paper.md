@@ -57,7 +57,7 @@ Depiction of their combination with ``NetworkMaterial`` objects is given in Figu
 ## Network Material Filetype
 While there are many filetypes designed for storing graphs, the requirement of preserving geometry in graphs extracted from material networks actually makes molecular simulation filetypes a more appropriate choice. For *StructuralGT*, we have opted for the ``.gsd`` format, because its compatibility with the OVITO toolkit allows us to make rich and dynamic visualizations with both the desktop application and their extensive Python API [@ovito].
 
-## State of the field
+## State of the Field
 While there are a few GT packages (*igraph* [@igraph], *NetworkX* [@NetworkX], *graph-tool* [@graph-tool]), there are fewer still that are compatible with materials science data. Even those that are (e.g. *crystal-torture* [@crystal-torture], *PoreBlazer* [@PoreBlazer]) are not compatible with image data, which is a crucial datatype used by experimentalists. Developing an image-to-graph workflow is a distincly unique capability of *StructuralGT*, involving specialized image processing tools - such as `sknw` [@sknw] - which are not even part of standard image processing packages like `scikit-image`. The present contribution provides the necessary graph-extraction capabilities for unifying both experimental and computational materials under a common framework. 
 Creating a new *StructuralGT* - as opposed to extending the existing codebase - was driven by the need for an extendable and modular object-oriented API to achieve the above objectives. This required completely rewriting the previous (now unmaintained) codebase of scripts and functions that could only be interacted with via a GUI. The API development has further enabled
 \begin{itemize}
