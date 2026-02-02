@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from .binarizer import Binarizer
 
-current_dir = Path(__file__).stem
+current_dir = Path(__file__).parent
 file_path = current_dir / "metadata.json"
 with open(file_path) as json_file:
     metadata = json.load(json_file)

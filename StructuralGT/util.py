@@ -180,7 +180,7 @@ class _cropper:
             self.surface = 0
         elif domain is None:
             self.surface = int(
-                _fname(Network.dir + "/" + Network.image_stack[0][1]).num
+                _fname(Network.dir / Network.image_stack[0][1]).num
             )  # Strip file type and 'slice' then convert to int
         else:
             self.surface = domain[4]

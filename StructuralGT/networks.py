@@ -644,7 +644,7 @@ class Network:
         for attr in ("stack_dir", "_2d", "dim", "cropper"):
             self.options[attr] = str(getattr(self, attr))
 
-        with open(self.stack_dir / Path(filename.stem + ".json"), "w") as json_file:
+        with open(self.stack_dir / (filename.stem + ".json"), "w") as json_file:
             json.dump(self.options, json_file)
 
     def node_plot(self, parameter=None, ax=None, depth=0, plot_img=True):
@@ -985,7 +985,7 @@ class GeometricGraph:
     def __init__(self, filename, frame=0):
         f = gsd.hoomd.open(name=filename, mode="r")[frame]
         filename = Path(filename)
-        _json = filename.stem + ".json"
+        _json = filename.parent / (filename.stem + ".json")
         with open(_json) as json_file:
             data = json.load(json_file)
 
