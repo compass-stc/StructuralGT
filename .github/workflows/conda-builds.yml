@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-        python: ['312','313']
+        python: ['313','314']
       fail-fast: false
 
     steps:
