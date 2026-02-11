@@ -5,11 +5,12 @@ requires = ["setuptools",
             "cython>=3.0.11",
             "igraph",
             "eigen",
+	    "pythran"
 ]
 
 [project]
 name = "StructuralGT"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
         'numpy>=2.0',
         'scipy',
@@ -68,7 +69,6 @@ known-third-party = ["hypothesis", "pytest"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D", "B018", "F811"]
-"parsnip/*" = ["E741"]
 "__init__.py" = ["F401"] # Do not remove "unused" imports in __init__.py files
 
 [tool.ruff.format]
