@@ -71,16 +71,6 @@ repos:
     rev: '7.0.0'
     hooks:
       - id: isort
-  - repo: https://github.com/PyCQA/flake8
-    rev: '7.3.0'
-    hooks:
-      - id: flake8
-        exclude: StructuralGT/__init__\.py$
-        types: ["file"]
-        types_or: ["python"]
-        additional_dependencies: ["flake8-force"]
-        args:
-        - --show-source
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: 'v21.1.8'
     hooks:

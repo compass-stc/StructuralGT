@@ -59,6 +59,8 @@ ignore = [
   "D107", # __init__ methods don't require documentation.
   "ISC001", # Raises warning in ruff formatter
   "SIM116", # Allow certain branched if statements
+  "E203", # Unstable
+  "E501", # Sometimes lines need to be long.
 ]
 
 [tool.ruff.lint.pydocstyle]

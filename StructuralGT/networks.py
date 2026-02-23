@@ -5,10 +5,10 @@
 import copy
 import json
 import os
-from pathlib import Path
 import time
 import warnings
 from collections.abc import Sequence
+from pathlib import Path
 
 import cv2 as cv
 import freud
@@ -22,12 +22,7 @@ from matplotlib.colorbar import Colorbar
 from skimage.morphology import skeletonize
 
 from StructuralGT import base, error, process_image
-from StructuralGT.util import (
-    _cropper,
-    _domain,
-    _fname,
-    _image_stack,
-)
+from StructuralGT.util import _cropper, _domain, _fname, _image_stack
 
 
 def colorbar(mappable, ax, *args, **kwargs):
@@ -90,12 +85,16 @@ class Network:
                 "all subsequent results inside of it.",
                 UserWarning,
             )
-            os.mkdir(self.directory.parent)
-            os.rename(self.directory,
-                      self.directory.parent / "slice0000.tiff")
+            if not self.directory.parent.exists:
+                os.mkdir(self.directory.parent)
+            os.rename(self.directory, self.directory.parent / "slice0000.tiff")
+            self.directory = self.directory.parent
 
-        self.dir = Path(directory)
-        self.stack_dir = self.dir / self.binarized_dir
+        self.stack_dir = (
+            self.directory / self.binarized_dir
+            if not self.binarized_dir.is_absolute()
+            else self.binarized_dir
+        )
         self.depth = depth
         self.dim = dim
         if self.dim == 2:
@@ -109,11 +108,11 @@ class Network:
             self.prefix = prefix
 
         image_stack = _image_stack()
-        for slice_name in sorted(os.listdir(self.dir)):
+        for slice_name in sorted(os.listdir(self.directory)):
             if not base.Q_img(slice_name):
                 continue
             fname = _fname(
-                str(self.dir / slice_name),
+                str(self.directory / slice_name),
                 domain=_domain(depth),
                 _2d=self._2d,
             )
@@ -127,11 +126,11 @@ class Network:
                         UserWarning,
                     )
                     break
-                _slice = plt.imread(self.dir / slice_name)
+                _slice = plt.imread(self.directory / slice_name)
                 image_stack.append(_slice, slice_name)
             if dim == 3:
                 if fname.isinrange and fname.isimg and prefix in fname:
-                    _slice = plt.imread(self.dir / slice_name)
+                    _slice = plt.imread(self.directory / slice_name)
                     image_stack.append(_slice, slice_name)
 
         self.image_stack = image_stack
@@ -158,7 +157,7 @@ class Network:
 
         self.options = options
         if isinstance(options, str):
-            options = self.dir / options
+            options = self.directory / options
             with open(options) as f:
                 options = json.load(f)
             self.options = options
@@ -174,14 +173,17 @@ class Network:
                     "tensorflow installed."
                 )
 
+        self.image_stack_bin = _image_stack()
         for _, name in self.image_stack:
-            fname = _fname(str(self.dir / name), _2d=self._2d)
-            gray_image = cv.imread(self.dir / name, cv.IMREAD_GRAYSCALE)
+            fname = _fname(str(self.directory / name), _2d=self._2d)
+            gray_image = cv.imread(self.directory / name, cv.IMREAD_GRAYSCALE)
             _, img_bin, _ = process_image.binarize(gray_image, options)
             if self._2d:
                 fname.num = "0000"
+            name_bin = self.stack_dir / (self.prefix + fname.num + ".tiff")
+            self.image_stack_bin.append(img_bin, name_bin)
             plt.imsave(
-                self.stack_dir / (self.prefix + fname.num + ".tiff"),
+                name_bin,
                 img_bin,
                 cmap=mpl.cm.gray,
             )
@@ -209,18 +211,17 @@ class Network:
             img_bin = np.swapaxes(img_bin, 1, 2)
 
         i = self.cropper.surface
-        for fname in sorted(os.listdir(self.stack_dir)):
-            if not base.Q_img(fname):
-                continue
+        # for fname in sorted(os.listdir(self.stack_dir)):
+        for _, name in self.image_stack_bin:
             fname = _fname(
-                str(self.stack_dir / fname),
+                name,
                 domain=_domain(self.cropper._3d),
                 _2d=self._2d,
             )
             if fname.isimg and fname.isinrange:
                 img_bin[i - self.cropper.surface] = (
                     base.read(
-                        self.stack_dir / (self.prefix  + fname.num + ".tiff"),
+                        self.stack_dir / (self.prefix + fname.num + ".tiff"),
                         cv.IMREAD_GRAYSCALE,
                     )[self.cropper._2d]
                     / 255
@@ -234,6 +235,8 @@ class Network:
 
         self._img_bin_3d = self._img_bin
         self._img_bin = np.squeeze(self._img_bin)
+
+        del self.image_stack_bin
 
     def set_graph(
         self, sub=True, weight_type=None, write="network.gsd", R_j=0, rho_dim=1
@@ -644,7 +647,9 @@ class Network:
         for attr in ("stack_dir", "_2d", "dim", "cropper"):
             self.options[attr] = str(getattr(self, attr))
 
-        with open(self.stack_dir / (filename.stem + ".json"), "w") as json_file:
+        with open(
+            self.stack_dir / (filename.stem + ".json"), "w"
+        ) as json_file:
             json.dump(self.options, json_file)
 
     def node_plot(self, parameter=None, ax=None, depth=0, plot_img=True):
