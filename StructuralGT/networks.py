@@ -315,16 +315,16 @@ class Network:
             self.Gr.delete_vertices(drop_list)
 
             node_positions = np.asarray(
-                list(self.Gr.vs[i]["o"] for i in range(self.Gr.vcount()))
+                self.Gr.vs[i]["o"] for i in range(self.Gr.vcount())
             )
             final_shift = np.asarray(
-                list(min(node_positions.T[i]) for i in (0, 1, 2)[0 : self.dim])
+                min(node_positions.T[i]) for i in (0, 1, 2)[0 : self.dim]
             )
             edge_positions_list = np.asarray(
-                list(
+                [
                     base.oshift(self.Gr.es[i]["pts"], _shift=centre)
                     for i in range(self.Gr.ecount())
-                ),
+                ],
                 dtype=object,
             )
             for i, edge in enumerate(edge_positions_list):
