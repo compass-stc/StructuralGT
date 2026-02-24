@@ -2,16 +2,18 @@
 # This file is from the StructuralGT project, released under the BSD 3-Clause
 # License.
 
-import shutil
 import os
+import shutil
+from pathlib import Path
 
 import numpy as np
+import options
 import pandas as pd
+import pytest
+
+import StructuralGT
 from StructuralGT import error
 from StructuralGT.networks import Graph, Network, PointNetwork
-
-import options
-import pytest
 
 Small_path = "StructuralGT/pytest/data/Small/"
 AgNWN_path = "StructuralGT/pytest/data/AgNWN/"
@@ -20,6 +22,8 @@ PointNetwork_path = "StructuralGT/pytest/data/Seeds/"
 EdgeList_path = "StructuralGT/pytest/data/Bonds/"
 img_path = "StructuralGT/pytest/data/loose_img.tiff"
 
+_path = Path(StructuralGT.__path__[0])
+out_path = _path / "pytest/data/out_dir"
 
 class TestNetwork:
     def test_3d_constructor(self):
@@ -47,7 +51,7 @@ class TestNetwork:
         return Network(AgNWN_path, prefix="slice")
 
     @pytest.fixture
-    def test_binarize(self, test_2d_constructor):
+    def test_2d_binarize(self, test_2d_constructor):
         test_2d_constructor.binarize(options=options.agnwn)
 
         return test_2d_constructor
@@ -69,14 +73,14 @@ class TestNetwork:
         HighThresh.set_graph(write=False)
 
     @pytest.fixture
-    def test_crop(self, test_binarize):
-        testNetwork = test_binarize
+    def test_crop(self, test_2d_binarize):
+        testNetwork = test_2d_binarize
         testNetwork.img_to_skel(crop=[0, 500, 0, 500])
 
         return testNetwork
 
-    def test_rotations(self, test_binarize):
-        testNetwork = test_binarize
+    def test_rotations(self, test_2d_binarize):
+        testNetwork = test_2d_binarize
         testNetwork.img_to_skel(crop=[149, 868, 408, 1127], rotate=45)
 
     def test_weighting(self, test_crop):
@@ -104,6 +108,52 @@ class TestGraph:
         testGraph = Graph(Small_path + "Binarized/network.gsd")
         testGraph.vs["o"][0]
 
+class TestDecoupledIO:
+    """
+    "DecoupledIO" refers to the ***. However because this is the IO employed
+    by the GUI, this testing class is included to rigorously ensure that
+    such IO decoupling is well-behaved.
+    """
+
+    @pytest.fixture
+    def test_2d_constructor(self):
+
+        return Network(AgNWN_path, binarized_dir=out_path)
+
+    @pytest.fixture
+    def test_2d_binarize(self, test_2d_constructor):
+        test_2d_constructor.binarize(options=options.agnwn)
+
+        return test_2d_constructor
+
+    def test_2d_graph(self, test_2d_binarize):
+        test_2d_binarize.img_to_skel()
+        test_2d_binarize.set_graph()
+
+        assert Path(out_path / "network.gsd").exists()
+        os.remove(Path(out_path / "network.gsd"))
+
+    @pytest.fixture
+    def test_3d_constructor(self):
+
+        testNetwork = Network(ANF_path,
+                              dim=3, prefix="slice",
+                              binarized_dir=out_path)
+        assert len(testNetwork.image_stack) == 12
+
+        return testNetwork
+
+    @pytest.fixture
+    def test_3d_binarize(self, test_3d_constructor):
+        test_3d_constructor.binarize(options=options.anf)
+
+        return test_3d_constructor
+
+    def test_3d_graph(self, test_2d_binarize):
+        test_2d_binarize.img_to_skel()
+        test_2d_binarize.set_graph()
+
+        assert Path(out_path / "network.gsd").exists()
 
 ATTR_VALUES = {
     "periodic": False,
@@ -139,12 +189,12 @@ class TestPointNetwork:
 
     def test_write_edgelist(self):
         # Read edge list with whitespace as delimiter
-        df = pd.read_csv(EdgeList_path + "Connectivity.dat", sep="\s+")
+        df = pd.read_csv(EdgeList_path + "Connectivity.dat", sep=r"\s+")
         edge_list = df[["node1", "node2"]].values
         edge_list -= 1  # Convert to 0-based indexing
 
         # Read node positions
-        pos_df = pd.read_csv(EdgeList_path + "Node_positions.dat", sep="\s+")
+        pos_df = pd.read_csv(EdgeList_path + "Node_positions.dat", sep=r"\s+")
         positions = pos_df[["x", "y", "z"]].values
 
         N = PointNetwork(positions, edge_list)

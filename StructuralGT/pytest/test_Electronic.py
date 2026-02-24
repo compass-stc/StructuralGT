@@ -8,8 +8,6 @@ import pytest
 import StructuralGT
 from StructuralGT.electronic import Electronic
 
-_path = StructuralGT.__path__[0]
-
 
 class TestElectronic:
     @pytest.fixture

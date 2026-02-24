@@ -5,8 +5,6 @@
 import StructuralGT
 from StructuralGT.geometric import Nematic
 
-_path = StructuralGT.__path__[0]
-
 
 class TestNematic:
     def test_random(self, random_stick):
