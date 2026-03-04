@@ -85,10 +85,10 @@ class Network:
                 "all subsequent results inside of it.",
                 UserWarning,
             )
-            if not self.directory.parent.exists:
-                os.mkdir(self.directory.parent)
-            os.rename(self.directory, self.directory.parent / "slice0000.tiff")
-            self.directory = self.directory.parent
+            if not Path(self.directory.with_suffix("")).exists():
+                os.mkdir(self.directory.with_suffix(""))
+            os.rename(self.directory, Path(self.directory.with_suffix("")) / "slice0000.tiff")
+            self.directory = self.directory.with_suffix("")
 
         self.stack_dir = (
             self.directory / self.binarized_dir
