@@ -7,13 +7,8 @@ import time
 import cv2 as cv
 import gsd.hoomd
 import numpy as np
-from skimage.morphology import (
-    binary_closing,
-    remove_small_objects,
-    skeletonize,
-    disk,
-    ball,
-)
+from skimage.morphology import (ball, binary_closing, disk,
+                                remove_small_objects, skeletonize)
 
 from StructuralGT import GetWeights_3d, error, skel_ID, sknwEdits
 
@@ -226,7 +221,7 @@ def dim_red(positions):
 
     return positions
 
-def G_to_gsd(G, gsd_name, box=False):
+def G_to_gsd(G, skel_name, box=False):
     dim = len(G.vs[0]["o"])
 
     positions = np.asarray(list(G.vs[i]["o"] for i in range(G.vcount())))
@@ -251,15 +246,15 @@ def G_to_gsd(G, gsd_name, box=False):
     else:
         s.particles.position, _ = shift(positions)
 
-    with gsd.hoomd.open(name=gsd_name, mode="w") as f:
+    with gsd.hoomd.open(name=skel_name, mode="w") as f:
         f.append(s)
 
-def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
+def gsd_to_G(skel_name, sub=False, _2d=False, crop=None):
     """Function takes gsd rendering of a skeleton and returns the list of
     nodes and edges, as calculated by sknw.
 
     Args:
-        gsd_name (str):
+        skel_name (str):
             The file name to write.
         sub (optional, bool):
             Whether to return only to largest connected component. If True, it
@@ -278,7 +273,7 @@ def gsd_to_G(gsd_name, sub=False, _2d=False, crop=None):
     Returns:
         (:class:`igraph.Graph`): The extracted :class:`igraph.Graph` object.
     """
-    frame = gsd.hoomd.open(name=gsd_name, mode="r")[0]
+    frame = gsd.hoomd.open(name=skel_name, mode="r")[0]
     positions = shift(frame.particles.position.astype(int))[0]
     if crop is not None:
         from numpy import logical_and as a
@@ -342,10 +337,11 @@ def debubble(g, elements):
     start = time.time()
 
     canvas = g.img_bin
-    canvas = np.ceil(skeletonize(canvas) / 255).astype(np.uint8)
     for elem in elements:
         elem = disk(elem) if g._2d else ball(elem)
         canvas = binary_closing(canvas, footprint=elem.astype(np.uint8))
+        canvas = np.ceil(skeletonize(canvas) / 255).astype(np.uint8)
+    g._skeleton = canvas
 
     if g._2d:
         g._skeleton_3d = np.swapaxes(np.array([g._skeleton]), 2, 1)
@@ -353,11 +349,12 @@ def debubble(g, elements):
     else:
         g._skeleton_3d = np.asarray(g._skeleton)
 
-    positions = np.asarray(np.where(g._skeleton_3d != 0)).T
-    with gsd.hoomd.open(name=g.gsd_name, mode="w") as f:
+    g.skel_name = str(g.skel_name.with_suffix("")) + "_debubbled.gsd"
+    g.positions = np.asarray(np.where(g._skeleton_3d != 0)).T
+    with gsd.hoomd.open(name=g.skel_name, mode="w") as f:
         s = gsd.hoomd.Frame()
         s.particles.N = int(sum(g._skeleton_3d.ravel()))
-        s.particles.position = positions
+        s.particles.position = g.positions
         s.particles.types = ["A"]
         s.particles.typeid = ["0"] * s.particles.N
         f.append(s)
@@ -384,7 +381,7 @@ def merge_nodes(g, disk_size):
         raise TypeError("Node merging not supported for 3D networks")
 
     positions = np.asarray(np.where(g._skeleton_3d != 0)).T
-    with gsd.hoomd.open(name=g.gsd_name, mode="w") as f:
+    with gsd.hoomd.open(name=g.skel_name, mode="w") as f:
         s = gsd.hoomd.Frame()
         s.particles.N = int(sum(g._skeleton_3d.ravel()))
         s.particles.position = positions
@@ -413,7 +410,7 @@ def prune(g, size):
         g._skeleton_3d = np.asarray(g._skeleton)
 
     positions = np.asarray(np.where(g._skeleton_3d != 0)).T
-    with gsd.hoomd.open(name=g.gsd_name, mode="w") as f:
+    with gsd.hoomd.open(name=g.skel_name, mode="w") as f:
         s = gsd.hoomd.Frame()
         s.particles.N = int(sum(g._skeleton_3d.ravel()))
         s.particles.position = positions
@@ -442,7 +439,7 @@ def remove_objects(g, size):
         g._skeleton_3d = np.asarray(g._skeleton)
 
     positions = np.asarray(np.where(g._skeleton_3d != 0)).T
-    with gsd.hoomd.open(name=g.gsd_name, mode="w") as f:
+    with gsd.hoomd.open(name=g.skel_name, mode="w") as f:
         s = gsd.hoomd.Frame()
         s.particles.N = int(sum(g._skeleton_3d.ravel()))
         s.particles.position = positions

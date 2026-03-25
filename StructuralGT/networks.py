@@ -128,8 +128,7 @@ class Network:
                     break
                 _slice = plt.imread(self.directory / slice_name)
                 image_stack.append(_slice, slice_name)
-            if dim == 3:
-                if fname.isinrange and fname.isimg and prefix in fname:
+            if dim == 3 and fname.isinrange and fname.isimg and prefix in fname:
                     _slice = plt.imread(self.directory / slice_name)
                     image_stack.append(_slice, slice_name)
 
@@ -450,15 +449,16 @@ class Network:
             self.skeleton_3d = self._img_bin_3d
             self._skeleton = self._img_bin
 
-        positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
+        self.positions = np.asarray(np.where(np.asarray(self.skeleton_3d) == 1)).T
         self.shape = np.asarray(
-            list(max(positions.T[i]) + 1 for i in (2, 1, 0)[0 : self.dim])
+            list(max(self.positions.T[i]) + 1 for i in (2, 1, 0)[0 : self.dim])
         )
-        self.positions = positions
 
         if debubble is not None:
             self = base.debubble(self, debubble)
             self.options["debubble"] = debubble
+            print(sum(self._skeleton_3d.ravel()))
+            print(self.skel_name)
 
         if merge_nodes is not None:
             self = base.merge_nodes(self, merge_nodes)
@@ -474,15 +474,15 @@ class Network:
 
         with gsd.hoomd.open(name=self.skel_name, mode="w") as f:
             s = gsd.hoomd.Frame()
-            s.particles.N = len(positions)
+            s.particles.N = len(self.positions)
             if box:
-                L = list(max(positions.T[i]) for i in (0, 1, 2))
+                L = list(max(self.positions.T[i]) for i in (0, 1, 2))
                 s.particles.position, self.shift = base.shift(
-                    positions, _shift=(L[0] / 2, L[1] / 2, L[2] / 2)
+                    self.positions, _shift=(L[0] / 2, L[1] / 2, L[2] / 2)
                 )
                 s.configuration.box = [L[0], L[1], L[2], 0, 0, 0]
             else:
-                s.particles.position, self.shift = base.shift(positions)
+                s.particles.position, self.shift = base.shift(self.positions)
             s.particles.types = ["A"]
             s.particles.typeid = ["0"] * s.particles.N
             f.append(s)
@@ -492,7 +492,7 @@ class Network:
             "Ran img_to_skel() in ",
             end - start,
             "for skeleton with ",
-            len(positions),
+            len(self.positions),
             "voxels",
         )
 
