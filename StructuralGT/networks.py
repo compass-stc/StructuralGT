@@ -17,6 +17,7 @@ import igraph as ig
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import scipy
 from matplotlib.colorbar import Colorbar
 from skimage.morphology import skeletonize
@@ -512,6 +513,7 @@ class Network:
         filename="labelled.gsd",
         edge_weight=None,
         mode="w",
+        csv_write=True
     ):
         """Method saves a new :code:`.gsd` which labels the :attr:`graph`
         attribute with the given node attribute values. Method saves the
@@ -651,6 +653,17 @@ class Network:
             self.stack_dir / (filename.stem + ".json"), "w"
         ) as json_file:
             json.dump(self.options, json_file)
+
+        if csv_write:
+            eds = self.graph.es
+            Ne = len(eds)
+            edgelist = np.array([[eds[n].source,eds[n].target] for n in range(Ne)])
+
+            df = pd.DataFrame(centroid_positions)
+            df.to_csv(self.stack_dir / 'vertexPositions.csv', header=False, index=False)
+            df = pd.DataFrame(edgelist)
+            df.to_csv(self.stack_dir / 'edgeList.csv', header=False, index=False)
+
 
     def node_plot(self, parameter=None, ax=None, depth=0, plot_img=True):
         """Superimpose the skeleton, image, and nodal graph theory parameters.
@@ -1209,7 +1222,8 @@ class PointNetwork:
 
         self.filename = filename
 
-    def node_labelling(self, attributes, labels, filename="labelled.gsd"):
+    def node_labelling(
+            self, attributes, labels, filename="labelled.gsd", csv_write=True):
         """Method saves a new :code:`.gsd` which labels the :attr:`graph`
         attribute with the given node attribute values.
 
@@ -1223,6 +1237,7 @@ class PointNetwork:
                 The file name to write.
         """
 
+        filename = Path(filename)
         if not isinstance(labels, list):
             labels = [
                 labels,
@@ -1245,6 +1260,16 @@ class PointNetwork:
         s.log["periodic"] = int(self.periodic)
         s.log["dim"] = self.dim
         s.log["box"] = self.box
+
+        if csv_write:
+            eds = self.graph.es
+            Ne = len(eds)
+            edgelist = np.array([[eds[n].source,eds[n].target] for n in range(Ne)])
+
+            df = pd.DataFrame(self.positions)
+            df.to_csv(filename.parent / 'vertexPositions.csv', header=False, index=False)
+            df = pd.DataFrame(edgelist)
+            df.to_csv(filename.parent / 'edgeList.csv', header=False, index=False)
 
         with gsd.hoomd.open(name=filename, mode="w") as f_mod:
             f_mod.append(s)
