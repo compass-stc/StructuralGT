@@ -19,7 +19,7 @@ dependencies = [
         'networkx',
         'opencv-python',
         'pandas',
-        'gsd>=3.0.0',
+        'gsd>=5.0.0',
         'python-igraph',
         'eigen',
         'pytest',
